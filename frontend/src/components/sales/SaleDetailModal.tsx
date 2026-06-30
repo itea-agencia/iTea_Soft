@@ -23,7 +23,7 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
-import { Sale, Client } from "../../types";
+import { Sale, Client, Responsable } from "../../types";
 
 const PRODUCT_ICONS: Record<string, React.ReactNode> = {
   Tiquetería: <Plane size={16} className="text-primary" />,
@@ -53,6 +53,7 @@ interface SaleDetailModalProps {
   onClose: () => void;
   selectedSale: Sale | null;
   clients: Client[];
+  responsables: Responsable[];
   onViewProductDetails: (product: { type: string; data: any[] }) => void;
 }
 
@@ -82,6 +83,7 @@ export default function SaleDetailModal({
   onClose,
   selectedSale,
   clients,
+  responsables,
   onViewProductDetails,
 }: SaleDetailModalProps) {
   const [fullSale, setFullSale] = useState<Sale | null>(null);
@@ -123,6 +125,10 @@ export default function SaleDetailModal({
 
   const sale = fullSale || selectedSale;
   const client = clients.find((c) => c.id === sale.clientId);
+  // Find full responsable data if the sale has one assigned
+  const responsable = sale.responsableId
+    ? responsables.find((r) => r.id === sale.responsableId)
+    : undefined;
   const commissionAmount = sale.commissionAgentNetPayment || 0;
   const supplierCost = sale.supplierCost || 0;
   const gananciaNeta = sale.total - supplierCost - commissionAmount;
@@ -359,6 +365,50 @@ export default function SaleDetailModal({
                   {formatCurrency(commissionAmount)}
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sección Responsable */}
+        {(sale.responsableId || sale.responsableName) && (
+          <div>
+            <h4 className="text-sm font-bold text-primary border-b border-gray-200 dark:border-slate-700 pb-2 mb-3 flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">R</span>
+              Responsable Asignado
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-indigo-50 dark:bg-indigo-950/30 p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/50 shadow-sm">
+              <div className="col-span-2 sm:col-span-1">
+                <span className="text-gray-500 dark:text-slate-400 text-xs block">Nombre</span>
+                <span className="font-semibold text-gray-800 dark:!text-[#ffffff]">
+                  {responsable ? `${responsable.firstName} ${responsable.lastName}` : (sale.responsableName || "-")}
+                </span>
+              </div>
+              {responsable ? (
+                <>
+                  <div>
+                    <span className="text-gray-500 dark:text-slate-400 text-xs block">Documento</span>
+                    <span className="font-medium text-gray-800 dark:!text-[#ffffff]">
+                      {responsable.docType ? `${responsable.docType} ` : ""}{responsable.docNumber || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-slate-400 text-xs block">Teléfono</span>
+                    <span className="font-medium text-gray-800 dark:!text-[#ffffff]">
+                      {responsable.phone || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-slate-400 text-xs block">Correo</span>
+                    <span className="font-medium text-gray-800 dark:!text-[#ffffff] break-words">
+                      {responsable.email || "-"}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="col-span-3 text-sm text-gray-400 italic flex items-center">
+                  Datos adicionales del responsable no disponibles
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -698,6 +698,8 @@ exports.getById = async (req, res, next) => {
       clientName: `${venta.cliente.persona.nombres} ${venta.cliente.persona.apellidos}`,
       asesorId: venta.usuarioId,
       asesorName: `${venta.usuario.persona.nombres} ${venta.usuario.persona.apellidos}`,
+      responsableId: venta.responsableId || null,
+      responsableName: venta.responsable ? `${venta.responsable.persona.nombres} ${venta.responsable.persona.apellidos}` : null,
       date: venta.creadoAt,
       total: venta.montoTotal,
       paymentMethod: venta.metodoPagoPrincipal?.nombre || null,

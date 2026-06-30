@@ -38,6 +38,7 @@ import LoadingScreen from "../components/ui/LoadingScreen";
 
 export default function Sales() {
   const { data, addSale, updateSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, salesLoading, fetchSales, fetchClients } = useData();
+  const responsables = data.responsables || [];
   const { user, isAdmin } = useAuth();
   const { canCreate, canEdit } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -656,6 +657,7 @@ export default function Sales() {
         onClose={() => setIsDetailOpen(false)}
         selectedSale={salesDetails[selectedSale?.id || 0] || selectedSale}
         clients={data.clients}
+        responsables={responsables}
         onViewProductDetails={setDetailedProduct}
       />
 
