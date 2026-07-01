@@ -11,7 +11,7 @@ export function Layout() {
       {/* Mobile Backdrop */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-black/45 backdrop-blur-sm z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-black/45 backdrop-blur-sm z-[90] md:hidden transition-opacity"
           onClick={() => setIsMobileOpen(false)}
         />
       )}

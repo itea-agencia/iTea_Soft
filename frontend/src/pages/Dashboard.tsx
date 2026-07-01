@@ -134,8 +134,8 @@ export default function Dashboard() {
               Supervisa el rendimiento financiero y operativo en tiempo real. Todos los indicadores estratégicos de tu agencia, en un solo vistazo.
             </p>
           </div>
-          <div className="flex items-center bg-[#ffffff]/10 backdrop-blur-md p-1.5 rounded-xl shadow-inner border border-[#ffffff]/20">
-            <div className="w-72 datepicker-container datepicker-transparent">
+          <div className="flex items-center w-full lg:w-auto bg-[#ffffff]/10 backdrop-blur-md p-1.5 rounded-xl shadow-inner border border-[#ffffff]/20">
+            <div className="w-full sm:w-72 datepicker-container datepicker-transparent">
               <Datepicker
                 value={dateRange as any}
                 onChange={(newValue: any) => setDateRange(newValue)}
@@ -144,7 +144,8 @@ export default function Dashboard() {
                 displayFormat={"DD/MMM/YYYY"}
                 placeholder={"Selecciona un periodo"}
                 separator={" - "}
-                containerClassName="relative !bg-transparent"
+                popoverDirection="down"
+                containerClassName="relative !bg-transparent w-full"
                 inputClassName="w-full text-sm font-semibold !text-[#ffffff] !bg-transparent border-none py-2 px-4 cursor-pointer focus:ring-0 placeholder-[#ffffff]/60 dark:!text-[#ffffff]"
               />
             </div>

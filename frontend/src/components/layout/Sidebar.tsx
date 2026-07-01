@@ -72,7 +72,7 @@ export function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
     <aside 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`fixed left-0 top-0 h-screen bg-[#0b396b] text-white flex flex-col transition-all duration-300 ease-in-out z-50 shadow-2xl 
+      className={`fixed left-0 top-0 h-screen bg-[#0b396b] text-white flex flex-col transition-all duration-300 ease-in-out z-[100] shadow-2xl 
         ${isExpanded ? "w-64" : "w-20"}
         ${isMobileOpen ? "translate-x-0 w-64" : "-translate-x-full md:translate-x-0"}
       `}

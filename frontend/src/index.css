@@ -120,7 +120,13 @@
   border-radius: 16px !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
   border: 1px solid #334155 !important;
-  overflow: hidden;
+}
+
+/* Forzar que el popup se alinee a la derecha para evitar que se desborde la pantalla en tablets/laptops */
+.datepicker-transparent div[class*="absolute"] {
+  right: 0 !important;
+  left: auto !important;
+  transform: none !important;
 }
 /* Estilo para el rango de fechas seleccionado (días intermedios) */
 .dark .datepicker-container button[class*="bg-indigo-"],
