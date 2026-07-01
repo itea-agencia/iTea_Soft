@@ -113,10 +113,14 @@
   background-color: transparent !important;
   background: transparent !important;
 }
-/* El popup flotante del calendario mantiene su fondo oscuro */
+/* El popup flotante del calendario mantiene su fondo oscuro, con bordes redondeados y alta elevación */
 .dark .datepicker-transparent div[class*="absolute"],
 .dark .datepicker-transparent div[class*="z-"] {
   background-color: #1e293b !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid #334155 !important;
+  overflow: hidden;
 }
 /* Estilo para el rango de fechas seleccionado (días intermedios) */
 .dark .datepicker-container button[class*="bg-indigo-"],

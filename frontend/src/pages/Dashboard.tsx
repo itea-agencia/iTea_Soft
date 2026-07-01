@@ -117,7 +117,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 pb-8">
       {/* Header Premium con Gradient */}
-      <div className="relative rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-8 shadow-2xl z-10">
+      <div className="relative rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-8 shadow-2xl z-50">
         {/* Capa de fondo con overflow-hidden para no recortar el contenido interactivo como el Datepicker */}
         <div className="absolute inset-0 overflow-hidden rounded-2xl z-0 pointer-events-none">
           <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
