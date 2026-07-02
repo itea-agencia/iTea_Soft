@@ -59,7 +59,8 @@ exports.listAgents = async (req, res, next) => {
           p.telefono as "phone",
           p.email,
           p.documento as "docNumber",
-          td.abreviatura as "docType"
+          td.abreviatura as "docType",
+          c.observacion as "observacion"
         FROM comisionistas c
         JOIN personas p ON c.persona_id = p.id
         LEFT JOIN tipos_documento td ON p.tipo_documento_id = td.id
@@ -79,7 +80,8 @@ exports.listAgents = async (req, res, next) => {
       accumulated: a.accumulated,
       paymentThreshold: a.paymentThreshold,
       phone: a.phone,
-      email: a.email
+      email: a.email,
+      observacion: a.observacion
     }));
 
     success(res, data, buildMeta(total, page, perPage));
@@ -150,6 +152,7 @@ exports.createAgent = async (req, res, next) => {
         tipo: data.type || null,
         umbralPago: parseFloat(data.paymentThreshold) || 0,
         acumulado: 0,
+        observacion: data.observacion || null,
         status: data.status || 'Activo'
       },
       include: { persona: { include: { tipoDocumento: true } } }
@@ -165,7 +168,8 @@ exports.createAgent = async (req, res, next) => {
       accumulated: agent.acumulado,
       paymentThreshold: agent.umbralPago,
       phone: agent.persona.telefono,
-      email: agent.persona.email
+      email: agent.persona.email,
+      observacion: agent.observacion
     }, null, 201);
   } catch (err) {
     next(err);
@@ -219,6 +223,7 @@ exports.updateAgent = async (req, res, next) => {
 
     if (data.type !== undefined) await prisma.comisionistas.update({ where: { id }, data: { tipo: data.type } });
     if (data.status !== undefined) await prisma.comisionistas.update({ where: { id }, data: { status: data.status } });
+    if (data.observacion !== undefined) await prisma.comisionistas.update({ where: { id }, data: { observacion: data.observacion } });
     if (data.paymentThreshold !== undefined) {
       await prisma.comisionistas.update({ where: { id }, data: { umbralPago: parseFloat(data.paymentThreshold) || 0 } });
     }

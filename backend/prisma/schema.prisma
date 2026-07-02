@@ -293,6 +293,7 @@ model Comisionistas {
   tipo          String?
   umbralPago    Float?      @default(0) @map("umbral_pago")
   acumulado     Float?      @default(0)
+  observacion   String?     @db.VarChar(300)
   status        AgentStatus @default(Activo)
   creadoAt      DateTime    @default(now()) @map("creado_at")
 

@@ -20,7 +20,9 @@ import {
   Compass,
   Eye,
   ShieldCheck,
-  Info
+  Info,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -68,6 +70,23 @@ export default function Config() {
   const [formData, setFormData] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteItemId, setDeleteItemId] = useState<number | null>(null);
+
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showError, setShowError] = useState(false);
+
+  const notifySuccess = (msg: string) => {
+    setSuccessMessage(msg);
+    setShowSuccess(true);
+    setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  const notifyError = (msg: string) => {
+    setErrorMessage(msg);
+    setShowError(true);
+    setTimeout(() => setShowError(false), 5000);
+  };
   const [viewingPackage, setViewingPackage] = useState<any>(null);
 
   // Lazy Load Fetch
@@ -239,15 +258,27 @@ export default function Config() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSubmit = async () => {
     if (!validate()) return;
     
-    if (editingItem) {
-      updateConfigItem(currentSection as ConfigSection, editingItem.id, formData);
-    } else {
-      addConfigItem(currentSection as ConfigSection, formData);
+    setIsSaving(true);
+    try {
+      if (editingItem) {
+        await updateConfigItem(currentSection as ConfigSection, editingItem.id, formData);
+        notifySuccess('Elemento actualizado correctamente.');
+      } else {
+        await addConfigItem(currentSection as ConfigSection, formData);
+        notifySuccess('Elemento creado correctamente.');
+      }
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error("Error al guardar la configuración:", error);
+      notifyError(`Error al guardar: ${error.response?.data?.message || error.message || 'Error desconocido'}`);
+    } finally {
+      setIsSaving(false);
     }
-    setIsModalOpen(false);
   };
 
   const handleDelete = (id: number) => {
@@ -278,7 +309,31 @@ export default function Config() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 relative pb-10">
+      {/* Toast Notifications */}
+      {showSuccess && (
+        <div className="fixed top-20 right-6 z-[200] bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in-right">
+          <div className="bg-emerald-500 text-white rounded-full p-1">
+            <CheckCircle2 size={18} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">Operación Exitosa</p>
+            <p className="text-xs opacity-90">{successMessage}</p>
+          </div>
+        </div>
+      )}
+      {showError && (
+        <div className="fixed top-20 right-6 z-[200] bg-rose-50 border border-rose-200 text-rose-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in-right">
+          <div className="bg-rose-500 text-white rounded-full p-1">
+            <AlertCircle size={18} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">Error</p>
+            <p className="text-xs opacity-90">{errorMessage}</p>
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Header */}
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -479,10 +534,10 @@ export default function Config() {
         title={editingItem ? `Editar ${getSingularLabel(currentSection)}` : `Nuevo ${getSingularLabel(currentSection)}`}
         size={currentSection === 'packages' ? 'xl' : 'lg'}
         footer={
-          <>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit}>Guardar Cambios</Button>
-          </>
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={isSaving}>{isSaving ? 'Guardando...' : 'Guardar Cambios'}</Button>
+          </div>
         }
       >
         <div className="space-y-4">

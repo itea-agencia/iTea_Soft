@@ -400,6 +400,17 @@ export default function CommissionAgents() {
                             )}
                           </div>
 
+                          {agent.observacion && (
+                            <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-100 dark:border-amber-800/30">
+                              <h4 className="text-[10px] font-bold text-amber-800 dark:text-amber-400 mb-1 flex items-center gap-1.5 uppercase">
+                                <FileText size={12} /> Observaciones
+                              </h4>
+                              <p className="text-xs text-amber-900/80 dark:text-amber-200/80 whitespace-pre-wrap line-clamp-3">
+                                {agent.observacion}
+                              </p>
+                            </div>
+                          )}
+
                           <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                             <div className="flex flex-col">
                               <span className="text-[9px] text-gray-400 font-bold uppercase">Documento</span>
@@ -691,6 +702,25 @@ export default function CommissionAgents() {
               />
             </FormField>
           </div>
+
+          <FormField label="Observaciones (Opcional)" error={errors.observacion}>
+            <textarea
+              className={`w-full rounded-xl border ${errors.observacion ? 'border-red-500' : 'border-gray-200'} bg-white px-4 py-3 text-sm transition-all focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-white resize-none`}
+              rows={3}
+              maxLength={300}
+              value={formData.observacion || ""}
+              onChange={(e) => {
+                setFormData({ ...formData, observacion: e.target.value });
+                if (errors.observacion) setErrors({ ...errors, observacion: "" });
+              }}
+              placeholder="Añade notas u observaciones adicionales sobre este comisionista..."
+            />
+            <div className="flex justify-end mt-1">
+              <span className={`text-xs ${((formData.observacion || "").length > 280) ? 'text-amber-500 font-medium' : 'text-gray-400'}`}>
+                {(formData.observacion || "").length}/300
+              </span>
+            </div>
+          </FormField>
 
           <div className="flex gap-4 justify-end pt-4 border-t">
             <Button variant="outline" onClick={() => setIsModalOpen(false)} className="h-12 px-8 rounded-xl font-bold" disabled={isSaving}>Cancelar</Button>
