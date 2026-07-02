@@ -9,6 +9,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
   // Local state for the new payment item being added
   const [payMethodId, setPayMethodId] = useState("");
   const [payAmount, setPayAmount] = useState("");
+  const [payReference, setPayReference] = useState("");
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [isTouched, setIsTouched] = useState(false);
 
@@ -77,7 +78,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
       amount: amt,
       methodId: payMethodId,
       methodName: selectedMethod ? selectedMethod.name : "Otro",
-      reference: "" // Reference field is removed
+      reference: payReference
     };
 
     set("payments", [...paymentsList, newPayment]);
@@ -85,6 +86,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
     // Reset local inputs
     setPayMethodId("");
     setPayAmount("");
+    setPayReference("");
     setIsTouched(false);
     setLocalErrors({});
   };
@@ -176,6 +178,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
               <thead>
                 <tr className="bg-slate-50/50 text-slate-500 font-bold border-b border-slate-200">
                   <th className="px-4 py-3">Método de Pago</th>
+                  <th className="px-4 py-3">Referencia</th>
                   <th className="px-4 py-3">Monto</th>
                   <th className="px-4 py-3 text-right">Acción</th>
                 </tr>
@@ -185,6 +188,9 @@ export function Step3Payment({ form, set, data, errors }: any) {
                   <tr key={idx} className="hover:bg-slate-50/40 transition-colors">
                     <td className="px-4 py-3 font-semibold text-slate-700">
                       {p.methodName}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">
+                      {p.reference || <span className="italic text-slate-300">Ninguna</span>}
                     </td>
                     <td className="px-4 py-3 text-emerald-600 font-bold">
                       ${p.amount.toLocaleString("es-CO")}
@@ -247,6 +253,16 @@ export function Step3Payment({ form, set, data, errors }: any) {
                   error={localErrors.amount}
                 />
               </FormField>
+
+              <div className="md:col-span-2">
+                <FormField label="Número de Referencia de Pago (Opcional)">
+                  <Input
+                    value={payReference}
+                    onChange={(e) => setPayReference(e.target.value)}
+                    placeholder="Ej. Número de comprobante, Nro transferencia..."
+                  />
+                </FormField>
+              </div>
             </div>
 
             <div className="flex justify-end pt-1">
