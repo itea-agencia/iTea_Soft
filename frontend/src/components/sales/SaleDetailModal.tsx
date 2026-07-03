@@ -494,7 +494,11 @@ export default function SaleDetailModal({
                 {payments.map((p: any, i: number) => (
                   <div key={i} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-sm hover:bg-gray-50 transition-colors">
                     <span className="font-bold text-gray-800 text-sm">{formatCurrency(p.amount)}</span>
-                    <span className="text-xs text-gray-500 font-medium">{p.method} · {formatDate(p.date)}</span>
+                    <span className="text-xs text-gray-500 font-medium">
+                      {p.method}
+                      {p.reference && <span className="ml-1 text-slate-400 font-normal">(Ref: {p.reference})</span>}
+                      {' '}· {formatDate(p.date)}
+                    </span>
                   </div>
                 ))}
               </div>

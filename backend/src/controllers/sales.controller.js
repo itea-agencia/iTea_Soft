@@ -79,6 +79,7 @@ exports.list = async (req, res, next) => {
               'id', p.id,
               'fechaPago', p.fecha_pago,
               'monto', p.monto,
+              'referencia', p.referencia,
               'metodoPago', (SELECT json_build_object('nombre', mp.nombre) FROM metodos_pago mp WHERE mp.id = p.metodo_pago_id)
             ))
             FROM pagos_venta p WHERE p.venta_id = v.id
@@ -190,6 +191,7 @@ exports.list = async (req, res, next) => {
           id: p.id,
           date: p.fechaPago,
           amount: p.monto,
+          reference: p.referencia || null,
           method: p.metodoPago?.nombre || null
         })),
         servicesSummary,
@@ -746,6 +748,7 @@ exports.getById = async (req, res, next) => {
         id: p.id,
         date: p.fechaPago,
         amount: p.monto,
+        reference: p.referencia || null,
         method: p.metodoPago?.nombre || null
       })),
       ticketData: resultMap.tiqueteria || [],
@@ -1647,6 +1650,7 @@ exports.create = async (req, res, next) => {
         id: p.id,
         date: p.fechaPago,
         amount: p.monto,
+        reference: p.referencia || null,
         method: p.metodoPago?.nombre || null
       })),
       ticketData: data.ticketData,
