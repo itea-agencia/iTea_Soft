@@ -22,13 +22,14 @@ function buildPermissionsFromApiPermisos(permisos: { modulo: string; accion: str
     dashboard: { view: 'none' },
     sales: { view: 'none', create: false, edit: false },
     clients: { view: 'none', create: false, edit: false },
+    responsables: { view: 'none', create: false, edit: false },
     itineraries: { view: 'none', edit: false },
     commissions: { view: false, create: false, edit: false, delete: false },
   };
 
   for (const { modulo, accion, valor } of permisos) {
     if (!base[modulo]) continue;
-    if (valor !== undefined) {
+    if (valor !== undefined && valor !== null) {
       if (valor === 'true') {
         if (modulo === 'itineraries' && accion === 'view') base[modulo][accion] = 'all';
         else base[modulo][accion] = true;
