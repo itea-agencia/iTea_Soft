@@ -150,7 +150,9 @@ exports.create = async (req, res, next) => {
         where: { persona: { documento: data.docNumber } }
       });
       if (existingClient) {
-        return error(res, 'Este número de documento ya está registrado como cliente', 400);
+        if (!existingClient.deletedAt) {
+          return error(res, 'Este número de documento ya está registrado y activo como cliente', 400);
+        }
       }
     }
 
@@ -194,10 +196,22 @@ exports.create = async (req, res, next) => {
       });
     }
 
-    const cliente = await prisma.clientes.create({
-      data: { personaId: persona.id, creadoPorId: req.user.id },
-      include: { persona: true }
-    });
+    let cliente;
+    if (existingClient) {
+      cliente = await prisma.clientes.update({
+        where: { id: existingClient.id },
+        data: {
+          creadoPorId: req.user.id,
+          deletedAt: null
+        },
+        include: { persona: true }
+      });
+    } else {
+      cliente = await prisma.clientes.create({
+        data: { personaId: persona.id, creadoPorId: req.user.id },
+        include: { persona: true }
+      });
+    }
 
     success(res, {
       id: cliente.id,

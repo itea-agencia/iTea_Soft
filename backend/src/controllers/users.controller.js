@@ -146,9 +146,10 @@ exports.create = async (req, res, next) => {
         where: { persona: { documento: data.docNumber } }
       });
       if (existingUser) {
-        return error(res, 'Este número de documento ya está registrado como usuario', 400);
+        if (!existingUser.deletedAt && existingUser.status !== 'deleted' && existingUser.status !== 'inactive') {
+          return error(res, 'Este número de documento ya está registrado y activo como usuario', 400);
+        }
       }
-    }
 
     let persona;
     if (data.docNumber) {
@@ -192,16 +193,31 @@ exports.create = async (req, res, next) => {
     const rol = await prisma.roles.findUnique({ where: { nombre: data.role } });
     if (!rol) return error(res, 'Rol no válido', 400);
 
-    const usuario = await prisma.usuarios.create({
-      data: {
-        personaId: persona.id,
-        email: data.email,
-        passwordHash,
-        rolId: rol.id,
-        status: data.status || 'active'
-      },
-      include: { persona: { include: { tipoDocumento: true } }, rol: true }
-    });
+    let usuario;
+    if (existingUser) {
+      usuario = await prisma.usuarios.update({
+        where: { id: existingUser.id },
+        data: {
+          email: data.email,
+          passwordHash,
+          rolId: rol.id,
+          status: data.status || 'active',
+          deletedAt: null
+        },
+        include: { persona: { include: { tipoDocumento: true } }, rol: true }
+      });
+    } else {
+      usuario = await prisma.usuarios.create({
+        data: {
+          personaId: persona.id,
+          email: data.email,
+          passwordHash,
+          rolId: rol.id,
+          status: data.status || 'active'
+        },
+        include: { persona: { include: { tipoDocumento: true } }, rol: true }
+      });
+    }
 
     try {
       await emailService.sendEmail({

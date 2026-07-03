@@ -106,7 +106,9 @@ exports.createAgent = async (req, res, next) => {
         where: { persona: { documento: data.docNumber } }
       });
       if (existingAgent) {
-        return error(res, 'Este número de documento ya está registrado como comisionista', 400);
+        if (existingAgent.status !== 'Inactivo' && existingAgent.status !== 'Eliminado' && !existingAgent.deletedAt) {
+          return error(res, 'Este número de documento ya está registrado y activo como comisionista', 400);
+        }
       }
     }
 
@@ -146,17 +148,32 @@ exports.createAgent = async (req, res, next) => {
       });
     }
 
-    const agent = await prisma.comisionistas.create({
-      data: {
-        personaId: persona.id,
-        tipo: data.type || null,
-        umbralPago: parseFloat(data.paymentThreshold) || 0,
-        acumulado: 0,
-        observacion: data.observacion || null,
-        status: data.status || 'Activo'
-      },
-      include: { persona: { include: { tipoDocumento: true } } }
-    });
+    let agent;
+    if (existingAgent) {
+      agent = await prisma.comisionistas.update({
+        where: { id: existingAgent.id },
+        data: {
+          tipo: data.type || existingAgent.tipo,
+          umbralPago: parseFloat(data.paymentThreshold) || existingAgent.umbralPago,
+          observacion: data.observacion || existingAgent.observacion,
+          status: data.status || 'Activo',
+          deletedAt: null
+        },
+        include: { persona: { include: { tipoDocumento: true } } }
+      });
+    } else {
+      agent = await prisma.comisionistas.create({
+        data: {
+          personaId: persona.id,
+          tipo: data.type || null,
+          umbralPago: parseFloat(data.paymentThreshold) || 0,
+          acumulado: 0,
+          observacion: data.observacion || null,
+          status: data.status || 'Activo'
+        },
+        include: { persona: { include: { tipoDocumento: true } } }
+      });
+    }
 
     success(res, {
       id: agent.id,
