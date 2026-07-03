@@ -88,7 +88,7 @@ interface DataContextType {
   deleteSale: (id: number) => Promise<void>;
   voidSale: (id: number, reason: string) => Promise<void>;
   updateReviewStatus: (id: number, isReviewed: boolean) => Promise<void>;
-  registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
+  registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean, reference?: string) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
   deleteSalePayment: (saleId: number, paymentId: string) => Promise<void>;
   updateFlight: (id: string, flight: Partial<Flight> | FormData) => Promise<void>;
   settleCommissions: (agentId: number, settlement: any) => Promise<void>;
@@ -450,16 +450,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     invalidateSalesCache();
   };
 
-  const registerCreditPayment = async (saleId: number, amount: number, method?: string, isTotal: boolean = false) => {
-    // Find current sale to pass totals — backend can skip a findUnique
+  const registerCreditPayment = async (saleId: number, amount: number, method?: string, isTotal: boolean = false, reference?: string) => {
     const sale = data.sales.find(s => s.id === saleId);
-    const result = await api.registerPayment(saleId, {
-      amount,
-      method,
-      isTotal,
+    const payload: Record<string, any> = { 
+      amount, 
+      method, 
+      isTotal, 
+      reference,
       currentPaidAmount: sale?.creditPaidAmount ?? 0,
-      saleTotal: sale?.total ?? undefined
-    });
+    };
+    const result = await api.registerPayment(saleId, payload);
     setData(prev => ({
       ...prev,
       sales: prev.sales.map(s => s.id === saleId ? {
