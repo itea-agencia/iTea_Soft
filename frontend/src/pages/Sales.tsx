@@ -40,7 +40,7 @@ export default function Sales() {
   const { data, addSale, updateSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, salesLoading, fetchSales, fetchClients } = useData();
   const responsables = data.responsables || [];
   const { user, isAdmin } = useAuth();
-  const { canCreate, canEdit } = usePermissions();
+  const { canCreate, canEdit, permissions } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isSiigoModalOpen, setIsSiigoModalOpen] = useState(false);
@@ -72,7 +72,9 @@ export default function Sales() {
   const [endDate, setEndDate] = useState("");
 
   const filteredSales = useMemo(() => {
-    const list = isAdmin ? data.sales : data.sales.filter((s) => s.asesorId === user?.id);
+    const salesView = (permissions.sales as any)?.view;
+    const seeAll = isAdmin || salesView === 'all';
+    const list = seeAll ? data.sales : data.sales.filter((s) => s.asesorId === user?.id);
     return list.filter((sale) => {
       // 1. Text Search Filter (client name, status, asesor, commissionAgent, id)
       const query = searchTerm.toLowerCase().trim();

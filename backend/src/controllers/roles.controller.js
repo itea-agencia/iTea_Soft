@@ -10,21 +10,21 @@ const MODULE_ACTIONS = {
   commissions: ['view', 'create', 'edit', 'delete'],
 };
 
-const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients'];
+const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
 
 const DEFAULT_ROLE_VALUES = {
   asesor: {
     dashboard: { view: 'own' },
     sales: { view: 'own', create: 'true', edit: 'true' },
     clients: { view: 'own', create: 'true', edit: 'true' },
-    itineraries: { view: 'true', edit: 'false' },
+    itineraries: { view: 'own', edit: 'false' },
     commissions: { view: 'false', create: 'false', edit: 'false', delete: 'false' },
   },
   freelancer: {
     dashboard: { view: 'own' },
     sales: { view: 'own', create: 'true', edit: 'true' },
     clients: { view: 'own', create: 'true', edit: 'true' },
-    itineraries: { view: 'true', edit: 'false' },
+    itineraries: { view: 'own', edit: 'false' },
     commissions: { view: 'false', create: 'false', edit: 'false', delete: 'false' },
   },
 };
