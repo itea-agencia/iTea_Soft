@@ -133,7 +133,7 @@ const untransformBody = async (section, body) => {
 
     case 'airlines':
       data.nombre = body.name;
-      data.codigoIata = body.code || '';
+      data.codigoIata = body.code || null;
       data.tipo = body.type || 'Internacional';
       data.web = body.website || null;
       break;
@@ -273,6 +273,18 @@ exports.createItem = async (req, res, next) => {
 
     // Ejecutar creación transaccional optimizada (Carga Relaciones Eager e Inmediata)
     let createdResponse = await prisma.$transaction(async (tx) => {
+      // Para aerolíneas: verificar duplicados de nombre e IATA antes de insertar
+      if (section === 'airlines') {
+        if (dbData.nombre) {
+          const existing = await tx.aerolineas.findFirst({ where: { nombre: { equals: dbData.nombre, mode: 'insensitive' } } });
+          if (existing) throw Object.assign(new Error(`Ya existe una aerolínea con el nombre "${dbData.nombre}"`), { statusCode: 409 });
+        }
+        if (dbData.codigoIata) {
+          const existingCode = await tx.aerolineas.findFirst({ where: { codigoIata: dbData.codigoIata } });
+          if (existingCode) throw Object.assign(new Error(`El código IATA "${dbData.codigoIata}" ya está registrado para la aerolínea "${existingCode.nombre}"`), { statusCode: 409 });
+        }
+      }
+
       // Crear registro base e incluir sus relaciones en una sola consulta de base de datos
       const createdItem = await tx[config.model].create({
         data: dbData,

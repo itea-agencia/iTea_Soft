@@ -221,9 +221,7 @@ export default function Config() {
           break;
         case 'airlines':
           if (!formData.name || formData.name.trim().length === 0) newErrors.name = 'El nombre es obligatorio.';
-          if (!formData.code || formData.code.trim().length === 0) newErrors.code = 'El código IATA es obligatorio.';
           if (!formData.type) newErrors.type = 'Debe seleccionar un tipo de cobertura.';
-          if (!formData.website || !formData.website.startsWith('http')) newErrors.website = 'Debe ingresar un enlace válido (que inicie con http:// o https://).';
           break;
         case 'suppliers':
           if (!formData.name || formData.name.trim().length === 0) newErrors.name = 'El nombre es obligatorio.';

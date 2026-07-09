@@ -127,7 +127,8 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
               options={[
                 { value: '', label: 'Seleccione una cobertura' },
                 { value: 'Nacional', label: 'Nacional' },
-                { value: 'Internacional', label: 'Internacional' }
+                { value: 'Internacional', label: 'Internacional' },
+                { value: 'Ambos', label: 'Ambas' }
               ]}
               error={errors.type}
             />

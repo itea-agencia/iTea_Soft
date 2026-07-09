@@ -86,3 +86,11 @@ coverage/
 *.csv
 *.xlsx
 !backend/prisma/seed.js
+
+# ==========================================
+# Docker
+# ==========================================
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+.docker/

@@ -150,6 +150,7 @@ exports.create = async (req, res, next) => {
           return error(res, 'Este número de documento ya está registrado y activo como usuario', 400);
         }
       }
+    }
 
     let persona;
     if (data.docNumber) {
