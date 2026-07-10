@@ -10,6 +10,7 @@ router.use(auth);
 // Agentes
 router.get('/agents', paginate, commissionsController.listAgents);
 router.post('/agents', commissionsController.createAgent);
+router.get('/agents/:id', commissionsController.getAgent);
 router.put('/agents/:id', commissionsController.updateAgent);
 router.delete('/agents/:id', commissionsController.deleteAgent);
 

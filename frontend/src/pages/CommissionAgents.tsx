@@ -17,7 +17,9 @@ import {
   Pencil,
   Users,
   Loader2,
+  Eye,
 } from "lucide-react";
+import * as api from "../api";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -55,6 +57,45 @@ export default function CommissionAgents() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [agentDetails, setAgentDetails] = useState<any>(null);
+  const [detailsTab, setDetailsTab] = useState<"info" | "sales">("info");
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [salesSearchTerm, setSalesSearchTerm] = useState("");
+  const [salesCurrentPage, setSalesCurrentPage] = useState(1);
+  const SALES_PER_PAGE = 5;
+
+  const filteredSales = useMemo(() => {
+    if (!agentDetails?.ventas) return [];
+    return agentDetails.ventas.filter((v: any) => 
+      v.cliente.toLowerCase().includes(salesSearchTerm.toLowerCase()) ||
+      v.id.toString().includes(salesSearchTerm)
+    );
+  }, [agentDetails, salesSearchTerm]);
+
+  const totalSalesPages = Math.ceil(filteredSales.length / SALES_PER_PAGE);
+  const paginatedSales = useMemo(() => {
+    const start = (salesCurrentPage - 1) * SALES_PER_PAGE;
+    return filteredSales.slice(start, start + SALES_PER_PAGE);
+  }, [filteredSales, salesCurrentPage]);
+
+  const handleViewDetails = async (agent: any) => {
+    try {
+      setIsLoadingDetails(true);
+      setDetailsModalOpen(true);
+      setDetailsTab("info");
+      const res = await api.getCommissionAgent(agent.id);
+      setAgentDetails(res.data.data);
+    } catch (error: any) {
+      console.error("Error fetching agent details:", error);
+      setErrorMessage(error.response?.data?.message || "Error al cargar los detalles.");
+      setShowError(true);
+      setDetailsModalOpen(false);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   // Lazy Load Fetch
   useEffect(() => {
@@ -228,11 +269,11 @@ export default function CommissionAgents() {
 
   return (
     <div className="space-y-6 relative pb-10">
-      {/* Toast Notification */}
+      {/* SUCCESS TOAST */}
       {showSuccess && (
         <div className="fixed top-20 right-6 z-[200] bg-emerald-50 border border-emerald-200 text-emerald-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in-right">
           <div className="bg-emerald-500 text-white rounded-full p-1">
-            <TrendingUp size={18} />
+            <Coins size={18} />
           </div>
           <div>
             <p className="font-bold text-sm">Operación Exitosa</p>
@@ -360,6 +401,9 @@ export default function CommissionAgents() {
                             </div>
                           </div>
                           <div className="flex flex-col gap-1 relative z-10">
+                             <button onClick={() => handleViewDetails(agent)} className="p-2 text-gray-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg transition-colors" title="Ver detalles">
+                               <Eye size={16} />
+                             </button>
                              {canEdit('commissions') && (
                                <button onClick={() => handleOpenModal(agent)} className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
                                   <Pencil size={16} />
@@ -843,6 +887,246 @@ export default function CommissionAgents() {
             Esta acción removerá su perfil del sistema de comisiones.
           </p>
         </div>
+      </Modal>
+
+      {/* DETAILS MODAL */}
+      <Modal
+        isOpen={detailsModalOpen}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setAgentDetails(null);
+          setSalesSearchTerm("");
+          setSalesCurrentPage(1);
+        }}
+        title={agentDetails ? `Detalle: ${agentDetails.name}` : "Detalle del Comisionista"}
+        size="xl"
+        footer={
+          <Button
+            variant="outline"
+            className="h-9 px-6 rounded-lg border-gray-200 text-gray-600 font-semibold text-sm"
+            onClick={() => {
+              setDetailsModalOpen(false);
+              setAgentDetails(null);
+              setSalesSearchTerm("");
+              setSalesCurrentPage(1);
+            }}
+          >
+            Cerrar
+          </Button>
+        }
+      >
+        {isLoadingDetails ? (
+          <div className="py-20 flex flex-col items-center justify-center">
+            <Loader2 size={32} className="animate-spin text-primary mb-4" />
+            <p className="text-gray-500">Cargando detalles...</p>
+          </div>
+        ) : agentDetails ? (
+          <div className="space-y-6">
+
+            {/* === HERO: Avatar + Nombre + Badges === */}
+            <div className="bg-[#fcf9f2] rounded-2xl border border-amber-100/50 p-6 flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-amber-100/70 border border-amber-200 flex items-center justify-center mb-3">
+                <span className="text-xl font-bold text-amber-600">
+                  {agentDetails.name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">{agentDetails.name}</h3>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                  agentDetails.status === 'Activo' || agentDetails.status === 'active'
+                    ? 'text-emerald-500 bg-emerald-50'
+                    : 'text-gray-500 bg-gray-100'
+                }`}>
+                  {agentDetails.status || 'Activo'}
+                </span>
+                {agentDetails.type && (
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white/50 border border-slate-200 px-2 py-0.5 rounded">
+                    {agentDetails.type}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* === TABS === */}
+            <div className="flex gap-4 border-b border-gray-100">
+              <button
+                onClick={() => setDetailsTab('info')}
+                className={`flex items-center gap-2 px-2 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                  detailsTab === 'info'
+                    ? 'border-amber-500 text-amber-500'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <AlertCircle size={15} />
+                Información
+              </button>
+              <button
+                onClick={() => setDetailsTab('sales')}
+                className={`flex items-center gap-2 px-2 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+                  detailsTab === 'sales'
+                    ? 'border-amber-500 text-amber-500'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <FileText size={15} />
+                Ventas ({agentDetails.ventas?.length || 0})
+              </button>
+            </div>
+
+            {/* === CONTENIDO === */}
+            <div className="pt-2">
+
+              {/* TAB: Información */}
+              {detailsTab === 'info' && (
+                <div>
+                  {/* Grid 2x2 */}
+                  <div className="grid grid-cols-2 gap-x-10 gap-y-5 mb-6">
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-0.5">Tipo Doc:</p>
+                      <p className="text-sm font-semibold text-gray-800">{agentDetails.docType || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-0.5">Documento:</p>
+                      <p className="text-sm font-semibold text-gray-800">{agentDetails.docNumber || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-0.5">Teléfono:</p>
+                      <p className="text-sm font-semibold text-gray-800">{agentDetails.phone || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-0.5">Correo:</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">{agentDetails.email || '—'}</p>
+                    </div>
+                  </div>
+
+                  {/* Acumulado */}
+                  <div className="border-t border-gray-100 pt-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-400 font-medium mb-0.5">Acumulado (No liquidado):</p>
+                        <p className="text-base font-bold text-amber-500">{formatCurrency(agentDetails.accumulated || 0)}</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                        <Wallet size={20} className="text-amber-500" />
+                      </div>
+                    </div>
+
+                    {(agentDetails.paymentThreshold ?? 0) > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-400 font-medium mb-0.5">Umbral de Liquidación:</p>
+                          <p className="text-sm font-semibold text-gray-700">{formatCurrency(agentDetails.paymentThreshold)}</p>
+                        </div>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+                          {Math.min(Math.round(((agentDetails.accumulated || 0) / agentDetails.paymentThreshold) * 100), 100)}%
+                        </span>
+                      </div>
+                    )}
+
+                    {agentDetails.observacion && (
+                      <div className="mt-4 pt-4 border-t border-gray-50">
+                        <p className="text-xs text-gray-400 font-medium mb-1">Observaciones:</p>
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{agentDetails.observacion}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: Ventas */}
+              {detailsTab === 'sales' && (
+                <div className="space-y-4">
+                  {/* Buscador */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
+                      <Input
+                        className="pl-9 h-9 rounded-lg border-gray-200 bg-gray-50 text-sm w-full"
+                        placeholder="Buscar por cliente o N° de venta..."
+                        value={salesSearchTerm}
+                        onChange={(e) => {
+                          setSalesSearchTerm(e.target.value);
+                          setSalesCurrentPage(1);
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                      {filteredSales.length} resultado{filteredSales.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  {/* Lista */}
+                  {paginatedSales.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {paginatedSales.map((venta: any) => (
+                          <div key={venta.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 hover:border-amber-200 hover:bg-amber-50/30 transition-all">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wide">
+                                #{venta.id}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-medium">
+                                {new Date(venta.fecha).toLocaleDateString('es-CO')}
+                              </span>
+                            </div>
+                            <p className="font-semibold text-gray-800 text-sm mb-3 truncate">{venta.cliente}</p>
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Monto Venta</p>
+                                <p className="font-bold text-gray-700 text-sm">{formatCurrency(venta.montoTotal)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider mb-0.5">Comisión</p>
+                                <p className="font-black text-amber-500 text-sm">{formatCurrency(venta.montoComision || 0)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Paginación */}
+                      {totalSalesPages > 1 && (
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                          <span className="text-xs text-gray-400 font-medium">
+                            Página {salesCurrentPage} de {totalSalesPages}
+                          </span>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              className="h-8 px-3 text-xs rounded-lg border-gray-200"
+                              disabled={salesCurrentPage === 1}
+                              onClick={() => setSalesCurrentPage(p => Math.max(1, p - 1))}
+                            >
+                              Anterior
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="h-8 px-3 text-xs rounded-lg border-gray-200"
+                              disabled={salesCurrentPage === totalSalesPages}
+                              onClick={() => setSalesCurrentPage(p => Math.min(totalSalesPages, p + 1))}
+                            >
+                              Siguiente
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-14 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      <FileText size={28} className="text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-400 text-sm font-medium">
+                        {salesSearchTerm
+                          ? 'No se encontraron ventas con ese criterio.'
+                          : 'Este comisionista aún no tiene ventas relacionadas.'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

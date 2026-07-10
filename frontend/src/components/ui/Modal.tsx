@@ -9,7 +9,7 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   contentClassName?: string;
 }
 
@@ -40,6 +40,7 @@ export function Modal({
     md: "max-w-md",
     lg: "max-w-2xl",
     xl: "max-w-4xl",
+    "2xl": "max-w-6xl",
   }[size];
 
   return createPortal(

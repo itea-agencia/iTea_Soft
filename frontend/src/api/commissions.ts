@@ -5,6 +5,11 @@ export async function listCommissionAgents(params: Record<string, unknown>) {
   return res.data;
 }
 
+export async function getCommissionAgent(id: number) {
+  const res = await api.get(`/commissions/agents/${id}`);
+  return res;
+}
+
 export async function createCommissionAgent(data: Record<string, unknown>) {
   const res = await api.post('/commissions/agents', data);
   return res.data.data;

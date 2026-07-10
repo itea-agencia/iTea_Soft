@@ -22,6 +22,55 @@ const splitFullName = (fullName) => {
   return { firstName, lastName };
 };
 
+exports.getAgent = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const agent = await prisma.comisionistas.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        persona: { include: { tipoDocumento: true } },
+        ventas: {
+          include: {
+            cliente: { include: { persona: true } },
+          },
+          orderBy: { creadoAt: 'desc' }
+        }
+      }
+    });
+
+    if (!agent) return error(res, 'Comisionista no encontrado', 404);
+
+    const data = {
+      id: agent.id,
+      name: `${agent.persona.nombres} ${agent.persona.apellidos}`.trim(),
+      firstName: agent.persona.nombres,
+      lastName: agent.persona.apellidos,
+      type: agent.tipo,
+      docType: agent.persona.tipoDocumento?.abreviatura || null,
+      docTypeId: agent.persona.tipoDocumento?.id || null,
+      docNumber: agent.persona.documento,
+      phone: agent.persona.telefono,
+      email: agent.persona.email,
+      status: agent.status,
+      accumulated: agent.acumulado,
+      paymentThreshold: agent.umbralPago,
+      observacion: agent.observacion,
+      ventas: agent.ventas.map(v => ({
+        id: v.id,
+        fecha: v.creadoAt,
+        cliente: `${v.cliente.persona.nombres} ${v.cliente.persona.apellidos}`,
+        montoTotal: v.montoTotal,
+        montoComision: v.montoComisionNeto,
+        status: v.status
+      }))
+    };
+
+    success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.listAgents = async (req, res, next) => {
   try {
     const { page, perPage, skip } = req.pagination;
