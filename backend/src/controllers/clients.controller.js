@@ -144,9 +144,10 @@ exports.create = async (req, res, next) => {
       if (tipoDoc) tipoDocumentoId = tipoDoc.id;
     }
 
+    let existingClient = null;
     // Check if client with this document already exists
     if (data.docNumber) {
-      const existingClient = await prisma.clientes.findFirst({
+      existingClient = await prisma.clientes.findFirst({
         where: { persona: { documento: data.docNumber } }
       });
       if (existingClient) {
