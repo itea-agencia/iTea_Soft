@@ -924,23 +924,23 @@ export default function CommissionAgents() {
           <div className="space-y-6">
 
             {/* === HERO: Avatar + Nombre + Badges === */}
-            <div className="bg-[#fcf9f2] rounded-2xl border border-amber-100/50 p-6 flex flex-col items-center text-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-amber-100/70 border border-amber-200 flex items-center justify-center mb-3">
-                <span className="text-xl font-bold text-amber-600">
+            <div className="bg-[#fcf9f2] dark:bg-slate-800/40 rounded-2xl border border-amber-100/50 dark:border-slate-700 p-6 flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-amber-100/70 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center mb-3">
+                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
                   {agentDetails.name.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">{agentDetails.name}</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">{agentDetails.name}</h3>
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
                   agentDetails.status === 'Activo' || agentDetails.status === 'active'
-                    ? 'text-emerald-500 bg-emerald-50'
-                    : 'text-gray-500 bg-gray-100'
+                    ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400'
+                    : 'text-gray-500 bg-gray-100 dark:bg-slate-700 dark:text-slate-300'
                 }`}>
                   {agentDetails.status || 'Activo'}
                 </span>
                 {agentDetails.type && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white/50 border border-slate-200 px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-300 bg-white/50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded">
                     {agentDetails.type}
                   </span>
                 )}
@@ -948,13 +948,13 @@ export default function CommissionAgents() {
             </div>
 
             {/* === TABS === */}
-            <div className="flex gap-4 border-b border-gray-100">
+            <div className="flex gap-4 border-b border-gray-100 dark:border-slate-700">
               <button
                 onClick={() => setDetailsTab('info')}
                 className={`flex items-center gap-2 px-2 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px ${
                   detailsTab === 'info'
                     ? 'border-amber-500 text-amber-500'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                    : 'border-transparent text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200'
                 }`}
               >
                 <AlertCircle size={15} />
@@ -965,7 +965,7 @@ export default function CommissionAgents() {
                 className={`flex items-center gap-2 px-2 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px ${
                   detailsTab === 'sales'
                     ? 'border-amber-500 text-amber-500'
-                    : 'border-transparent text-gray-400 hover:text-gray-600'
+                    : 'border-transparent text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200'
                 }`}
               >
                 <FileText size={15} />
@@ -982,51 +982,51 @@ export default function CommissionAgents() {
                   {/* Grid 2x2 */}
                   <div className="grid grid-cols-2 gap-x-10 gap-y-5 mb-6">
                     <div>
-                      <p className="text-xs text-gray-400 font-medium mb-0.5">Tipo Doc:</p>
-                      <p className="text-sm font-semibold text-gray-800">{agentDetails.docType || '—'}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Tipo Doc:</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{agentDetails.docType || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400 font-medium mb-0.5">Documento:</p>
-                      <p className="text-sm font-semibold text-gray-800">{agentDetails.docNumber || '—'}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Documento:</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{agentDetails.docNumber || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400 font-medium mb-0.5">Teléfono:</p>
-                      <p className="text-sm font-semibold text-gray-800">{agentDetails.phone || '—'}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Teléfono:</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{agentDetails.phone || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400 font-medium mb-0.5">Correo:</p>
-                      <p className="text-sm font-semibold text-gray-800 truncate">{agentDetails.email || '—'}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Correo:</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate">{agentDetails.email || '—'}</p>
                     </div>
                   </div>
 
                   {/* Acumulado */}
-                  <div className="border-t border-gray-100 pt-5">
+                  <div className="border-t border-gray-100 dark:border-slate-700 pt-5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-gray-400 font-medium mb-0.5">Acumulado (No liquidado):</p>
+                        <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Acumulado (No liquidado):</p>
                         <p className="text-base font-bold text-amber-500">{formatCurrency(agentDetails.accumulated || 0)}</p>
                       </div>
-                      <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
-                        <Wallet size={20} className="text-amber-500" />
+                      <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 flex items-center justify-center">
+                        <Wallet size={20} className="text-amber-500 dark:text-amber-400" />
                       </div>
                     </div>
 
                     {(agentDetails.paymentThreshold ?? 0) > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
+                      <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700 flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-gray-400 font-medium mb-0.5">Umbral de Liquidación:</p>
-                          <p className="text-sm font-semibold text-gray-700">{formatCurrency(agentDetails.paymentThreshold)}</p>
+                          <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Umbral de Liquidación:</p>
+                          <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">{formatCurrency(agentDetails.paymentThreshold)}</p>
                         </div>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
                           {Math.min(Math.round(((agentDetails.accumulated || 0) / agentDetails.paymentThreshold) * 100), 100)}%
                         </span>
                       </div>
                     )}
 
                     {agentDetails.observacion && (
-                      <div className="mt-4 pt-4 border-t border-gray-50">
-                        <p className="text-xs text-gray-400 font-medium mb-1">Observaciones:</p>
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{agentDetails.observacion}</p>
+                      <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
+                        <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-1">Observaciones:</p>
+                        <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-wrap">{agentDetails.observacion}</p>
                       </div>
                     )}
                   </div>
@@ -1041,7 +1041,7 @@ export default function CommissionAgents() {
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
                       <Input
-                        className="pl-9 h-9 rounded-lg border-gray-200 bg-gray-50 text-sm w-full"
+                        className="pl-9 h-9 rounded-lg border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-sm w-full text-slate-800 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500"
                         placeholder="Buscar por cliente o N° de venta..."
                         value={salesSearchTerm}
                         onChange={(e) => {
@@ -1050,7 +1050,7 @@ export default function CommissionAgents() {
                         }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                    <span className="text-xs text-gray-400 dark:text-slate-400 font-medium whitespace-nowrap">
                       {filteredSales.length} resultado{filteredSales.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -1060,23 +1060,23 @@ export default function CommissionAgents() {
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {paginatedSales.map((venta: any) => (
-                          <div key={venta.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 hover:border-amber-200 hover:bg-amber-50/30 transition-all">
+                          <div key={venta.id} className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700 rounded-xl p-4 hover:border-amber-200 dark:hover:border-amber-500/50 hover:bg-amber-50/30 dark:hover:bg-amber-500/5 transition-all">
                             <div className="flex justify-between items-center mb-2">
-                              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wide">
-                                #{venta.id}
+                              <span className="text-[10px] font-bold text-primary dark:text-amber-400 bg-primary/10 dark:bg-amber-400/10 px-2 py-0.5 rounded uppercase tracking-wide">
+                                #{String(venta.id).padStart(4, '0')}
                               </span>
-                              <span className="text-[10px] text-gray-400 font-medium">
+                              <span className="text-[10px] text-gray-400 dark:text-slate-400 font-medium">
                                 {new Date(venta.fecha).toLocaleDateString('es-CO')}
                               </span>
                             </div>
-                            <p className="font-semibold text-gray-800 text-sm mb-3 truncate">{venta.cliente}</p>
+                            <p className="font-semibold text-gray-800 dark:text-slate-200 text-sm mb-3 truncate">{venta.cliente}</p>
                             <div className="flex justify-between items-end">
                               <div>
-                                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Monto Venta</p>
-                                <p className="font-bold text-gray-700 text-sm">{formatCurrency(venta.montoTotal)}</p>
+                                <p className="text-[9px] text-gray-400 dark:text-slate-400 font-bold uppercase tracking-wider mb-0.5">Monto Venta</p>
+                                <p className="font-bold text-gray-700 dark:text-slate-300 text-sm">{formatCurrency(venta.montoTotal)}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider mb-0.5">Comisión</p>
+                                <p className="text-[9px] text-amber-500/80 dark:text-amber-500/70 font-bold uppercase tracking-wider mb-0.5">Comisión</p>
                                 <p className="font-black text-amber-500 text-sm">{formatCurrency(venta.montoComision || 0)}</p>
                               </div>
                             </div>
@@ -1086,14 +1086,14 @@ export default function CommissionAgents() {
 
                       {/* Paginación */}
                       {totalSalesPages > 1 && (
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-100">
-                          <span className="text-xs text-gray-400 font-medium">
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-slate-700">
+                          <span className="text-xs text-gray-400 dark:text-slate-400 font-medium">
                             Página {salesCurrentPage} de {totalSalesPages}
                           </span>
                           <div className="flex gap-2">
                             <Button
                               variant="outline"
-                              className="h-8 px-3 text-xs rounded-lg border-gray-200"
+                              className="h-8 px-3 text-xs rounded-lg border-gray-200 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                               disabled={salesCurrentPage === 1}
                               onClick={() => setSalesCurrentPage(p => Math.max(1, p - 1))}
                             >
@@ -1101,7 +1101,7 @@ export default function CommissionAgents() {
                             </Button>
                             <Button
                               variant="outline"
-                              className="h-8 px-3 text-xs rounded-lg border-gray-200"
+                              className="h-8 px-3 text-xs rounded-lg border-gray-200 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                               disabled={salesCurrentPage === totalSalesPages}
                               onClick={() => setSalesCurrentPage(p => Math.min(totalSalesPages, p + 1))}
                             >
@@ -1112,9 +1112,9 @@ export default function CommissionAgents() {
                       )}
                     </>
                   ) : (
-                    <div className="text-center py-14 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                      <FileText size={28} className="text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-400 text-sm font-medium">
+                    <div className="text-center py-14 bg-gray-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-slate-700">
+                      <FileText size={28} className="text-gray-300 dark:text-slate-600 mx-auto mb-3" />
+                      <p className="text-gray-400 dark:text-slate-400 text-sm font-medium">
                         {salesSearchTerm
                           ? 'No se encontraron ventas con ese criterio.'
                           : 'Este comisionista aún no tiene ventas relacionadas.'}
