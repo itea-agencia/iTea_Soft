@@ -19,7 +19,7 @@ exports.dashboard = async (req, res, next) => {
       userCondition = `AND usuario_id = '${req.user.id}'`;
     }
 
-    const where = {};
+    const where = { status: { not: 'anulado' } };
     if (dateFrom || dateTo) {
       where.creadoAt = {};
       if (dateFrom) where.creadoAt.gte = new Date(dateFrom);
@@ -44,7 +44,7 @@ exports.dashboard = async (req, res, next) => {
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (costo_proveedor_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditProveedores",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (ta_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditTa"
       FROM ventas
-      WHERE deleted_at IS NULL ${dateCondition} ${userCondition}
+      WHERE deleted_at IS NULL AND status != 'anulado' ${dateCondition} ${userCondition}
     `;
 
     let clientsWhere = { deletedAt: null };
@@ -89,7 +89,7 @@ exports.dashboard = async (req, res, next) => {
         EXTRACT(MONTH FROM creado_at)::int as month,
         COALESCE(SUM(monto_total), 0) as total
       FROM ventas
-      WHERE deleted_at IS NULL ${userConditionTrend}
+      WHERE deleted_at IS NULL AND status != 'anulado' ${userConditionTrend}
         AND EXTRACT(YEAR FROM creado_at) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC

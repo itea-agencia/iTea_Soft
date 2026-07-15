@@ -2,7 +2,7 @@ const { error } = require('../utils/apiResponse');
 
 const ADMIN_PERMISSIONS = {
   dashboard: { view: 'all' },
-  sales: { view: 'all', create: true, edit: true },
+  sales: { view: 'all', create: true, edit: true, delete: true },
   clients: { view: 'all', create: true, edit: true },
   responsables: { view: 'all', create: true, edit: true },
   itineraries: { view: 'all', edit: true },
