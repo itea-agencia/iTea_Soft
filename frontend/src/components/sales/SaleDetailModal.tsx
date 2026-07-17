@@ -131,6 +131,9 @@ export default function SaleDetailModal({
     : undefined;
   const commissionAmount = sale.commissionAgentNetPayment || 0;
   const supplierCost = sale.supplierCost || 0;
+  const ta = sale.ta || 0;
+  const taCre = sale.taCre || 0;
+  const ivaAmount = (ta + taCre) * 0.19;
   const gananciaNeta = sale.total - supplierCost - commissionAmount;
 
   const productSections = [
@@ -300,42 +303,71 @@ export default function SaleDetailModal({
           <h4 className="text-sm font-bold text-primary border-b border-gray-200 pb-2 mb-3">
             Detalles Operativos y Financieros
           </h4>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-            <div>
-              <span className="text-gray-500 text-xs block">
-                Asesor
-              </span>
-              <span className="font-medium text-gray-800">
-                {sale.asesorName}
-              </span>
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
+            {/* Fila 1: Asesor, Proveedor(es), Pago a Proveedores */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  Asesor
+                </span>
+                <span className="font-medium text-gray-800">
+                  {sale.asesorName}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  Proveedor(es)
+                </span>
+                <span className="font-medium text-gray-800 break-words" title={suppliersList}>
+                  {suppliersList}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  Pago a Proveedores
+                </span>
+                <span className="font-medium text-rose-600">
+                  {formatCurrency(supplierCost)}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-gray-500 text-xs block">
-                Proveedor(es)
-              </span>
-              <span className="font-medium text-gray-800 break-words" title={suppliersList}>
-                {suppliersList}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500 text-xs block">
-                Pago a Proveedores
-              </span>
-              <span className="font-medium text-rose-600">
-                {formatCurrency(supplierCost)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500 text-xs block">Pago Comisionista</span>
-              <span className="font-medium text-amber-600">
-                {formatCurrency(commissionAmount)}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-500 text-xs block">Ganancia Oficina</span>
-              <span className="font-bold text-emerald-600">
-                {formatCurrency(gananciaNeta)}
-              </span>
+
+            <hr className="border-gray-100 dark:border-slate-800" />
+
+            {/* Fila 2: Valor TA, Valor TA CRE, IVA, Pago Comisionista */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  Valor TA
+                </span>
+                <span className="font-bold text-emerald-600">
+                  {formatCurrency(ta)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  Valor TA CRE
+                </span>
+                <span className="font-medium text-amber-600">
+                  {formatCurrency(taCre)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  IVA (19%)
+                </span>
+                <span className="font-medium text-emerald-600">
+                  {formatCurrency(ivaAmount)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  Pago Comisionista
+                </span>
+                <span className="font-medium text-amber-600">
+                  {formatCurrency(commissionAmount)}
+                </span>
+              </div>
             </div>
           </div>
         </div>

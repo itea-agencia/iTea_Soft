@@ -54,6 +54,7 @@ export interface WizardFormData {
   payments?: PaymentData[];
   total: string;
   ta: string;
+  taCre: string;
   supplierCost: string;
   status: string;
   isCredit: boolean;
@@ -89,6 +90,7 @@ export const INITIAL_TICKET = (client?: any): TicketData => ({
   arrivalDate: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
   supplierPaymentMethod: "",
   baggagePlan: "",
   ticketNumber: "",
@@ -122,6 +124,7 @@ export const INITIAL_HOTEL = (client?: any): HotelData => ({
   endDate: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
   supplierPaymentMethod: "",
   hotelType: "",
   observations: "",
@@ -140,6 +143,7 @@ export const INITIAL_INSURANCE = (client?: any): InsuranceData => ({
   supplier: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
   supplierPaymentMethod: "",
   members: [
     {
@@ -159,6 +163,7 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   supplier: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
   supplierPaymentMethod: "",
   reservationNumber: "",
   confirmationNumber: "",
@@ -204,6 +209,7 @@ export const INITIAL_CHECKIN = (client?: any): CheckInData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_MIGRATION = (client?: any): MigrationData => ({
@@ -221,6 +227,7 @@ export const INITIAL_MIGRATION = (client?: any): MigrationData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_SIMCARD = (client?: any): SimCardData => ({
@@ -255,6 +262,7 @@ export const INITIAL_CAR_RENTAL = (client?: any): CarRentalData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_FINCA = (client?: any): FincaData => ({
@@ -277,6 +285,7 @@ export const INITIAL_FINCA = (client?: any): FincaData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_TOUR = (client?: any): TourData => ({
@@ -297,6 +306,7 @@ export const INITIAL_TOUR = (client?: any): TourData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
   guests: [{ name: client?.name || "", docType: client?.docType || "CC", docNumber: client?.docNumber || "" }],
   vouchers: [],
 });
@@ -321,6 +331,7 @@ export const INITIAL_CONVENTION = (client?: any): ConventionData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_RESTAURANT = (client?: any): RestaurantData => ({
@@ -337,6 +348,7 @@ export const INITIAL_RESTAURANT = (client?: any): RestaurantData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_VISA = (client?: any): VisaData => ({
@@ -355,6 +367,7 @@ export const INITIAL_VISA = (client?: any): VisaData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_PASSPORT = (client?: any): PassportData => ({
@@ -370,6 +383,7 @@ export const INITIAL_PASSPORT = (client?: any): PassportData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_PET_SERVICE = (client?: any): PetServiceData => ({
@@ -391,6 +405,7 @@ export const INITIAL_PET_SERVICE = (client?: any): PetServiceData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+  taCre: 0,
 });
 
 export const INITIAL_FORM: WizardFormData = {
@@ -410,6 +425,7 @@ export const INITIAL_FORM: WizardFormData = {
   payments: [],
   total: "",
   ta: "",
+  taCre: "",
   supplierCost: "",
   status: "",
   isCredit: false,

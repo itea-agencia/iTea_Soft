@@ -248,28 +248,30 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   useEffect(() => {
     let calcSupplierCost = 0;
     let calcTa = 0;
+    let calcTaCre = 0;
 
-    form.tickets.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
-    form.hotels.forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; });
-    form.insurances.forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; });
-    form.plans.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
-    form.checkIns.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
-    form.migrations.forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; });
-    form.simCards.forEach(s => { calcSupplierCost += Number(s.supplierCost) || 0; calcTa += Number(s.ta) || 0; });
-    form.carRentals.forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; });
-    form.fincas.forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; });
-    form.tours.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
-    form.conventions.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
-    form.restaurants.forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; });
-    form.visas.forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; });
-    form.passports.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
-    form.petServices.forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; });
+    form.tickets.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
+    form.hotels.forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; calcTaCre += Number(h.taCre) || 0; });
+    form.insurances.forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; calcTaCre += Number(i.taCre) || 0; });
+    form.plans.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
+    form.checkIns.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
+    form.migrations.forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; calcTaCre += Number(m.taCre) || 0; });
+    form.simCards.forEach(s => { calcSupplierCost += Number(s.supplierCost) || 0; calcTa += Number(s.ta) || 0; calcTaCre += Number(s.taCre) || 0; });
+    form.carRentals.forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; calcTaCre += Number(cr.taCre) || 0; });
+    form.fincas.forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; calcTaCre += Number(f.taCre) || 0; });
+    form.tours.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
+    form.conventions.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
+    form.restaurants.forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; calcTaCre += Number(r.taCre) || 0; });
+    form.visas.forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; calcTaCre += Number(v.taCre) || 0; });
+    form.passports.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
+    form.petServices.forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; calcTaCre += Number(ps.taCre) || 0; });
 
-    const calcTotal = calcSupplierCost + calcTa;
+    const calcTotal = calcSupplierCost + calcTa + calcTaCre;
 
     if (
       form.supplierCost !== calcSupplierCost.toString() ||
       form.ta !== calcTa.toString() ||
+      form.taCre !== calcTaCre.toString() ||
       form.total !== calcTotal.toString()
     ) {
       setForm(prev => {
@@ -282,9 +284,10 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
           ...prev,
           supplierCost: calcSupplierCost.toString(),
           ta: calcTa.toString(),
+          taCre: calcTaCre.toString(),
           total: calcTotal.toString(),
           commissionAgentAmount: newCommAmount.toString(),
-          commissionAgentNetPayment: newCommNet.toString()
+          commissionAgentNetPayment: newCommNet.toString(),
         };
       });
     }
@@ -516,9 +519,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 // ── PAQUETE POR PROVEEDOR: solo campos mínimos ──────────────
                 if (!plan.supplier || plan.supplier.trim().length === 0) errors.push("Proveedor (requerido)");
 
-                if (!plan.vouchers || plan.vouchers.length === 0) {
-                  if (!plan.voucher) errors.push("Debe adjuntar el voucher del proveedor");
-                }
+                // Voucher is optional now
+
 
                 if (plan.supplierCost === undefined || plan.supplierCost <= 0) errors.push("Costo Proveedor (> $0)");
                 if (plan.ta === undefined || plan.ta < 0) errors.push("Valor TA (>= $0)");
@@ -1282,11 +1284,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   errors.push("Salida Hotel debe ser posterior al Ingreso Hotel");
                 }
               } else {
-                if (!plan.vouchers || plan.vouchers.length === 0) {
-                  if (!plan.voucher) { // Fallback to single voucher check
-                    errors.push("Debe adjuntar el voucher del proveedor");
-                  }
-                }
+                // Voucher is optional now
               }
 
               if (plan.supplierCost === undefined || plan.supplierCost <= 0) errors.push("Costo Proveedor (> $0)");
@@ -1707,6 +1705,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       commissionAgentNetPayment: Number(form.commissionAgentNetPayment) || undefined,
       isSettled: !!form.commissionAgentId ? false : undefined,
       ta: Number(form.ta) || 0,
+      taCre: Number(form.taCre) || 0,
       supplierCost: Number(form.supplierCost) || 0,
     };
 
@@ -1757,9 +1756,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       {activeForm ? renderActiveForm() : (
         <>
           {/* Header / Stepper */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-border bg-gray-50">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-border dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50">
             <div className="flex justify-between items-center max-w-2xl mx-auto relative">
-              <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 -translate-y-1/2 -z-10" />
+              <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 dark:bg-slate-700 -translate-y-1/2 -z-10" />
               {STEPS.map((s) => {
                 const Icon = s.icon;
                 const isCompleted = step > s.id;
@@ -1772,10 +1771,10 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                         w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500
                         ${
                           isCompleted
-                             ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100"
+                             ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-100 dark:shadow-emerald-950/20"
                              : isActive
-                               ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105 sm:scale-110"
-                               : "bg-white border-gray-200 text-gray-400"
+                               ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 dark:shadow-primary/5 scale-105 sm:scale-110"
+                               : "bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-500"
                         }
                       `}
                     >
@@ -1784,7 +1783,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                     </div>
                     <span
                       className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${
-                        isActive ? "text-primary" : "text-gray-400"
+                        isActive ? "text-primary" : "text-gray-400 dark:text-slate-500"
                       }`}
                     >
                       {s.label}
@@ -1795,7 +1794,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 bg-white">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-slate-900">
             {step === 1 && <Step1Client form={form} set={set} data={data} errors={errors} />}
             {step === 2 && <Step2Products form={form} set={set} data={data} errors={errors} toggleProduct={toggleProduct} actions={actions} />}
             {step === 3 && <Step3Payment form={form} set={set} data={data} errors={errors} />}
@@ -1804,7 +1803,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       )}
 
       {/* Footer */}
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-border bg-white flex gap-2 sm:gap-3 flex-shrink-0">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-border dark:border-slate-850 bg-white dark:bg-slate-900 flex gap-2 sm:gap-3 flex-shrink-0">
         {activeForm ? (
           <div className="flex justify-between items-center w-full gap-2">
             <Button
@@ -1856,7 +1855,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               variant="outline"
               onClick={goBack}
               disabled={step === 1}
-              className="px-3 sm:px-8 border-gray-200 text-gray-500 hover:bg-gray-50 text-xs sm:text-sm"
+              className="px-3 sm:px-8 border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 text-xs sm:text-sm"
             >
               Anterior
             </Button>
@@ -1864,7 +1863,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             <div className="flex gap-2 sm:gap-3">
               <Button
                 variant="outline"
-                className="px-3 sm:px-8 border-gray-200 text-gray-500 hover:bg-gray-50 text-xs sm:text-sm"
+                className="px-3 sm:px-8 border-gray-200 dark:border-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 text-xs sm:text-sm"
                 onClick={handleCancel}
               >
                 Cancelar
@@ -1886,10 +1885,10 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 <Button
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className={`px-4 sm:px-10 text-white shadow-lg text-xs sm:text-sm ${
+                  className={`px-4 sm:px-10 text-white shadow-lg dark:shadow-none text-xs sm:text-sm ${
                     isSubmitting
                       ? "bg-emerald-400 cursor-not-allowed shadow-none"
-                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
+                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 dark:shadow-none"
                   }`}
                 >
                   {isSubmitting ? (

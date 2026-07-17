@@ -131,7 +131,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           Datos del Plan Vacacional
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Plan">
+          <FormField label="Nombre del Plan *">
             <Input
               value={plan.planName}
               onChange={(e) => onChange({ planName: e.target.value })}
@@ -303,7 +303,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           <Briefcase size={14} /> Finanzas
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Proveedor">
+          <FormField label="Nombre del Proveedor *">
             <Combobox
               value={plan.supplier}
               onChange={(val) => onChange({ supplier: val })}
@@ -311,7 +311,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               placeholder="Seleccionar proveedor..."
             />
           </FormField>
-          <FormField label="Costo Proveedor">
+          <FormField label="Costo Proveedor *">
             <CurrencyInput
               required
               value={plan.supplierCost === 0 ? "" : plan.supplierCost}
@@ -322,7 +322,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               }
             />
           </FormField>
-          <FormField label="Valor TA">
+          <FormField label="Valor TA *">
             <CurrencyInput
               required
               value={plan.ta === 0 ? "" : plan.ta}
@@ -333,7 +333,17 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               }
             />
           </FormField>
-          <FormField label="Método de Pago">
+          <FormField label="Valor TA CRE">
+            <CurrencyInput
+              value={plan.taCre === 0 ? "" : plan.taCre}
+              onChange={(val) =>
+                onChange({
+                  taCre: val === "" ? 0 : Number(val),
+                })
+              }
+            />
+          </FormField>
+          <FormField label="Método de Pago *">
             <Combobox
               value={plan.supplierPaymentMethod || ""}
               onChange={(val) => onChange({ supplierPaymentMethod: val })}
@@ -344,6 +354,23 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               placeholder="Seleccionar método..."
             />
           </FormField>
+        </div>
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">
+              Costo Total del Servicio
+            </span>
+            <span className="text-[9px] text-gray-400 dark:text-slate-400 font-medium">
+              (Costo Proveedor + TA + TA CRE)
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end">
+              <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
+                ${((Number(plan.supplierCost) || 0) + (Number(plan.ta) || 0) + (Number(plan.taCre) || 0)).toLocaleString('es-CO', { minimumFractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

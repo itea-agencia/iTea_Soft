@@ -226,6 +226,7 @@ export interface HotelData {
   endDate: string;
   supplierCost: number;
   ta: number;
+  taCre?: number;
   supplierPaymentMethod: string;
   hotelType?: string;
   observations?: string;
@@ -237,6 +238,7 @@ export interface PlanData {
   hotelName: string;
   supplierCost: number;
   ta: number;
+  taCre?: number;
   reservationNumber: string;
   flightNumber: string;
   ticketNumber: string;
@@ -271,6 +273,7 @@ export interface InsuranceData {
   supplier: string;
   supplierCost: number;
   ta: number;
+  taCre?: number;
   supplierPaymentMethod: string;
   members: GuestInfo[];
 }
@@ -284,6 +287,7 @@ export interface TicketData {
   arrivalDate: string;
   supplierCost: number;
   ta: number;
+  taCre?: number;
   supplierPaymentMethod: string;
   baggagePlan: string;
   ticketNumber: string;
@@ -322,6 +326,7 @@ export interface CheckInData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -340,6 +345,7 @@ export interface MigrationData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -358,6 +364,7 @@ export interface SimCardData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -376,6 +383,7 @@ export interface CarRentalData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -399,6 +407,7 @@ export interface FincaData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -420,6 +429,7 @@ export interface TourData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
   guests: GuestInfo[];
@@ -445,6 +455,7 @@ export interface ConventionData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -462,6 +473,7 @@ export interface RestaurantData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -481,6 +493,7 @@ export interface VisaData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -497,6 +510,7 @@ export interface PassportData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -519,6 +533,7 @@ export interface PetServiceData {
   sendVoucher?: boolean;
   supplierName?: string;
   supplierCost?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   ta?: number;
 }
@@ -576,6 +591,7 @@ export interface Sale {
   settlementDate?: string;
   ta?: number;
   supplierCost?: number;
+  taCre?: number;
   payments?: PaymentRecord[];
   servicesSummary?: Array<{ tipo: string; label: string; detail: string | null }>;
   isReviewed?: boolean;

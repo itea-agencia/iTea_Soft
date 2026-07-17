@@ -305,12 +305,7 @@ export default function SaleEditModal({
                   </span>
                 </div>
               )}
-              <div className="col-span-2 sm:col-span-3 pt-3 mt-1 border-t border-gray-100">
-                <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
-                  <ShoppingBag size={14} className="text-accent" /> Servicios incluidos
-                </span>
-                <ServicesList sale={sale} />
-              </div>
+              
             </div>
           </div>
 
@@ -318,7 +313,7 @@ export default function SaleEditModal({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white dark:bg-slate-800/80 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm">
             <div>
               <p className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
-                Valor Final
+                Total Final
               </p>
               <p className="text-lg font-black text-gray-800 dark:text-white">
                 {formatCurrency(sale.total)}
@@ -334,7 +329,7 @@ export default function SaleEditModal({
             </div>
             <div>
               <p className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
-                Ganancias Oficina
+                Valor TA
               </p>
               <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(
@@ -400,7 +395,7 @@ export default function SaleEditModal({
                 <div className="flex flex-col sm:flex-row items-end gap-3">
                   <div className="flex-1 w-full">
                     <label className="text-xs font-bold text-gray-600 mb-1 block">
-                      Monto
+                      Monto *
                     </label>
                     <CurrencyInput
                       value={newPayment.amount}
@@ -415,7 +410,7 @@ export default function SaleEditModal({
                   </div>
                   <div className="flex-1 w-full">
                     <label className="text-xs font-bold text-gray-600 mb-1 block">
-                      Método de pago
+                      Método de pago *
                     </label>
                     <Select
                       value={newPayment.method}
@@ -437,7 +432,7 @@ export default function SaleEditModal({
                   </div>
                   <div className="flex-1 w-full">
                         <label className="text-xs font-bold text-gray-600 mb-1 block">
-                          Referencia (Opcional)
+                          Referencia 
                         </label>
                         <Input
                           value={newPayment.reference}

@@ -189,7 +189,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
           <Briefcase size={14} /> Información Financiera
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Costo Proveedor">
+          <FormField label="Costo Proveedor *">
             <CurrencyInput
               required
               value={hotel.supplierCost === 0 ? "" : hotel.supplierCost}
@@ -200,13 +200,23 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
               }}
             />
           </FormField>
-          <FormField label="Tarifa Administrativa (TA)">
+          <FormField label="Tarifa Administrativa (TA) *">
             <CurrencyInput
               required
               value={hotel.ta === 0 ? "" : hotel.ta}
               onChange={(val) => {
                 onChange({
                   ta: val === "" ? 0 : Number(val),
+                });
+              }}
+            />
+          </FormField>
+          <FormField label="Valor TA CRE">
+            <CurrencyInput
+              value={hotel.taCre === 0 ? "" : hotel.taCre}
+              onChange={(val) => {
+                onChange({
+                  taCre: val === "" ? 0 : Number(val),
                 });
               }}
             />
@@ -222,6 +232,23 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
               placeholder="Seleccionar método..."
             />
           </FormField>
+        </div>
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">
+              Costo Total del Servicio
+            </span>
+            <span className="text-[9px] text-gray-400 dark:text-slate-400 font-medium">
+              (Costo Proveedor + TA + TA CRE)
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end">
+              <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
+                ${((Number(hotel.supplierCost) || 0) + (Number(hotel.ta) || 0) + (Number(hotel.taCre) || 0)).toLocaleString('es-CO', { minimumFractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

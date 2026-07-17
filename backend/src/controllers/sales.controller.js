@@ -310,6 +310,7 @@ const PRODUCT_TRANSFORMS = {
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
+      taCre: d.taCre || 0,
       legs: mapLegs(t.tramosVuelo),
       passengers: passengers.map(p => ({
         name: p.nombreCompleto,
@@ -338,7 +339,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   seguros_viaje(d, passengers, target, venta) {
@@ -358,7 +360,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   planes(d, passengers, target) {
@@ -389,7 +392,8 @@ const PRODUCT_TRANSFORMS = {
       packageType: p.tipoPaquete || 'own',
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   checkin(d, passengers, target) {
@@ -410,7 +414,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   documentacion_migratoria(d, passengers, target) {
@@ -427,7 +432,8 @@ const PRODUCT_TRANSFORMS = {
       destinationCountry: m.paisDestino,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   simcard(d, passengers, target) {
@@ -445,7 +451,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   renta_vehiculos(d, passengers, target) {
@@ -465,7 +472,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   renta_fincas(d, passengers, target) {
@@ -489,7 +497,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   tours(d, passengers, target) {
@@ -516,7 +525,8 @@ const PRODUCT_TRANSFORMS = {
       })),
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   centros_convencion(d, passengers, target) {
@@ -541,7 +551,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   restaurantes(d, passengers, target) {
@@ -560,7 +571,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   visa(d, passengers, target) {
@@ -581,7 +593,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   pasaporte(d, passengers, target) {
@@ -599,7 +612,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   },
   servicio_mascotas(d, passengers, target) {
@@ -623,7 +637,8 @@ const PRODUCT_TRANSFORMS = {
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
-      ta: d.ta || 0
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
     });
   }
 };
@@ -743,6 +758,7 @@ exports.getById = async (req, res, next) => {
       commissionAgentNetPayment: venta.montoComisionNeto,
       supplierCost: venta.costoProveedorTotal,
       ta: venta.taTotal,
+      taCre: venta.taCreTotal,
       isSettled: venta.comisionLiquidada,
       payments: venta.pagosVenta.map(p => ({
         id: p.id,
@@ -1505,6 +1521,7 @@ exports.create = async (req, res, next) => {
         montoTotal: data.total || 0,
         costoProveedorTotal: data.supplierCost || 0,
         taTotal: data.ta || 0,
+        taCreTotal: data.taCre || 0,
         comisionistaId: data.commissionAgentId || null,
         responsableId: data.responsableId || null,
         montoComisionBruto: data.commissionAgentAmount || 0,
@@ -1695,6 +1712,7 @@ exports.update = async (req, res, next) => {
     if (data.total !== undefined) updateData.montoTotal = data.total;
     if (data.supplierCost !== undefined) updateData.costoProveedorTotal = data.supplierCost;
     if (data.ta !== undefined) updateData.taTotal = data.ta;
+    if (data.taCre !== undefined) updateData.taCreTotal = data.taCre;
     if (data.status) updateData.status = data.status;
     if (data.observations !== undefined) updateData.observaciones = data.observations;
     if (data.isCredit !== undefined) updateData.esCredito = data.isCredit;

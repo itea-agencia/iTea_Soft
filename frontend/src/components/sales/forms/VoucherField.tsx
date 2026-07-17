@@ -224,23 +224,25 @@ interface FinancialSectionProps {
   supplierName?: string;
   supplierCost?: number;
   ta?: number;
+  taCre?: number;
   supplierPaymentMethod?: string;
   isPaymentMethodRequired?: boolean;
   paymentMethods?: any[];
   suppliers?: { id: number; name: string }[];
-  onChange: (updates: { supplierName?: string; supplierCost?: number; ta?: number; supplierPaymentMethod?: string }) => void;
+  onChange: (updates: { supplierName?: string; supplierCost?: number; ta?: number; taCre?: number; supplierPaymentMethod?: string }) => void;
 }
 
-export function FinancialSection({ supplierName, supplierCost, ta, supplierPaymentMethod, isPaymentMethodRequired, paymentMethods = [], suppliers = [], onChange }: FinancialSectionProps) {
+export function FinancialSection({ supplierName, supplierCost, ta, taCre, supplierPaymentMethod, isPaymentMethodRequired, paymentMethods = [], suppliers = [], onChange }: FinancialSectionProps) {
   const supplierOptions = suppliers.map(s => ({ value: s.name, label: s.name }));
 
-  const handleNumericChange = (field: 'supplierCost' | 'ta', value: string) => {
+  const handleNumericChange = (field: 'supplierCost' | 'ta' | 'taCre', value: string) => {
     // Convertimos a número, prevenimos negativos y manejamos valores vacíos
     const numValue = Math.max(0, parseFloat(value) || 0);
     onChange({ [field]: numValue });
   };
 
-  const totalCost = (Number(supplierCost) || 0) + (Number(ta) || 0);
+  const totalCost = (Number(supplierCost) || 0) + (Number(ta) || 0) + (Number(taCre) || 0);
+  const ivaAmount = ((Number(ta) || 0) + (Number(taCre) || 0)) * 0.19;
 
   return (
     <div className="mt-6 p-5 bg-emerald-50/50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 space-y-4">
@@ -267,7 +269,7 @@ export function FinancialSection({ supplierName, supplierCost, ta, supplierPayme
             />
           </div>
         </FormField>
-        <FormField label="Costo Proveedor">
+        <FormField label="Costo Proveedor *">
           <div className="relative group">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
             <CurrencyInput 
@@ -278,13 +280,24 @@ export function FinancialSection({ supplierName, supplierCost, ta, supplierPayme
             />
           </div>
         </FormField>
-        <FormField label="T.A (Tarifa Admin)">
+        <FormField label="T.A (Tarifa Admin) *">
           <div className="relative group">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
             <CurrencyInput 
               value={ta || ""} 
               onChange={(val) => handleNumericChange('ta', val)} 
               className={`pl-7 transition-all ${!ta ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
+              placeholder="0.00" 
+            />
+          </div>
+        </FormField>
+        <FormField label="Valor TA CRE">
+          <div className="relative group">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
+            <CurrencyInput 
+              value={taCre || ""} 
+              onChange={(val) => handleNumericChange('taCre', val)} 
+              className={`pl-7 transition-all ${!taCre ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
               placeholder="0.00" 
             />
           </div>
@@ -307,16 +320,23 @@ export function FinancialSection({ supplierName, supplierCost, ta, supplierPayme
         </FormField>
       </div>
       
-      <div className="flex items-center justify-between p-3 bg-white/80 dark:bg-slate-800/80 rounded-xl border border-emerald-100 dark:border-emerald-500/20 shadow-sm animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-center justify-between mt-4 p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
         <div className="flex flex-col">
-          <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">Costo Total para la Agencia</span>
-          <span className="text-[9px] text-gray-400 dark:text-slate-400 font-medium">(Costo Proveedor + Tarifa Administrativa)</span>
-        </div>
-        <div className="flex flex-col items-end">
-          <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
-            ${totalCost.toLocaleString('es-CO', { minimumFractionDigits: 0 })}
+          <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">
+            Costo Total del Servicio
           </span>
-          {totalCost > 0 && <span className="text-[9px] text-emerald-600 font-bold uppercase">Valor Liquidado</span>}
+          <span className="text-[9px] text-gray-400 dark:text-slate-400 font-medium">
+            (Costo Proveedor + TA + TA CRE)
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          
+          <div className="flex flex-col items-end">
+            <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
+              ${totalCost.toLocaleString('es-CO', { minimumFractionDigits: 0 })}
+            </span>
+            {totalCost > 0 && <span className="text-[9px] text-emerald-600 font-bold uppercase mt-1">Total Cliente</span>}
+          </div>
         </div>
       </div>
     </div>

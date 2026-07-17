@@ -226,7 +226,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
             </h5>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-              <FormField label="Forma de Pago" error={localErrors.method}>
+              <FormField label="Forma de Pago *" error={localErrors.method}>
                 <Combobox
                   value={payMethodId}
                   onChange={(val) => {
@@ -242,7 +242,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
                 />
               </FormField>
 
-              <FormField label="Monto" error={localErrors.amount}>
+              <FormField label="Monto *" error={localErrors.amount}>
                 <CurrencyInput
                   value={payAmount}
                   onChange={(val) => {
@@ -255,7 +255,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
               </FormField>
 
               <div className="md:col-span-2">
-                <FormField label="Número de Referencia de Pago (Opcional)">
+                <FormField label="Número de Referencia de Pago">
                   <Input
                     value={payReference}
                     onChange={(e) => setPayReference(e.target.value)}
@@ -281,19 +281,18 @@ export function Step3Payment({ form, set, data, errors }: any) {
           </div>
         )}
 
-        {/* Resumen de Estado de Cobro */}
         <div className="grid grid-cols-3 gap-3 pt-2 text-center">
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Venta</p>
-            <p className="text-sm font-black text-slate-800">${totalSale.toLocaleString("es-CO")}</p>
+          <div className="bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Venta</p>
+            <p className="text-sm font-black text-slate-800 dark:text-slate-100">${totalSale.toLocaleString("es-CO")}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Abonado</p>
-            <p className="text-sm font-black text-emerald-600">${totalPaid.toLocaleString("es-CO")}</p>
+          <div className="bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Total Abonado</p>
+            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">${totalPaid.toLocaleString("es-CO")}</p>
           </div>
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Saldo Restante</p>
-            <p className={`text-sm font-black ${remaining > 0.01 ? "text-amber-500" : "text-emerald-600"}`}>
+          <div className="bg-white dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Saldo Restante</p>
+            <p className={`text-sm font-black ${remaining > 0.01 ? "text-amber-500 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
               ${remaining.toLocaleString("es-CO")}
             </p>
           </div>
@@ -329,7 +328,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
 
         {/* Responsable (Sólo si es crédito o abonado) */}
         {(form.status === "credito" || form.status === "abonado") && (
-          <FormField label="Responsable del Crédito (Opcional)">
+          <FormField label="Responsable del Crédito">
             <Combobox
               value={form.responsableId || ""}
               onChange={(val) => set("responsableId", val)}
@@ -429,46 +428,57 @@ export function Step3Payment({ form, set, data, errors }: any) {
 
       {/* Summary card */}
       {Number(form.total) > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mt-2">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl p-4 shadow-sm mt-2">
+          <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3">
             Resumen Financiero
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
+              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
                 Total
               </p>
-              <p className="font-black text-gray-800">
+              <p className="font-black text-gray-800 dark:text-slate-100">
                 ${Number(form.total).toLocaleString("es-CO")}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
-                Proveedores
+              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                Pago proveedor
               </p>
-              <p className="font-black text-rose-600">
+              <p className="font-black text-rose-600 dark:text-rose-450">
                 ${(Number(form.supplierCost) || 0).toLocaleString("es-CO")}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
-                Comisionista
+              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                Valor TA
               </p>
-              <p className="font-black text-amber-600">
-                ${(Number(form.commissionAgentNetPayment) || 0).toLocaleString("es-CO")}
+              <p className="font-black text-emerald-600 dark:text-emerald-400">
+                ${(Number(form.ta) || 0).toLocaleString("es-CO")}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase">
-                Ganancia Oficina
+              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                Valor TA CRE
               </p>
-              <p className="font-black text-emerald-600">
-                $
-                {(
-                  Number(form.total) -
-                  (Number(form.supplierCost) || 0) -
-                  (Number(form.commissionAgentNetPayment) || 0)
-                ).toLocaleString("es-CO")}
+              <p className="font-black text-amber-600 dark:text-amber-400">
+                ${(Number(form.taCre) || 0).toLocaleString("es-CO")}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                IVA (TA + TA CRE)
+              </p>
+              <p className="font-black text-emerald-600 dark:text-emerald-400">
+                ${(((Number(form.ta) || 0) + (Number(form.taCre) || 0)) * 0.19).toLocaleString("es-CO", { maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                Comisionista
+              </p>
+              <p className="font-black text-amber-600 dark:text-amber-400">
+                ${(Number(form.commissionAgentNetPayment) || 0).toLocaleString("es-CO")}
               </p>
             </div>
           </div>
