@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User,
   Package,
@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Loader2,
   AlertCircle,
+  Link2,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useData } from "../../context/DataContext";
@@ -99,6 +100,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -227,6 +229,61 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     },
   };
 
+  const getCurrentItemLinkedPlanIndex = () => {
+    if (!activeForm || activeIdx === null || activeForm === 'planes') return '';
+    let targetKey: string | null = null;
+    switch (activeForm) {
+      case "tiqueteria": targetKey = "tickets"; break;
+      case "hoteleria": targetKey = "hotels"; break;
+      case "seguros_viaje": targetKey = "insurances"; break;
+      case "checkin": targetKey = "checkIns"; break;
+      case "documentacion_migratoria": targetKey = "migrations"; break;
+      case "simcard": targetKey = "simCards"; break;
+      case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "renta_fincas": targetKey = "fincas"; break;
+      case "tours": targetKey = "tours"; break;
+      case "centros_convencion": targetKey = "conventions"; break;
+      case "restaurantes": targetKey = "restaurants"; break;
+      case "visa": targetKey = "visas"; break;
+      case "pasaporte": targetKey = "passports"; break;
+      case "servicio_mascotas": targetKey = "petServices"; break;
+    }
+    if (targetKey) {
+      const items = (form as any)[targetKey];
+      const currentItem = items?.[activeIdx];
+      return currentItem?.linkedToPlanIndex !== undefined && currentItem?.linkedToPlanIndex !== null ? String(currentItem.linkedToPlanIndex) : '';
+    }
+    return '';
+  };
+
+  const setCurrentItemLinkedPlanIndex = (val: string) => {
+    if (!activeForm || activeIdx === null || activeForm === 'planes') return;
+    let targetKey: string | null = null;
+    switch (activeForm) {
+      case "tiqueteria": targetKey = "tickets"; break;
+      case "hoteleria": targetKey = "hotels"; break;
+      case "seguros_viaje": targetKey = "insurances"; break;
+      case "checkin": targetKey = "checkIns"; break;
+      case "documentacion_migratoria": targetKey = "migrations"; break;
+      case "simcard": targetKey = "simCards"; break;
+      case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "renta_fincas": targetKey = "fincas"; break;
+      case "tours": targetKey = "tours"; break;
+      case "centros_convencion": targetKey = "conventions"; break;
+      case "restaurantes": targetKey = "restaurants"; break;
+      case "visa": targetKey = "visas"; break;
+      case "pasaporte": targetKey = "passports"; break;
+      case "servicio_mascotas": targetKey = "petServices"; break;
+    }
+    if (targetKey) {
+      const items = [...((form as any)[targetKey] || [])];
+      if (items[activeIdx]) {
+        items[activeIdx] = { ...items[activeIdx], linkedToPlanIndex: val === '' ? null : Number(val) };
+        setForm(prev => ({ ...prev, [targetKey!]: items }));
+      }
+    }
+  };
+
   useEffect(() => {
     try {
       // Intentar guardar el draft en localStorage
@@ -248,30 +305,28 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   useEffect(() => {
     let calcSupplierCost = 0;
     let calcTa = 0;
-    let calcTaCre = 0;
 
-    form.tickets.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
-    form.hotels.forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; calcTaCre += Number(h.taCre) || 0; });
-    form.insurances.forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; calcTaCre += Number(i.taCre) || 0; });
-    form.plans.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
-    form.checkIns.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
-    form.migrations.forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; calcTaCre += Number(m.taCre) || 0; });
-    form.simCards.forEach(s => { calcSupplierCost += Number(s.supplierCost) || 0; calcTa += Number(s.ta) || 0; calcTaCre += Number(s.taCre) || 0; });
-    form.carRentals.forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; calcTaCre += Number(cr.taCre) || 0; });
-    form.fincas.forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; calcTaCre += Number(f.taCre) || 0; });
-    form.tours.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
-    form.conventions.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
-    form.restaurants.forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; calcTaCre += Number(r.taCre) || 0; });
-    form.visas.forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; calcTaCre += Number(v.taCre) || 0; });
-    form.passports.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
-    form.petServices.forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; calcTaCre += Number(ps.taCre) || 0; });
+    form.tickets.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
+    form.hotels.forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; });
+    form.insurances.forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; });
+    form.plans.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
+    form.checkIns.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
+    form.migrations.forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; });
+    form.simCards.forEach(s => { calcSupplierCost += Number(s.supplierCost) || 0; calcTa += Number(s.ta) || 0; });
+    form.carRentals.forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; });
+    form.fincas.forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; });
+    form.tours.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
+    form.conventions.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
+    form.restaurants.forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; });
+    form.visas.forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; });
+    form.passports.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
+    form.petServices.forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; });
 
-    const calcTotal = calcSupplierCost + calcTa + calcTaCre;
+    const calcTotal = calcSupplierCost + calcTa;
 
     if (
       form.supplierCost !== calcSupplierCost.toString() ||
       form.ta !== calcTa.toString() ||
-      form.taCre !== calcTaCre.toString() ||
       form.total !== calcTotal.toString()
     ) {
       setForm(prev => {
@@ -279,15 +334,14 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         const newCommAmount = calcTa * (commPercentage / 100);
         const retention = parseFloat(prev.commissionAgentRetentionPercentage || "0");
         const newCommNet = newCommAmount * (1 - retention / 100);
-
+        
         return {
           ...prev,
           supplierCost: calcSupplierCost.toString(),
           ta: calcTa.toString(),
-          taCre: calcTaCre.toString(),
           total: calcTotal.toString(),
           commissionAgentAmount: newCommAmount.toString(),
-          commissionAgentNetPayment: newCommNet.toString(),
+          commissionAgentNetPayment: newCommNet.toString()
         };
       });
     }
@@ -533,25 +587,33 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 if (plan.adultsCount === undefined || plan.adultsCount < 0 || plan.adultsCount > 999) errors.push("Adultos (0-999)");
                 if (plan.childrenCount === undefined || plan.childrenCount < 0 || plan.childrenCount > 999) errors.push("Menores (0-999)");
                 if (!plan.flightNumber || plan.flightNumber.trim().length === 0) {
-                  errors.push("Número de Vuelo (requerido)");
-                } else if (plan.flightNumber.length > 8) {
-                  errors.push("Número de Vuelo (máx 8 caracteres)");
-                } else if (!/^[A-Z0-9]+$/.test(plan.flightNumber)) {
-                  errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas sin espacios ni caracteres especiales)");
+                  errors.push(plan.transportType === 'Terrestre' ? "Placa / Vehículo (requerido)" : "Número de Vuelo (requerido)");
+                } else if (plan.transportType !== 'Terrestre') {
+                  if (plan.flightNumber.length > 12) {
+                    errors.push("Número de Vuelo (máx 12 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.flightNumber)) {
+                    errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
+                  }
                 }
-                if (!plan.ticketNumber || plan.ticketNumber.trim().length === 0) {
-                  errors.push("Número de Tiquete (requerido)");
-                } else if (plan.ticketNumber.length < 13 || plan.ticketNumber.length > 14) {
-                  errors.push("Número de Tiquete (mínimo 13 y máximo 14 dígitos)");
-                } else if (!/^\d+$/.test(plan.ticketNumber)) {
-                  errors.push("Número de Tiquete (debe ser estrictamente numérico)");
+                
+                if (plan.transportType !== 'Terrestre') {
+                  if (!plan.ticketNumber || plan.ticketNumber.trim().length === 0) {
+                    errors.push("Número de Tiquete (requerido)");
+                  } else if (plan.ticketNumber.length < 13 || plan.ticketNumber.length > 20) {
+                    errors.push("Número de Tiquete (mínimo 13 y máximo 20 dígitos)");
+                  } else if (!/^\d+$/.test(plan.ticketNumber)) {
+                    errors.push("Número de Tiquete (debe ser estrictamente numérico)");
+                  }
                 }
+                
                 if (!plan.confirmationNumber || plan.confirmationNumber.trim().length === 0) {
                   errors.push("Confirmación (requerido)");
-                } else if (plan.confirmationNumber.length !== 6) {
-                  errors.push("Confirmación (debe tener exactamente 6 caracteres)");
-                } else if (!/^[A-Z0-9]+$/.test(plan.confirmationNumber)) {
-                  errors.push("Confirmación (debe ser alfanumérico en mayúsculas sin espacios ni caracteres especiales)");
+                } else if (plan.transportType !== 'Terrestre') {
+                  if (plan.confirmationNumber.length !== 6) {
+                    errors.push("Confirmación (debe tener exactamente 6 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.confirmationNumber)) {
+                    errors.push("Confirmación (debe ser alfanumérico en mayúsculas)");
+                  }
                 }
                 if (!plan.supplier || plan.supplier.trim().length === 0) errors.push("Proveedor (requerido)");
 
@@ -1232,27 +1294,33 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 if (plan.childrenCount === undefined || plan.childrenCount < 0 || plan.childrenCount > 999) errors.push("Menores (0-999)");
                 
                 if (!plan.flightNumber || plan.flightNumber.trim().length === 0) {
-                  errors.push("Número de Vuelo (requerido)");
-                } else if (plan.flightNumber.length > 8) {
-                  errors.push("Número de Vuelo (máx 8 caracteres)");
-                } else if (!/^[A-Z0-9]+$/.test(plan.flightNumber)) {
-                  errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas sin espacios ni caracteres especiales)");
+                  errors.push(plan.transportType === 'Terrestre' ? "Placa / Vehículo (requerido)" : "Número de Vuelo (requerido)");
+                } else if (plan.transportType !== 'Terrestre') {
+                  if (plan.flightNumber.length > 12) {
+                    errors.push("Número de Vuelo (máx 12 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.flightNumber)) {
+                    errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
+                  }
                 }
                 
-                if (!plan.ticketNumber || plan.ticketNumber.trim().length === 0) {
-                  errors.push("Número de Tiquete (requerido)");
-                } else if (plan.ticketNumber.length < 13 || plan.ticketNumber.length > 14) {
-                  errors.push("Número de Tiquete (mínimo 13 y máximo 14 dígitos)");
-                } else if (!/^\d+$/.test(plan.ticketNumber)) {
-                  errors.push("Número de Tiquete (debe ser estrictamente numérico)");
+                if (plan.transportType !== 'Terrestre') {
+                  if (!plan.ticketNumber || plan.ticketNumber.trim().length === 0) {
+                    errors.push("Número de Tiquete (requerido)");
+                  } else if (plan.ticketNumber.length < 13 || plan.ticketNumber.length > 20) {
+                    errors.push("Número de Tiquete (mínimo 13 y máximo 20 dígitos)");
+                  } else if (!/^\d+$/.test(plan.ticketNumber)) {
+                    errors.push("Número de Tiquete (debe ser estrictamente numérico)");
+                  }
                 }
                 
                 if (!plan.confirmationNumber || plan.confirmationNumber.trim().length === 0) {
                   errors.push("Confirmación (requerido)");
-                } else if (plan.confirmationNumber.length !== 6) {
-                  errors.push("Confirmación (debe tener exactamente 6 caracteres)");
-                } else if (!/^[A-Z0-9]+$/.test(plan.confirmationNumber)) {
-                  errors.push("Confirmación (debe ser alfanumérico en mayúsculas sin espacios ni caracteres especiales)");
+                } else if (plan.transportType !== 'Terrestre') {
+                  if (plan.confirmationNumber.length !== 6) {
+                    errors.push("Confirmación (debe tener exactamente 6 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.confirmationNumber)) {
+                    errors.push("Confirmación (debe ser alfanumérico en mayúsculas)");
+                  }
                 }
                 
                 if (!plan.flightDepartureDate) errors.push("Fecha Ida (requerido)");
@@ -1381,7 +1449,30 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
 
         {/* Sub-form Content */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-8 bg-gray-light/30 dark:bg-slate-900/50">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto space-y-6">
+
+            {activeForm !== "planes" && form.plans.length > 0 && (
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm animate-fade-in mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Link2 size={16} className="text-primary" />
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-slate-200">Vincular a Paquete</h4>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">Si este servicio pertenece a un paquete de esta misma venta, selecciónalo aquí para agruparlos.</p>
+                <select 
+                  className="w-full text-sm p-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
+                  value={getCurrentItemLinkedPlanIndex()}
+                  onChange={e => setCurrentItemLinkedPlanIndex(e.target.value)}
+                >
+                  <option value="">-- No vincular a ningún paquete --</option>
+                  {form.plans.map((p, idx) => (
+                    <option key={idx} value={idx}>
+                      Paquete #{idx + 1}: {p.planName || p.packageName || 'Sin nombre'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
         {(() => {
           switch (activeForm) {
             case "tiqueteria":
@@ -1632,12 +1723,15 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     if (!validateStep(3)) {
       return;
     }
-    if (isSubmitting) return;
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     const client = data.clients.find((c: any) => c.name === form.clientId);
     if (!client) {
       setErrors({ ...errors, clientId: "El cliente no es válido" });
       setStep(1);
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
@@ -1705,7 +1799,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       commissionAgentNetPayment: Number(form.commissionAgentNetPayment) || undefined,
       isSettled: !!form.commissionAgentId ? false : undefined,
       ta: Number(form.ta) || 0,
-      taCre: Number(form.taCre) || 0,
       supplierCost: Number(form.supplierCost) || 0,
     };
 
@@ -1730,6 +1823,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const errMsg = err?.response?.data?.error?.message || "Ocurrió un error interno en el servidor al registrar la venta. Por favor, asegúrese de reiniciar el servidor backend local para cargar los nuevos módulos de base de datos.";
       alert(`Error al registrar venta: ${errMsg}`);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

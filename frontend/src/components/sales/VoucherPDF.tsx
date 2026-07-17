@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Sale, TicketData } from '../../types';
-import { formatDate, formatDateTime, formatCurrency } from '../../utils/formatters';
+import { formatDate, formatDateTime, formatCurrency, formatSaleId } from '../../utils/formatters';
 import { type AirportInfo } from '../../utils/airportInfo';
 import './VoucherPDF.css';
 
@@ -32,25 +32,25 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
   const mainLegs = ticket.legs && ticket.legs.length > 0 ? ticket.legs : [];
   const returnLeg = ticket.returnLeg ? [ticket.returnLeg] : [];
   const hasStopsField = (ticket.outboundStops && ticket.outboundStops.length > 0) || ticket.returnLeg || (ticket.returnStops && ticket.returnStops.length > 0);
-  
+
   const legsToRender = mainLegs.length > 0
     ? (hasStopsField
-        ? [
-            ...mainLegs,
-            ...(ticket.outboundStops || []),
-            ...returnLeg,
-            ...(ticket.returnStops || [])
-          ]
-        : mainLegs)
+      ? [
+        ...mainLegs,
+        ...(ticket.outboundStops || []),
+        ...returnLeg,
+        ...(ticket.returnStops || [])
+      ]
+      : mainLegs)
     : [{
-        origin: '—',
-        destination: '—',
-        flightNumber: ticket.flightNumber || '—',
-        seat: ticket.seatNumber || '—',
-        date: ticket.departureDate,
-        time: undefined,
-        arrivalDate: ticket.arrivalDate,
-      }];
+      origin: '—',
+      destination: '—',
+      flightNumber: ticket.flightNumber || '—',
+      seat: ticket.seatNumber || '—',
+      date: ticket.departureDate,
+      time: undefined,
+      arrivalDate: ticket.arrivalDate,
+    }];
 
   const formatTimeAMPM = (time24: string) => {
     if (!time24) return '—';
@@ -66,7 +66,7 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
     <div className="v-flight-block">
       <div className="v-flight-header">✈&nbsp;&nbsp;RECIBO DE TIQUETE ELECTRÓNICO</div>
       <div className="v-flight-notice">Hemos realizado las reservas requeridas y ya se encuentran emitidas. Agradecemos la compra realizada.</div>
-      
+
       {/* Flight table */}
       <table className="v-flight-table">
         <thead>
@@ -115,12 +115,12 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
         {legsToRender.map((leg, li) => {
           const legAirlineName = leg.airline || (ticket as any).airlineName || ticket.airline || '—';
           const legBaggagePlan = leg.baggagePlan || ticket.baggagePlan;
-          const bg = baggageList?.find(b => b.fareType === legBaggagePlan && (b.airlineName === legAirlineName || !legAirlineName));
+          const bg = baggageList?.find(b => legBaggagePlan === `${b.airlineName} - ${b.fareType}` || b.fareType === legBaggagePlan);
           return (
             <div key={`leg-details-${idx}-${li}`} style={{ display: 'flex', width: '100%', gap: '15px', flexWrap: 'wrap', paddingBottom: li < legsToRender.length - 1 ? '10px' : '0', borderBottom: li < legsToRender.length - 1 ? '1px dashed #e5e7eb' : 'none' }}>
               <div style={{ minWidth: '150px' }}>
                 <span className="v-fd-label">{leg.origin && leg.destination ? `${leg.origin} → ${leg.destination}` : 'Información'}:</span>
-                <span className="v-badge-orange">{legAirlineName}</span>
+                <span className="v-badge">{legAirlineName}</span>
               </div>
               <div style={{ flex: 1, minWidth: '200px' }}>
                 <span className="v-fd-label">Equipaje:</span>
@@ -160,26 +160,26 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
           <table className="v-flight-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'left', padding: '8px 12px', backgroundColor: '#f97316', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>NOMBRE</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#f97316', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>DOCUMENTO</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#f97316', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° RESERVA</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#f97316', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° TIQUETE</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#f97316', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>NOMBRE</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>DOCUMENTO</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° RESERVA</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° TIQUETE</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO</th>
               </tr>
             </thead>
             <tbody>
               {ticket.passengers.map((p, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '12px', fontWeight: 'bold', color: '#111827' }}>
+                  <td style={{ padding: '12px', fontWeight: 'bold', color: '#000000' }}>
                     {p.name}
                     {p.esTitular && (
-                      <span style={{ marginLeft: '8px', padding: '2px 8px',  color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>PASAJERO PRINCIPAL</span>
+                      <span style={{ marginLeft: '8px', padding: '2px 8px', color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>PASAJERO PRINCIPAL</span>
                     )}
                   </td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#1f2937' }}>{p.docNumber || '—'}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#1f2937' }}>{p.nroReserva || '—'}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#1f2937' }}>{p.nroTiquete || '—'}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#1f2937' }}>{p.asiento || '—'}</td>
+                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docNumber || '—'}</td>
+                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.nroReserva || '—'}</td>
+                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.nroTiquete || '—'}</td>
+                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asiento || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -199,21 +199,41 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 
-  const tickets     = sale.ticketData      || [];
-  const hotels      = sale.hotelData       || [];
-  const insurances  = sale.insuranceData   || [];
-  const plans       = sale.planData        || [];
-  const checkIns    = sale.checkInData     || [];
-  const migrations  = sale.migrationData   || [];
-  const simCards    = sale.simCardData     || [];
-  const carRentals  = sale.carRentalData   || [];
-  const fincas      = sale.fincaData       || [];
-  const tours       = sale.tourData        || [];
-  const conventions = sale.conventionData  || [];
-  const restaurants = sale.restaurantData  || [];
-  const visas       = sale.visaData        || [];
-  const passports   = sale.passportData    || [];
-  const pets        = sale.petServiceData  || [];
+  const tickets = (sale.ticketData || []).filter((t: any) => !t.parentDetalleId);
+  const hotels = (sale.hotelData || []).filter((h: any) => !h.parentDetalleId);
+  const insurances = (sale.insuranceData || []).filter((i: any) => !i.parentDetalleId);
+  const plans = (sale.planData || []).filter((p: any) => !p.parentDetalleId);
+  const checkIns = (sale.checkInData || []).filter((c: any) => !c.parentDetalleId);
+  const migrations = (sale.migrationData || []).filter((m: any) => !m.parentDetalleId);
+  const simCards = (sale.simCardData || []).filter((s: any) => !s.parentDetalleId);
+  const carRentals = (sale.carRentalData || []).filter((c: any) => !c.parentDetalleId);
+  const fincas = (sale.fincaData || []).filter((f: any) => !f.parentDetalleId);
+  const tours = (sale.tourData || []).filter((t: any) => !t.parentDetalleId);
+  const conventions = (sale.conventionData || []).filter((c: any) => !c.parentDetalleId);
+  const restaurants = (sale.restaurantData || []).filter((r: any) => !r.parentDetalleId);
+  const visas = (sale.visaData || []).filter((v: any) => !v.parentDetalleId);
+  const passports = (sale.passportData || []).filter((p: any) => !p.parentDetalleId);
+  const pets = (sale.petServiceData || []).filter((p: any) => !p.parentDetalleId);
+
+  const getChildrenForPlan = (planId: string) => {
+    if (!planId) return [];
+    return [
+      ...(sale.ticketData || []).map(item => ({ ...item, _type: 'ticket' })),
+      ...(sale.hotelData || []).map(item => ({ ...item, _type: 'hotel' })),
+      ...(sale.insuranceData || []).map(item => ({ ...item, _type: 'insurance' })),
+      ...(sale.checkInData || []).map(item => ({ ...item, _type: 'checkin' })),
+      ...(sale.migrationData || []).map(item => ({ ...item, _type: 'migration' })),
+      ...(sale.simCardData || []).map(item => ({ ...item, _type: 'simcard' })),
+      ...(sale.carRentalData || []).map(item => ({ ...item, _type: 'carRental' })),
+      ...(sale.fincaData || []).map(item => ({ ...item, _type: 'finca' })),
+      ...(sale.tourData || []).map(item => ({ ...item, _type: 'tour' })),
+      ...(sale.conventionData || []).map(item => ({ ...item, _type: 'convention' })),
+      ...(sale.restaurantData || []).map(item => ({ ...item, _type: 'restaurant' })),
+      ...(sale.visaData || []).map(item => ({ ...item, _type: 'visa' })),
+      ...(sale.passportData || []).map(item => ({ ...item, _type: 'passport' })),
+      ...(sale.petServiceData || []).map(item => ({ ...item, _type: 'pet' }))
+    ].filter((item: any) => item.parentDetalleId === planId);
+  };
 
   const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, carRentals, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
   const hasAnyProduct = tickets.length > 0 || hasOtherProducts;
@@ -225,14 +245,14 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
         {/* ══ HEADER ══════════════════════════════════════════════════ */}
         <div className="v-header">
           <div className="v-logo-block">
-            <img className="v-logo-img" src="/samtur_nuevo.png.png" alt="Samtur Logo" crossOrigin="anonymous" />
+            <img className="v-logo-img" src="/colombiaonline-logo.jpeg" alt="Colombia Online Logo" crossOrigin="anonymous" />
           </div>
           <div className="v-header-right">
-            <strong>Samtur Travel Agency</strong>
+            <strong>Colombia Online</strong>
             <br />
             NIT: 902062715-5<br />
-            
-            Direccioón: Calle 18 #18 143 Mall Estación de Servicios Medrano<br />
+
+            Dirección: Carrera 65A 13-157 Medellin, Aeropuerto Olaya Herrera, Local 146<br />
             Teléfono: +57 (312) 633 99 19<br />
             <strong>Fecha de Impresión:</strong> {currentDate}<br />
             <strong>Fecha de Venta:</strong> {formatDate(sale.date)}
@@ -248,11 +268,11 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           <div className="v-tb-item">
             <span className="v-tb-label">FORMA DE PAGO</span>
             <span className="v-tb-value">
-              {sale.paymentMethod 
-                ? sale.paymentMethod 
-                : (sale.payments && sale.payments.length > 0 
-                    ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method) 
-                    : '—')}
+              {sale.paymentMethod
+                ? sale.paymentMethod
+                : (sale.payments && sale.payments.length > 0
+                  ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method)
+                  : '—')}
             </span>
           </div>
           <div className="v-tb-item">
@@ -262,7 +282,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           <div className="v-tb-item">
             <span className="v-tb-label">ORDEN</span>
             <span className="v-tb-value v-tb-order">
-              #{sale.id}
+              #{formatSaleId(sale.id)}
               {sale.status === 'credito' ? (
                 <span className="v-badge-status v-status-credito">CRÉDITO</span>
               ) : (
@@ -335,16 +355,16 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                       <DataCell label="Nombre del Plan / Paquete" value={plan.planName || plan.packageName} highlight />
                       <DataCell label="Proveedor / Operador" value={plan.supplier} />
                       <DataCell label="Tipo de Paquete" value="Por Proveedor" />
-                      <DataCell 
-                        label="Lista de Pasajeros / Huéspedes" 
-                        value={(plan.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || '—'} 
-                        fullWidth={true} 
+                      <DataCell
+                        label="Lista de Pasajeros / Huéspedes"
+                        value={(plan.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || '—'}
+                        fullWidth={true}
                       />
                       {plan.observations && (
-                        <DataCell 
-                          label="Observaciones" 
-                          value={plan.observations} 
-                          fullWidth={true} 
+                        <DataCell
+                          label="Observaciones"
+                          value={plan.observations}
+                          fullWidth={true}
                         />
                       )}
                     </>
@@ -353,43 +373,104 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                       <DataCell label="Nombre del Plan / Paquete" value={plan.planName || plan.packageName} highlight />
                       <DataCell label="Hotel Incluido" value={plan.hotelName} />
                       <DataCell label="Proveedor / Operador" value={plan.supplier} />
-                      
+
                       <DataCell label="Fecha Inicio Viaje" value={plan.startDate ? formatDate(plan.startDate) : null} />
                       <DataCell label="Fecha Fin Viaje" value={plan.endDate ? formatDate(plan.endDate) : null} />
                       <DataCell label="Pasajeros (Resumen)" value={`${plan.adultsCount ?? 0} adulto(s) / ${plan.childrenCount ?? 0} niño(s)`} />
 
-                      <DataCell label="Aerolínea" value={(plan as any).airlineName || plan.airline} />
-                      <DataCell label="N° Vuelo" value={plan.flightNumber} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Empresa de Transporte" : "Aerolínea"} value={(plan as any).airlineName || plan.airline} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Placa / Vehículo" : "N° Vuelo"} value={plan.flightNumber} />
                       <DataCell label="Localizador / N° Reserva" value={plan.reservationNumber} />
 
-                      <DataCell label="N° Tiquete" value={plan.ticketNumber} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Tiquete / Puesto" : "N° Tiquete"} value={plan.ticketNumber} />
                       <DataCell label="N° Confirmación" value={plan.confirmationNumber} />
                       <DataCell label="" value={<span />} />
 
-                      <DataCell label="Fecha Salida Vuelo (Ida)" value={plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : null} />
-                      <DataCell label="Llegada Vuelo Ida" value={plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : null} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Fecha Salida (Ida)" : "Fecha Salida Vuelo (Ida)"} value={plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : null} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Llegada Destino (Ida)" : "Llegada Vuelo Ida"} value={plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : null} />
                       <DataCell label="" value={<span />} />
 
-                      <DataCell label="Fecha Regreso Vuelo (Regreso)" value={plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : null} />
-                      <DataCell label="Llegada Vuelo Regreso" value={plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : null} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Fecha Salida (Regreso)" : "Fecha Regreso Vuelo (Regreso)"} value={plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : null} />
+                      <DataCell label={plan.transportType === 'Terrestre' ? "Llegada Origen (Regreso)" : "Llegada Vuelo Regreso"} value={plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : null} />
                       <DataCell label="" value={<span />} />
 
-                      <DataCell 
-                        label="Lista de Pasajeros / Huéspedes" 
-                        value={(plan.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || '—'} 
-                        fullWidth={true} 
+                      <DataCell
+                        label="Lista de Pasajeros / Huéspedes"
+                        value={(plan.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || '—'}
+                        fullWidth={true}
                       />
 
                       {plan.observations && (
-                        <DataCell 
-                          label="Observaciones" 
-                          value={plan.observations} 
-                          fullWidth={true} 
+                        <DataCell
+                          label="Observaciones"
+                          value={plan.observations}
+                          fullWidth={true}
                         />
                       )}
                     </>
                   )}
                 </div>
+
+                {getChildrenForPlan(plan.detalleVentaId).length > 0 && (
+                  <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{color: '#3b82f6'}}>↳</span> SERVICIOS ADICIONALES VINCULADOS
+                    </div>
+                    {getChildrenForPlan(plan.detalleVentaId).map((child: any, cidx: number, arr: any[]) => {
+                      if (child._type === 'tour') {
+                        return (
+                          <div key={`child-${cidx}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '10px', padding: '8px 0', borderBottom: cidx < arr.length - 1 ? '1px dashed #cbd5e1' : 'none' }}>
+                            <div style={{ flex: '1 1 15%' }}>
+                              <strong style={{display: 'block', color: '#475569'}}>TOUR / ACTIVIDAD</strong>
+                              <span style={{color: '#0f172a', fontWeight: 'bold'}}>{child.selectedTour || child.tourNombre || '—'}</span>
+                            </div>
+                            <div style={{ flex: '1 1 20%' }}>
+                              <strong style={{display: 'block', color: '#475569'}}>PASAJEROS</strong>
+                              <span style={{color: '#0f172a'}}>
+                                {child.guests?.length > 0 ? child.guests.map((g: any) => g.name).join(', ') : (child.passengerName || '—')}
+                              </span>
+                            </div>
+                            <div style={{ flex: '1 1 12%' }}>
+                              <strong style={{display: 'block', color: '#475569'}}>IDIOMA GUÍA</strong>
+                              <span style={{color: '#0f172a'}}>{child.guideLanguage || '—'}</span>
+                            </div>
+                            <div style={{ flex: '1 1 20%' }}>
+                              <strong style={{display: 'block', color: '#475569'}}>PUNTO DE ENCUENTRO</strong>
+                              <span style={{color: '#0f172a'}}>{child.pickupPoint || '—'}</span>
+                            </div>
+                            <div style={{ flex: '1 1 20%' }}>
+                              <strong style={{display: 'block', color: '#475569'}}>OBSERVACIONES</strong>
+                              <span style={{color: '#0f172a'}}>{child.observations || '—'}</span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={`child-${cidx}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '10px', padding: '8px 0', borderBottom: cidx < arr.length - 1 ? '1px dashed #cbd5e1' : 'none' }}>
+                          <div style={{ flex: '1 1 20%' }}>
+                            <strong style={{display: 'block', color: '#475569'}}>SERVICIO</strong>
+                            <span style={{color: '#0f172a', fontWeight: 'bold'}}>
+                              {child.selectedTour || child.hotelName || child.airlineName || child.vehicleCategory || child.insuranceType || child.tipoTramiteMigratorio || child.planDatos || child.fincaName || child.reservationName || child._type.toUpperCase() || 'Servicio Extra'}
+                            </span>
+                          </div>
+                          <div style={{ flex: '1 1 20%' }}>
+                            <strong style={{display: 'block', color: '#475569'}}>PROVEEDOR</strong>
+                            <span style={{color: '#0f172a'}}>{child.supplier || '—'}</span>
+                          </div>
+                          <div style={{ flex: '1 1 20%' }}>
+                            <strong style={{display: 'block', color: '#475569'}}>FECHA</strong>
+                            <span style={{color: '#0f172a'}}>{child.preferredDate || child.startDate || child.checkInDate || child.date ? formatDate(child.preferredDate || child.startDate || child.checkInDate || child.date) : '—'}</span>
+                          </div>
+                          <div style={{ flex: '1 1 20%' }}>
+                            <strong style={{display: 'block', color: '#475569'}}>RESERVA / LOCALIZADOR</strong>
+                            <span style={{color: '#0f172a'}}>{child.reservationNumber || child.ticketNumber || '—'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </React.Fragment>
             ))}
           </ProductCard>
@@ -508,10 +589,10 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Punto de Recogida" value={tour.pickupPoint} />
                   <DataCell label="Idioma Guía" value={tour.guideLanguage} />
                   <DataCell label="Transporte" value={tour.needsTransport ? 'Incluido' : 'No requiere'} />
-                  <DataCell 
-                    label="Integrantes del Tour" 
-                    value={(tour.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || tour.passengerName} 
-                    fullWidth={true} 
+                  <DataCell
+                    label="Integrantes del Tour"
+                    value={(tour.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || tour.passengerName}
+                    fullWidth={true}
                   />
                   {tour.observations && (
                     <DataCell label="Toures" value={tour.observations} fullWidth={true} />
@@ -630,23 +711,23 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ FOOTNOTES ═══════════════════════════════════════════════ */}
         <div className="v-footnotes">
-          Orden <strong>#{sale.id}</strong>
-          
+          Orden <strong>#{formatSaleId(sale.id)}</strong>
+
         </div>
 
         {/* ══ PAYMENT ═════════════════════════════════════════════════ */}
         <div className="v-payment">
           <div className="v-payment-col">
             <h4>Información de Pago</h4>
-            <div className="v-payment-row"><label>Agencia:</label><span>Samtur Travel</span></div>
+            <div className="v-payment-row"><label>Agencia:</label><span>Colombia Online</span></div>
             <div className="v-payment-row">
               <label>Forma de Pago:</label>
               <span>
-                {sale.paymentMethod 
-                  ? sale.paymentMethod 
-                  : (sale.payments && sale.payments.length > 0 
-                      ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method) 
-                      : '—')}
+                {sale.paymentMethod
+                  ? sale.paymentMethod
+                  : (sale.payments && sale.payments.length > 0
+                    ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method)
+                    : '—')}
               </span>
             </div>
             <div className="v-endorsements">⚠ LOS SERVICIOS ESTÁN SUJETOS A LAS POLÍTICAS DE CADA PROVEEDOR</div>
@@ -670,16 +751,16 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           <h4>TÉRMINOS Y CONDICIONES</h4>
           <br />
           No olvide reconfirmar el horario de los vuelos y servicios entre 24 y 48 horas antes de la salida. Verifique que cuente con todos los documentos necesarios para viajar.<br /><br />
-          Samtur agradece que haya elegido nuestros servicios y le desea un excelente viaje.<br /><br />
+          Colombia Online agradece que haya elegido nuestros servicios y le desea un excelente viaje.<br /><br />
           <strong>1.</strong> En vuelos nacionales, llegue como mínimo dos horas antes del vuelo para el chequeo y embarque.<br /><br />
           <strong>2.</strong> En vuelos internacionales, llegue como mínimo cuatro horas antes del vuelo para el chequeo y embarque.<br /><br />
           <strong>3.</strong> El checkin o pase de abordar es valor agregado a los servicios prestados, este servicio se brinda dentro del tiempo segun la aereolinea.<br />
-          Se habilitará 24 horas antes de la salida del vuelo y se cerrará 4 horas antes del vuelo. Si no se realiza el check-in en este periodo, Samtur no se hace responsable por los gastos o inconvenientes que esto pueda generar.<br /><br />
+          Se habilitará 24 horas antes de la salida del vuelo y se cerrará 4 horas antes del vuelo. Si no se realiza el check-in en este periodo, Colombia Online no se hace responsable por los gastos o inconvenientes que esto pueda generar.<br /><br />
           <strong>4.</strong> Todo pasajero deberá exhibir el documento de identidad pertinente ante la aerolínea y autoridades que lo requieran.<br /><br />
           <strong>5.</strong> Los cambios, cancelaciones, reembolsos y penalidades están sujetos a las políticas y condiciones de cada proveedor. Los costos adicionales que se generen por dichas modificaciones serán asumidos por el pasajero.<br /><br />
-          <strong>6.</strong> <strong>Ley de Protección de Menores:</strong> En cumplimiento de la Ley 679 de 2001 y la Ley 1098 de 2006, nuestra agencia rechaza y denuncia toda forma de explotación, pornografía y turismo sexual con niños, niñas y adolescentes. Estas conductas constituyen un delito y son sancionadas por la legislación colombiana.
+          <strong>Ley de Protección de Menores:</strong> En cumplimiento de la Ley 679 de 2001 y la Ley 1098 de 2006, nuestra agencia rechaza y denuncia toda forma de explotación, pornografía y turismo sexual con niños, niñas y adolescentes. Estas conductas constituyen un delito y son sancionadas por la legislación colombiana.
           <div className="v-company" style={{ marginTop: '12px' }}>
-            Samtur Travel Agency | calle 18 # 18 143 mall estación de servicios medrano | Comercial@samturtravel.com
+            Colombia Online | Carrera 65A 13-157 Medellin, Aeropuerto Olaya Herrera, Local 146 | Comercial@colombia-online.com
           </div>
           <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px', fontSize: '11px' }}>
             <strong>▲ ATENCIÓN:</strong> Por favor revise detenidamente todos los datos de este voucher (nombres, fechas, horarios y servicios). Cualquier inconsistencia debe ser reportada de inmediato a su asesor.
@@ -689,14 +770,14 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
         {/* ══ FOOTER ══════════════════════════════════════════════════ */}
         <div className="v-footer">
           <div>
-            <div className="v-footer-brand">Sam<span>tur</span></div>
-            <div className="v-footer-tagline">Travel</div>
+            <div className="v-footer-brand">Colombia<span>Online</span></div>
+            <div className="v-footer-tagline">Agencia de Viajes</div>
           </div>
           <div className="v-footer-right">
             <div className="v-footer-line">
               <p>
-                www.samturtravel.com &nbsp;|&nbsp; info@samturtravel.com<br />
-                © {new Date().getFullYear()} Samtur. Todos los derechos reservados.
+                www.colombia-online.com &nbsp;|&nbsp; info@colombia-online.com<br />
+                © {new Date().getFullYear()} Colombia Online. Todos los derechos reservados.
               </p>
             </div>
           </div>

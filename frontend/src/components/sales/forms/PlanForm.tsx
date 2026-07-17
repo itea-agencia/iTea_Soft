@@ -39,14 +39,21 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
   const handleSelectPackage = (packageName: string) => {
     const pkg = packages.find((p: any) => p.name === packageName);
     if (pkg) {
+      const isTerrestre = pkg.flight?.transportType === 'Terrestre';
+      const rawFlightNumber = pkg.flight?.legs?.[0]?.flightNumber || "";
+      const processedFlightNumber = isTerrestre 
+        ? rawFlightNumber 
+        : rawFlightNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 12);
+
       onChange({
         packageId: pkg.id,
         packageName: pkg.name,
         planName: pkg.name,
         hotelName: pkg.accommodation?.hotel || "",
         supplier: pkg.accommodation?.supplier || "",
+        transportType: pkg.flight?.transportType || "Aéreo",
         airline: pkg.flight?.airline || "",
-        flightNumber: (pkg.flight?.legs?.[0]?.flightNumber || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8),
+        flightNumber: processedFlightNumber,
         observations: `Incluye: ${pkg.includedServices || 'N/A'}\nNo Incluye: ${pkg.notIncluded || 'N/A'}`,
         adultsCount: 2,
         childrenCount: 0,
@@ -76,15 +83,12 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           </button>
           <button
             type="button"
-            onClick={() => onChange({ packageType: "supplier" })}
-            className={`py-3 px-4 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 ${
-              plan.packageType === "supplier"
-                ? "border-primary bg-primary/5 text-primary shadow-sm"
-                : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
-            }`}
+            disabled
+            className="py-3 px-4 rounded-xl text-sm font-bold border-2 transition-all flex items-center justify-center gap-2 border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed opacity-70"
+            title="Sección inhabilitada temporalmente por mantenimiento"
           >
             <Users size={16} />
-            Por Proveedor
+            Por Proveedor (Inhabilitado)
           </button>
         </div>
       </div>
@@ -131,7 +135,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           Datos del Plan Vacacional
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Plan *">
+          <FormField label="Nombre del Plan">
             <Input
               value={plan.planName}
               onChange={(e) => onChange({ planName: e.target.value })}
@@ -150,13 +154,32 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 />
               </FormField>
 
-              <FormField label="Aerolínea">
-                <Combobox
-                  value={plan.airline}
-                  onChange={(val) => onChange({ airline: val })}
-                  options={data.config.airlines.map((a: any) => ({ value: a.name, label: a.name }))}
-                  placeholder="Seleccionar aerolínea..."
+              <FormField label="Tipo de Transporte">
+                <Select
+                  value={plan.transportType || "Aéreo"}
+                  onChange={(e) => onChange({ transportType: e.target.value as 'Aéreo' | 'Terrestre' })}
+                  options={[
+                    { value: "Aéreo", label: "Aéreo" },
+                    { value: "Terrestre", label: "Terrestre" }
+                  ]}
                 />
+              </FormField>
+
+              <FormField label={plan.transportType === 'Terrestre' ? "Empresa de Transporte" : "Aerolínea"}>
+                {plan.transportType === 'Terrestre' ? (
+                  <Input
+                    value={plan.airline}
+                    onChange={(e) => onChange({ airline: e.target.value })}
+                    placeholder="Ej: Flota Magdalena"
+                  />
+                ) : (
+                  <Combobox
+                    value={plan.airline}
+                    onChange={(val) => onChange({ airline: val })}
+                    options={data.config.airlines.map((a: any) => ({ value: a.name, label: a.name }))}
+                    placeholder="Seleccionar aerolínea..."
+                  />
+                )}
               </FormField>
               <FormField label="Adultos">
                 <Input
@@ -197,35 +220,35 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 required
                 value={plan.reservationNumber}
                 onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase();
                   onChange({ reservationNumber: cleaned });
                 }}
-                placeholder="Código de hotel (Máx 20)"
+                placeholder="Código (Máx 20)"
                 maxLength={20}
               />
             </FormField>
-            <FormField label={<span>Número de Vuelo <span className="text-red-500">*</span></span>}>
+            <FormField label={<span>{plan.transportType === 'Terrestre' ? 'Placa / Vehículo' : 'Número de Vuelo'} <span className="text-red-500">*</span></span>}>
               <Input
                 required
                 value={plan.flightNumber}
                 onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8);
+                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase().slice(0, 12);
                   onChange({ flightNumber: cleaned });
                 }}
-                placeholder="Ej: AV9301"
-                maxLength={8}
+                placeholder={plan.transportType === 'Terrestre' ? 'Ej: SRG123' : 'Ej: AV9301'}
+                maxLength={12}
               />
             </FormField>
-            <FormField label={<span>Número de Tiquete <span className="text-red-500">*</span></span>}>
+            <FormField label={<span>{plan.transportType === 'Terrestre' ? 'Tiquete / Puesto' : 'Número de Tiquete'} {plan.transportType !== 'Terrestre' && <span className="text-red-500">*</span>}</span>}>
               <Input
-                required
+                required={plan.transportType !== 'Terrestre'}
                 value={plan.ticketNumber}
                 onChange={(e) => {
-                  const cleaned = e.target.value.replace(/\D/g, "").slice(0, 14);
+                  const cleaned = plan.transportType === 'Terrestre' ? e.target.value : e.target.value.replace(/\D/g, "").slice(0, 15);
                   onChange({ ticketNumber: cleaned });
                 }}
-                placeholder="13 a 14 dígitos numéricos"
-                maxLength={14}
+                placeholder={plan.transportType === 'Terrestre' ? 'Opcional (Ej: Asiento 12)' : '13 a 14 dígitos numéricos'}
+                maxLength={20}
               />
             </FormField>
              <FormField label={<span>Confirmación <span className="text-red-500">*</span></span>}>
@@ -233,14 +256,14 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                  required
                  value={plan.confirmationNumber || ""}
                  onChange={(e) => {
-                   const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
+                   const cleaned = e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase().slice(0, 10);
                    onChange({ confirmationNumber: cleaned });
                  }}
-                 placeholder="6 caracteres (Ej: AB1234)"
-                 maxLength={6}
+                 placeholder={plan.transportType === 'Terrestre' ? 'Ej: CONF123' : '6 caracteres (Ej: AB1234)'}
+                 maxLength={10}
                />
              </FormField>
-            <FormField label={<span>Fecha Ida (Vuelo) <span className="text-red-500">*</span></span>}>
+            <FormField label={<span>{plan.transportType === 'Terrestre' ? 'Salida (Origen)' : 'Fecha Ida (Vuelo)'} <span className="text-red-500">*</span></span>}>
               <DateTimePicker
                 value={plan.flightDepartureDate || ""}
                 onChange={(val) => onChange({ flightDepartureDate: val })}
@@ -249,7 +272,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 fieldName="Salida de ida del plan"
               />
             </FormField>
-            <FormField label={<span>Llegada Ida (Vuelo) <span className="text-red-500">*</span></span>}>
+            <FormField label={<span>{plan.transportType === 'Terrestre' ? 'Llegada (Destino)' : 'Llegada Ida (Vuelo)'} <span className="text-red-500">*</span></span>}>
               <DateTimePicker
                 value={plan.flightDepartureArrivalDate || ""}
                 onChange={(val) => onChange({ flightDepartureArrivalDate: val })}
@@ -258,7 +281,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 fieldName="Llegada de ida del plan"
               />
             </FormField>
-            <FormField label={<span>Fecha Vuelta (Vuelo) <span className="text-red-500">*</span></span>}>
+            <FormField label={<span>{plan.transportType === 'Terrestre' ? 'Regreso (Destino)' : 'Fecha Vuelta (Vuelo)'} <span className="text-red-500">*</span></span>}>
               <DateTimePicker
                 value={plan.flightReturnDate || ""}
                 onChange={(val) => onChange({ flightReturnDate: val })}
@@ -267,7 +290,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 fieldName="Salida de vuelta del plan"
               />
             </FormField>
-            <FormField label={<span>Llegada Vuelta (Vuelo) <span className="text-red-500">*</span></span>}>
+            <FormField label={<span>{plan.transportType === 'Terrestre' ? 'Llegada Regreso (Origen)' : 'Llegada Vuelta (Vuelo)'} <span className="text-red-500">*</span></span>}>
               <DateTimePicker
                 value={plan.flightReturnArrivalDate || ""}
                 onChange={(val) => onChange({ flightReturnArrivalDate: val })}
@@ -303,7 +326,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           <Briefcase size={14} /> Finanzas
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Proveedor *">
+          <FormField label="Nombre del Proveedor">
             <Combobox
               value={plan.supplier}
               onChange={(val) => onChange({ supplier: val })}
@@ -311,7 +334,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               placeholder="Seleccionar proveedor..."
             />
           </FormField>
-          <FormField label="Costo Proveedor *">
+          <FormField label="Costo Proveedor">
             <CurrencyInput
               required
               value={plan.supplierCost === 0 ? "" : plan.supplierCost}
@@ -322,7 +345,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               }
             />
           </FormField>
-          <FormField label="Valor TA *">
+          <FormField label="Valor TA">
             <CurrencyInput
               required
               value={plan.ta === 0 ? "" : plan.ta}
@@ -333,17 +356,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               }
             />
           </FormField>
-          <FormField label="Valor TA CRE">
-            <CurrencyInput
-              value={plan.taCre === 0 ? "" : plan.taCre}
-              onChange={(val) =>
-                onChange({
-                  taCre: val === "" ? 0 : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Método de Pago *">
+          <FormField label="Método de Pago">
             <Combobox
               value={plan.supplierPaymentMethod || ""}
               onChange={(val) => onChange({ supplierPaymentMethod: val })}
@@ -354,23 +367,6 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               placeholder="Seleccionar método..."
             />
           </FormField>
-        </div>
-        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">
-              Costo Total del Servicio
-            </span>
-            <span className="text-[9px] text-gray-400 dark:text-slate-400 font-medium">
-              (Costo Proveedor + TA + TA CRE)
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-end">
-              <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
-                ${((Number(plan.supplierCost) || 0) + (Number(plan.ta) || 0) + (Number(plan.taCre) || 0)).toLocaleString('es-CO', { minimumFractionDigits: 0 })}
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 

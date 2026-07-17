@@ -218,6 +218,7 @@ export interface GuestInfo {
 }
 
 export interface HotelData {
+  linkedToPlanIndex?: number | null;
   hotelName: string;
   destination: string;
   supplier: string;
@@ -234,6 +235,9 @@ export interface HotelData {
 }
 
 export interface PlanData {
+  detalleVentaId?: string;
+  parentDetalleId?: string;
+  linkedToPlanIndex?: number | null;
   planName: string;
   hotelName: string;
   supplierCost: number;
@@ -262,12 +266,14 @@ export interface PlanData {
   airline: string;
   guests: GuestInfo[];
   packageType?: 'own' | 'supplier';
+  transportType?: 'Aéreo' | 'Terrestre';
   voucher?: { name: string; base64: string };
   vouchers?: Array<{ name: string; base64: string }>;
   sendVoucher?: boolean;
 }
 
 export interface InsuranceData {
+  linkedToPlanIndex?: number | null;
   insuranceType: string;
   phone: string;
   supplier: string;
@@ -279,6 +285,7 @@ export interface InsuranceData {
 }
 
 export interface TicketData {
+  linkedToPlanIndex?: number | null;
   airline: string;
   supplier: string;
   reservationNumber: string;
@@ -312,6 +319,7 @@ export interface TicketData {
 }
 
 export interface CheckInData {
+  linkedToPlanIndex?: number | null;
   passengerName: string;
   docType: string;
   docNumber: string;
@@ -332,6 +340,7 @@ export interface CheckInData {
 }
 
 export interface MigrationData {
+  linkedToPlanIndex?: number | null;
   passengerName: string;
   birthDate: string;
   nationality: string;
@@ -351,6 +360,7 @@ export interface MigrationData {
 }
 
 export interface SimCardData {
+  linkedToPlanIndex?: number | null;
   passengerName: string;
   docNumber: string;
   destinationCountry: string;
@@ -370,6 +380,7 @@ export interface SimCardData {
 }
 
 export interface CarRentalData {
+  linkedToPlanIndex?: number | null;
   mainDriver: string;
   licenseNumber: string;
   pickupDate: string;
@@ -389,6 +400,7 @@ export interface CarRentalData {
 }
 
 export interface FincaData {
+  linkedToPlanIndex?: number | null;
   fincaName: string;
   fincaAddress: string;
   fincaCity: string;
@@ -413,6 +425,7 @@ export interface FincaData {
 }
 
 export interface TourData {
+  linkedToPlanIndex?: number | null;
   passengerName: string;
   selectedTour: string;
   preferredDate: string;
@@ -461,6 +474,7 @@ export interface ConventionData {
 }
 
 export interface RestaurantData {
+  linkedToPlanIndex?: number | null;
   reservationName: string;
   dateTime: string;
   peopleCount: number;
@@ -516,6 +530,7 @@ export interface PassportData {
 }
 
 export interface PetServiceData {
+  linkedToPlanIndex?: number | null;
   ownerName: string;
   petName: string;
   species: string;
@@ -627,6 +642,7 @@ export interface CommissionAgent {
   email?: string;
   accumulated?: number;
   paymentThreshold?: number;
+  observacion?: string;
 }
 
 export interface TravelPackage {

@@ -5,6 +5,7 @@ const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
 const { getSamturLogoBase64 } = require('../utils/logoHelper');
+const crypto = require('crypto');
 
 exports.list = async (req, res, next) => {
   try {
@@ -390,6 +391,7 @@ const PRODUCT_TRANSFORMS = {
       observations: p.observaciones,
       guests: passengers.map(p => ({ name: p.nombreCompleto, docType: String(p.tipoDocumento || ''), docNumber: p.nroDocumento || '' })),
       packageType: p.tipoPaquete || 'own',
+      transportType: p.tipoTransporte || 'Aéreo',
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
@@ -705,7 +707,13 @@ exports.getById = async (req, res, next) => {
       const passengers = mapPassengers(d);
       const handler = PRODUCT_TRANSFORMS[d.categoria];
       if (handler) {
-        handler(d, passengers, (resultMap[d.categoria] = resultMap[d.categoria] || []), venta);
+        const arr = resultMap[d.categoria] = resultMap[d.categoria] || [];
+        const prevLength = arr.length;
+        handler(d, passengers, arr, venta);
+        if (arr.length > prevLength) {
+          arr[arr.length - 1].parentDetalleId = d.parentDetalleId;
+          arr[arr.length - 1].detalleVentaId = d.id;
+        }
       }
     }
 
@@ -861,7 +869,8 @@ const PRODUCT_HANDLERS = {
         menoresCount: d.childrenCount || 0,
         numeroConfirmacion: d.confirmationNumber || null,
         observaciones: d.observations || null,
-        tipoPaquete: d.packageType || 'own'
+        tipoPaquete: d.packageType || 'own',
+        tipoTransporte: d.transportType || 'Aéreo'
       };
     }
   },
@@ -1182,6 +1191,16 @@ async function createProductItems(tx, ventaId, clienteId, data) {
   const personaId = cliente?.personaId;
 
   for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
+    if (Array.isArray(data[field])) {
+      for (let item of data[field]) {
+        if (item && Object.keys(item).length > 0) {
+          item._generatedId = crypto.randomUUID();
+        }
+      }
+    }
+  }
+
+  for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
     const items = Array.isArray(data[field]) ? data[field] : [];
     for (const item of items) {
       if (!item || Object.keys(item).length === 0) continue;
@@ -1190,22 +1209,34 @@ async function createProductItems(tx, ventaId, clienteId, data) {
         const resolvedSupplierId = await resolveSupplierId(tx, item.supplier, memCache);
         const resolvedSupplierPaymentMethodId = await resolvePaymentMethodId(tx, item.supplierPaymentMethod, memCache);
 
-        const detalle = await tx.detalleVenta.create({
-          data: {
-            ventaId,
-            categoria: handler.category,
-            nombreServicio: handler.nombreServicio,
-            subtotal: (item.supplierCost || 0) + (item.ta || 0),
-            costoProveedor: item.supplierCost || 0,
-            ta: item.ta || 0,
-            proveedorId: resolvedSupplierId,
-            metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
-            origen: item.legs?.[0]?.origin || item.pickupLocation || null,
-            destino: item.destination || item.destinationCountry || item.legs?.[0]?.destination || null,
-            fechaInicioViaje: item.startDate ? new Date(item.startDate) : item.departureDate ? new Date(item.departureDate) : item.pickupDate ? new Date(item.pickupDate) : null,
-            fechaFinViaje: item.endDate ? new Date(item.endDate) : item.arrivalDate ? new Date(item.arrivalDate) : item.returnDate ? new Date(item.returnDate) : null,
-            observaciones: item.observations || null
+        let parentDetalleId = null;
+        if (item.linkedToPlanIndex !== undefined && item.linkedToPlanIndex !== null) {
+          const parentPlan = data['planData']?.[item.linkedToPlanIndex];
+          if (parentPlan && parentPlan._generatedId) {
+            parentDetalleId = parentPlan._generatedId;
           }
+        }
+
+        const detalleObj = {
+          id: item._generatedId,
+          parentDetalleId,
+          ventaId,
+          categoria: handler.category,
+          nombreServicio: handler.nombreServicio,
+          subtotal: (item.supplierCost || 0) + (item.ta || 0),
+          costoProveedor: item.supplierCost || 0,
+          ta: item.ta || 0,
+          proveedorId: resolvedSupplierId,
+          metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
+          origen: item.legs?.[0]?.origin || item.pickupLocation || null,
+          destino: item.destination || item.destinationCountry || item.legs?.[0]?.destination || null,
+          fechaInicioViaje: item.startDate ? new Date(item.startDate) : item.departureDate ? new Date(item.departureDate) : item.pickupDate ? new Date(item.pickupDate) : null,
+          fechaFinViaje: item.endDate ? new Date(item.endDate) : item.arrivalDate ? new Date(item.arrivalDate) : item.returnDate ? new Date(item.returnDate) : null,
+          observaciones: item.observations || null
+        };
+        
+        const detalle = await tx.detalleVenta.create({
+          data: detalleObj
         });
 
         const productData = await handler.transform(item, detalle.id, tx);

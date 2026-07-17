@@ -127,8 +127,7 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
               options={[
                 { value: '', label: 'Seleccione una cobertura' },
                 { value: 'Nacional', label: 'Nacional' },
-                { value: 'Internacional', label: 'Internacional' },
-                { value: 'Ambos', label: 'Ambas' }
+                { value: 'Internacional', label: 'Internacional' }
               ]}
               error={errors.type}
             />
@@ -202,7 +201,7 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
               error={errors.phone} 
             />
           </FormField>
-          <FormField label="Enlace del Sitio Web (Link)" error={errors.website}>
+          <FormField label="Enlace del Sitio Web (Opcional)" error={errors.website}>
             <Input 
               value={formData.website || ''} 
               onChange={e => {
@@ -413,20 +412,38 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
               <PlaneTakeoff size={14} className="text-blue-600" /> Detalles del Vuelo (Plantilla)
             </h4>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Aerolínea">
-                <Combobox 
-                  value={formData.flight?.airline || ''} 
-                  onChange={val => setFormData({ ...formData, flight: { ...formData.flight, airline: val } })} 
-                  options={data.config.airlines.map((a: any) => ({ value: a.name, label: a.name }))}
-                  placeholder="Seleccionar aerolínea..."
-                />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField label="Tipo de Transporte">
+                <select
+                  value={formData.flight?.transportType || 'Aéreo'}
+                  onChange={e => setFormData({ ...formData, flight: { ...formData.flight, transportType: e.target.value as 'Aéreo' | 'Terrestre' } })}
+                  className="w-full text-sm p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                >
+                  <option value="Aéreo">Aéreo</option>
+                  <option value="Terrestre">Terrestre</option>
+                </select>
               </FormField>
-              <FormField label="Ruta Resumen">
+              <FormField label={formData.flight?.transportType === 'Terrestre' ? "Empresa de Transporte" : "Aerolínea"}>
+                {formData.flight?.transportType === 'Terrestre' ? (
+                  <Input 
+                    value={formData.flight?.airline || ''} 
+                    onChange={e => setFormData({ ...formData, flight: { ...formData.flight, airline: e.target.value } })} 
+                    placeholder="Ej. Expreso Brasilia"
+                  />
+                ) : (
+                  <Combobox 
+                    value={formData.flight?.airline || ''} 
+                    onChange={val => setFormData({ ...formData, flight: { ...formData.flight, airline: val } })} 
+                    options={data.config.airlines.map((a: any) => ({ value: a.name, label: a.name }))}
+                    placeholder="Seleccionar aerolínea..."
+                  />
+                )}
+              </FormField>
+              <FormField label={formData.flight?.transportType === 'Terrestre' ? "Ruta Resumen" : "Ruta Resumen"}>
                 <Input 
                   value={formData.flight?.route || ''} 
                   onChange={e => setFormData({ ...formData, flight: { ...formData.flight, route: e.target.value } })} 
-                  placeholder="Ej. BOG-CUN-BOG"
+                  placeholder={formData.flight?.transportType === 'Terrestre' ? "Ej. BOG-CUN-BOG" : "Ej. BOG-CUN-BOG"}
                 />
               </FormField>
             </div>
@@ -438,6 +455,7 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                   <ArrowRight size={12} className="text-primary" /> Trayectos de Ida
                 </h5>
                 <Button 
+                  type="button"
                   variant="outline" 
                   size="sm" 
                   className="h-7 text-[10px]"
@@ -496,7 +514,7 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                         placeholder="Ej. CUN"
                       />
                     </FormField>
-                    <FormField label="N° Vuelo">
+                    <FormField label={formData.flight?.transportType === 'Terrestre' ? "Placa/Vehículo" : "N° Vuelo"}>
                       <Input 
                         value={leg.flightNumber} 
                         onChange={e => {
@@ -504,10 +522,10 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                           nextLegs[idx] = { ...nextLegs[idx], flightNumber: e.target.value };
                           setFormData({ ...formData, flight: { ...formData.flight, legs: nextLegs, flightMode: 'round_trip' } });
                         }}
-                        placeholder="Ej. AV93"
+                        placeholder={formData.flight?.transportType === 'Terrestre' ? "Ej. WXM123" : "Ej. AV93"}
                       />
                     </FormField>
-                    <FormField label="Asiento">
+                    <FormField label={formData.flight?.transportType === 'Terrestre' ? "Puesto (Opcional)" : "Asiento"}>
                       <Input 
                         value={leg.seat} 
                         onChange={e => {
@@ -515,7 +533,7 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                           nextLegs[idx] = { ...nextLegs[idx], seat: e.target.value };
                           setFormData({ ...formData, flight: { ...formData.flight, legs: nextLegs, flightMode: 'round_trip' } });
                         }}
-                        placeholder="Ej. 12A"
+                        placeholder={formData.flight?.transportType === 'Terrestre' ? "Ej. 4" : "Ej. 12A"}
                       />
                     </FormField>
                   </div>
@@ -545,18 +563,18 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                     placeholder="Ej. BOG"
                   />
                 </FormField>
-                <FormField label="N° Vuelo">
+                <FormField label={formData.flight?.transportType === 'Terrestre' ? "Placa/Vehículo" : "N° Vuelo"}>
                   <Input 
                     value={formData.flight?.returnLeg?.flightNumber || ''} 
                     onChange={e => setFormData({ ...formData, flight: { ...formData.flight, returnLeg: { ...formData.flight?.returnLeg, flightNumber: e.target.value }, flightMode: 'round_trip' } })}
-                    placeholder="Ej. AV94"
+                    placeholder={formData.flight?.transportType === 'Terrestre' ? "Ej. WXM123" : "Ej. AV94"}
                   />
                 </FormField>
-                <FormField label="Asiento">
+                <FormField label={formData.flight?.transportType === 'Terrestre' ? "Puesto (Opcional)" : "Asiento"}>
                   <Input 
                     value={formData.flight?.returnLeg?.seat || ''} 
                     onChange={e => setFormData({ ...formData, flight: { ...formData.flight, returnLeg: { ...formData.flight?.returnLeg, seat: e.target.value }, flightMode: 'round_trip' } })}
-                    placeholder="Ej. 14C"
+                    placeholder={formData.flight?.transportType === 'Terrestre' ? "Ej. 4" : "Ej. 14C"}
                   />
                 </FormField>
               </div>
@@ -564,27 +582,25 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField label="Plan de Equipaje">
-                <Select
+                <Combobox
                   value={formData.flight?.baggagePlan || ''}
-                  onChange={(e) => {
-                    const plan = data.config.baggage.find((b: any) => `${b.airlineName} - ${b.fareType}` === e.target.value);
+                  onChange={(val) => {
+                    const plan = data.config.baggage.find((b: any) => `${b.airlineName} - ${b.fareType}` === val);
                     setFormData({ 
                       ...formData, 
                       flight: { 
                         ...formData.flight, 
-                        baggagePlan: e.target.value,
+                        baggagePlan: val,
                         cabinBaggage: plan ? plan.carryOn : formData.flight?.cabinBaggage,
                         checkedBaggage: plan ? plan.checkedBag : formData.flight?.checkedBaggage
                       } 
                     });
                   }}
-                  options={[
-                    { value: '', label: 'Seleccionar plan...' },
-                    ...data.config.baggage.map((b: any) => ({
-                      value: `${b.airlineName} - ${b.fareType}`,
-                      label: `${b.airlineName} - ${b.fareType}`,
-                    })),
-                  ]}
+                  options={data.config.baggage.map((b: any) => ({
+                    value: `${b.airlineName} - ${b.fareType}`,
+                    label: `${b.airlineName} - ${b.fareType}`,
+                  }))}
+                  placeholder="Seleccionar plan..."
                 />
               </FormField>
               
@@ -620,7 +636,6 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                   options={[
                     { value: "", label: "Seleccionar tipo..." },
                     { value: "hotel", label: "Hotel" },
-                    { value: "hotel_turistico", label: "Hotel Turístico" },
                     { value: "resort", label: "Resort / Todo Incluido" },
                     { value: "boutique", label: "Hotel Boutique" },
                     { value: "apartamento", label: "Apartamento / AirBnB" },

@@ -638,10 +638,9 @@
   justify-content: space-between;
 }
 
-.itea-voucher .v-page-content-temp {
+.itea-voucher .v-content {
+  padding: 8px 36px;
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
+  display: block;
   background: transparent !important;
 }
-
