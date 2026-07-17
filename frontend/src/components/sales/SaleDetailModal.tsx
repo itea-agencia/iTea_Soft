@@ -100,6 +100,7 @@ export default function SaleDetailModal({
       } else {
         setLoading(true);
         setError("");
+        setFullSale(null);
         api.getSale(selectedSale.id).then(fetched => {
           setFullSale(fetched);
         }).catch(() => {
@@ -123,7 +124,8 @@ export default function SaleDetailModal({
 
   if (!selectedSale) return null;
 
-  const sale = fullSale || selectedSale;
+  const currentFullSale = fullSale?.id === selectedSale.id ? fullSale : null;
+  const sale = currentFullSale || selectedSale;
   const client = clients.find((c) => c.id === sale.clientId);
   // Find full responsable data if the sale has one assigned
   const responsable = sale.responsableId
@@ -212,15 +214,21 @@ export default function SaleDetailModal({
         </Button>
       }
     >
-      <div className="space-y-6">
-        {error && (
-          <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            <AlertCircle size={14} />
-            {error}
-          </div>
-        )}
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm font-medium text-gray-500 animate-pulse">Cargando detalles completos...</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {error && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <AlertCircle size={14} />
+              {error}
+            </div>
+          )}
 
-        {/* Sección Venta */}
+          {/* Sección Venta */}
         <div>
           <h4 className="text-sm font-bold text-primary border-b border-gray-200 pb-2 mb-3">
             Información de la Venta
@@ -538,6 +546,7 @@ export default function SaleDetailModal({
           );
         })()}
       </div>
+      )}
     </Modal>
   );
 }
