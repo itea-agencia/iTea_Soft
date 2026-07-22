@@ -7,6 +7,7 @@ import {
   CheckInData,
   MigrationData,
   SimCardData,
+  BaggageData,
   CarRentalData,
   FincaData,
   TourData,
@@ -66,6 +67,7 @@ export interface WizardFormData {
   checkIns: CheckInData[];
   migrations: MigrationData[];
   simCards: SimCardData[];
+  baggages: BaggageData[];
   carRentals: CarRentalData[];
   fincas: FincaData[];
   tours: TourData[];
@@ -245,6 +247,23 @@ export const INITIAL_SIMCARD = (client?: any): SimCardData => ({
   supplierName: "",
   supplierCost: 0,
   ta: 0,
+});
+
+export const INITIAL_BAGGAGE = (client?: any): BaggageData => ({
+  passengerName: client?.name || "",
+  airline: "",
+  airlineId: undefined,
+  reservationNumber: "",
+  fareType: "",
+  personalItem: "No",
+  carryOn: "No",
+  checkedBag: "No",
+  supplierName: "",
+  supplierCost: 0,
+  taCre: 0,
+  ta: 0,
+  notes: "",
+  sendVoucher: false,
 });
 
 export const INITIAL_CAR_RENTAL = (client?: any): CarRentalData => ({
@@ -437,6 +456,7 @@ export const INITIAL_FORM: WizardFormData = {
   checkIns: [],
   migrations: [],
   simCards: [],
+  baggages: [],
   carRentals: [],
   fincas: [],
   tours: [],

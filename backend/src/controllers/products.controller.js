@@ -4,7 +4,7 @@ const { success, error } = require('../utils/apiResponse');
 const CATEGORIES = {
   ticket: 'tiqueteria', hotel: 'hoteleria', insurance: 'seguros_viaje',
   plan: 'planes', checkin: 'checkin', migration: 'documentacion_migratoria',
-  simcard: 'simcard', carRental: 'renta_vehiculos', finca: 'renta_fincas',
+  simcard: 'simcard', baggage: 'equipaje', carRental: 'renta_vehiculos', finca: 'renta_fincas',
   tour: 'tours', convention: 'centros_convencion', restaurant: 'restaurantes',
   visa: 'visa', passport: 'pasaporte', petService: 'servicio_mascotas'
 };
@@ -56,8 +56,9 @@ async function createDetalleProducto(tx, ventaId, categoria, data) {
       ventaId,
       categoria,
       nombreServicio: data.nombreServicio || null,
-      subtotal: data.subtotal || 0,
+      subtotal: data.subtotal || ((data.supplierCost || 0) + (data.ta || 0) + (data.taCre || 0)),
       ta: data.ta || 0,
+      taCre: data.taCre || 0,
       costoProveedor: data.supplierCost || 0,
       proveedorId: data.supplierId ? parseInt(data.supplierId) : null,
       metodoPagoProveedorId: data.supplierPaymentMethod ? parseInt(data.supplierPaymentMethod) : null,
@@ -564,6 +565,24 @@ exports.updatePetService = H(CATEGORIES.petService, 'prodMascotas').update;
 exports.deletePetService = H(CATEGORIES.petService, 'prodMascotas').delete;
 
 // =========================================================
+// Equipaje
+// =========================================================
+exports.createBaggage = H(CATEGORIES.baggage, 'prodEquipajes', (d, detalleId) => ({
+  detalleVentaId: detalleId,
+  aerolineaId: d.airline ? parseInt(d.airline) : (d.airlineId ? parseInt(d.airlineId) : null),
+  nroReserva: d.reservationNumber || d.nroReserva || null,
+  pasajeroNombre: d.passengerName || d.pasajeroNombre || null,
+  tipoTarifa: d.fareType || d.tipoTarifa || null,
+  articuloPersonal: d.personalItem || d.articuloPersonal || null,
+  equipajeMano: d.carryOn || d.equipajeMano || null,
+  equipajeBodega: d.checkedBag || d.equipajeBodega || null,
+  observaciones: d.notes || d.observaciones || null
+})).create;
+
+exports.updateBaggage = H(CATEGORIES.baggage, 'prodEquipajes').update;
+exports.deleteBaggage = H(CATEGORIES.baggage, 'prodEquipajes').delete;
+
+// =========================================================
 // Voucher Upload
 // =========================================================
 exports.uploadVoucher = async (req, res, next) => {
@@ -574,7 +593,8 @@ exports.uploadVoucher = async (req, res, next) => {
     const productTables = {
       ticket: 'prodTiqueteria', hotel: 'prodHoteleria', insurance: 'prodSeguros',
       plan: 'prodPlanes', checkin: 'prodCheckins', migration: 'prodMigracion',
-      simcard: 'prodSimcards', carRental: 'prodAutos', finca: 'prodFincas',
+      simcard: 'prodSimcards', baggage: 'prodEquipajes', equipaje: 'prodEquipajes',
+      carRental: 'prodAutos', finca: 'prodFincas',
       tour: 'prodTours', convention: 'prodEventos', restaurant: 'prodRestaurantes',
       visa: 'prodVisas', passport: 'prodPasaportes', petService: 'prodMascotas'
     };

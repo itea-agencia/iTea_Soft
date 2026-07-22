@@ -207,6 +207,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
   const checkIns = (sale.checkInData || []).filter((c: any) => !c.parentDetalleId);
   const migrations = (sale.migrationData || []).filter((m: any) => !m.parentDetalleId);
   const simCards = (sale.simCardData || []).filter((s: any) => !s.parentDetalleId);
+  const baggages = (sale.baggageData || []).filter((b: any) => !b.parentDetalleId);
   const carRentals = (sale.carRentalData || []).filter((c: any) => !c.parentDetalleId);
   const fincas = (sale.fincaData || []).filter((f: any) => !f.parentDetalleId);
   const tours = (sale.tourData || []).filter((t: any) => !t.parentDetalleId);
@@ -236,7 +237,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
     ].filter((item: any) => item.parentDetalleId === planId);
   };
 
-  const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, carRentals, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
+  const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, baggages, carRentals, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
   const hasAnyProduct = tickets.length > 0 || hasOtherProducts;
 
   return (
@@ -535,7 +536,30 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           </ProductCard>
         )}
 
+        
+        {/* ══ EQUIPAJE ══════════════════════════════════════════════════ */}
+        {(sale.baggageData || []).length > 0 && (
+          <ProductCard emoji="🧳" title="Equipaje">
+            {(sale.baggageData || []).map((bag: any, i: number) => (
+              <React.Fragment key={`bag-${i}`}>
+                {i > 0 && <div className="v-item-divider" />}
+                <div className="v-data-grid">
+                  <DataCell label="Aerolínea" value={bag.aerolinea?.nombre || bag.airline} highlight />
+                  <DataCell label="Pasajero" value={bag.pasajeroNombre || bag.passengerName} />
+                  <DataCell label="Reserva / Vuelo" value={bag.nroReserva || bag.reservationNumber} />
+                  <DataCell label="Tipo Tarifa" value={bag.tipoTarifa || bag.fareType} />
+                  <DataCell label="Art. Personal" value={bag.articuloPersonal || bag.personalItem} />
+                  <DataCell label="Eq. Mano" value={bag.equipajeMano || bag.carryOn} />
+                  <DataCell label="Eq. Bodega" value={bag.equipajeBodega || bag.checkedBag} />
+                  {(bag.notas || bag.notes) && <DataCell label="Notas" value={bag.notas || bag.notes} />}
+                </div>
+              </React.Fragment>
+            ))}
+          </ProductCard>
+        )}
+
         {/* ══ RENTA DE VEHÍCULOS ══════════════════════════════════════ */}
+
         {carRentals.length > 0 && (
           <ProductCard emoji="🚗" title="Renta de Vehículos">
             {carRentals.map((car, i) => (

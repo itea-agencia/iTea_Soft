@@ -41,6 +41,7 @@ const PRODUCT_ICONS: Record<string, React.ReactNode> = {
   Visa: <FileText size={16} className="text-primary" />,
   Pasaporte: <FileText size={16} className="text-primary" />,
   Mascotas: <PawPrint size={16} className="text-primary" />,
+  Equipaje: <Luggage size={16} className="text-primary" />,
 };
 
 function getProductDetails(type: string, data: any[]): { label: string; count: number } {
@@ -67,6 +68,7 @@ const isAlreadyFull = (sale: Sale | null): boolean => {
     sale.checkInData !== undefined ||
     sale.migrationData !== undefined ||
     sale.simCardData !== undefined ||
+    sale.baggageData !== undefined ||
     sale.carRentalData !== undefined ||
     sale.fincaData !== undefined ||
     sale.tourData !== undefined ||
@@ -146,6 +148,7 @@ export default function SaleDetailModal({
     { key: "checkInData", label: "CheckIn", summaryType: "checkin" },
     { key: "migrationData", label: "Migración", summaryType: "migracion" },
     { key: "simCardData", label: "SimCard", summaryType: "simcard" },
+    { key: "baggageData", label: "Equipaje", summaryType: "equipaje" },
     { key: "carRentalData", label: "AlquilerAutos", summaryType: "autos" },
     { key: "fincaData", label: "Finca", summaryType: "fincas" },
     { key: "tourData", label: "Tour", summaryType: "tours" },

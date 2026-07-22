@@ -1,7 +1,7 @@
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
-import { formatDate, formatDateTime } from "../../utils/formatters";
+import { formatDate, formatDateTime, formatCurrency } from "../../utils/formatters";
 import { type AirportInfo } from "../../utils/airportInfo";
 
 // Format time in 12-hour AM/PM
@@ -650,6 +650,34 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                 <span className="font-bold block text-[10px] text-gray-400 uppercase">Condiciones Médicas</span>
                 {item.medicalConditions}
+              </div>
+            )}
+          </div>
+        ));
+
+      case "Equipaje":
+        return product.data.map((item, idx) => (
+          <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
+            <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
+              <Luggage size={16} className="text-accent" /> Equipaje #{idx + 1}
+            </h4>
+            {renderGrid([
+              { label: "Pasajero", value: item.passengerName },
+              { label: "Aerolínea", value: item.aerolinea?.nombre || item.airline || "-" },
+              { label: "Número de Reserva", value: item.reservationNumber },
+              { label: "Tipo de Tarifa", value: item.fareType },
+              { label: "Artículo Personal", value: item.personalItem },
+              { label: "Equipaje de Mano", value: item.carryOn },
+              { label: "Equipaje de Bodega", value: item.checkedBag },
+              { label: "Proveedor", value: item.supplierName || item.supplier },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
+              { label: "T.A", value: item.ta ? formatCurrency(item.ta) : "-" },
+              { label: "T.A CRE", value: item.taCre ? formatCurrency(item.taCre) : "-" },
+            ])}
+            {item.notes && (
+              <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                <span className="font-bold block text-[10px] text-gray-400 uppercase">Observaciones</span>
+                {item.notes}
               </div>
             )}
           </div>

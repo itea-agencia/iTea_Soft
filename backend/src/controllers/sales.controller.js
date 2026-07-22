@@ -233,6 +233,7 @@ const PRODUCT_INCLUDES = {
   checkin: { prodCheckins: true },
   documentacion_migratoria: { prodMigracion: true },
   simcard: { prodSimcards: true },
+  equipaje: { prodEquipajes: { include: { aerolinea: true } } },
   renta_vehiculos: { prodAutos: true },
   renta_fincas: { prodFincas: true },
   tours: { prodTours: true },
@@ -642,6 +643,26 @@ const PRODUCT_TRANSFORMS = {
       ta: d.ta || 0,
       taCre: d.taCre || 0,
     });
+  },
+  equipaje(d, passengers, target) {
+    const b = d.prodEquipajes;
+    if (!b) return;
+    target.push({
+      id: b.id,
+      airlineId: b.aerolineaId,
+      airline: b.aerolinea?.nombre || null,
+      passengerName: b.pasajeroNombre || (passengers.length > 0 ? passengers[0].nombreCompleto : null),
+      reservationNumber: b.nroReserva,
+      fareType: b.tipoTarifa,
+      personalItem: b.articuloPersonal,
+      carryOn: b.equipajeMano,
+      checkedBag: b.equipajeBodega,
+      notes: b.observaciones,
+      supplier: d.proveedor?.nombre || null,
+      supplierCost: d.costoProveedor || 0,
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
+    });
   }
 };
 
@@ -782,6 +803,7 @@ exports.getById = async (req, res, next) => {
       checkInData: resultMap.checkin || [],
       migrationData: resultMap.documentacion_migratoria || [],
       simCardData: resultMap.simcard || [],
+      baggageData: resultMap.equipaje || [],
       carRentalData: resultMap.renta_vehiculos || [],
       fincaData: resultMap.renta_fincas || [],
       tourData: resultMap.tours || [],
@@ -1053,6 +1075,24 @@ const PRODUCT_HANDLERS = {
       empresaTransporte: d.transportCompany || null,
       observaciones: d.observations || null
     })
+  },
+  baggageData: {
+    category: 'equipaje', table: 'prodEquipajes',
+    nombreServicio: 'Equipaje',
+    transform: async (d, detalleId, tx) => {
+      const aerolineaId = await resolveAirlineId(tx, d.airline || d.airlineId);
+      return {
+        detalleVentaId: detalleId,
+        aerolineaId,
+        nroReserva: d.reservationNumber || d.nroReserva || null,
+        pasajeroNombre: d.passengerName || d.pasajeroNombre || null,
+        tipoTarifa: d.fareType || d.tipoTarifa || null,
+        articuloPersonal: d.personalItem || d.articuloPersonal || null,
+        equipajeMano: d.carryOn || d.equipajeMano || null,
+        equipajeBodega: d.checkedBag || d.equipajeBodega || null,
+        observaciones: d.notes || d.observaciones || null
+      };
+    }
   }
 };
 
@@ -1223,9 +1263,10 @@ async function createProductItems(tx, ventaId, clienteId, data) {
           ventaId,
           categoria: handler.category,
           nombreServicio: handler.nombreServicio,
-          subtotal: (item.supplierCost || 0) + (item.ta || 0),
+          subtotal: (item.supplierCost || 0) + (item.ta || 0) + (item.taCre || 0),
           costoProveedor: item.supplierCost || 0,
           ta: item.ta || 0,
+          taCre: item.taCre || 0,
           proveedorId: resolvedSupplierId,
           metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
           origen: item.legs?.[0]?.origin || item.pickupLocation || null,
@@ -1410,9 +1451,10 @@ exports.create = async (req, res, next) => {
           const detalleObj = {
             categoria: handler.category,
             nombreServicio: handler.nombreServicio,
-            subtotal: (item.supplierCost || 0) + (item.ta || 0),
+            subtotal: (item.supplierCost || 0) + (item.ta || 0) + (item.taCre || 0),
             costoProveedor: item.supplierCost || 0,
             ta: item.ta || 0,
+            taCre: item.taCre || 0,
             proveedorId: resolvedSupplierId,
             metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
             origen: item.legs?.[0]?.origin || item.pickupLocation || null,

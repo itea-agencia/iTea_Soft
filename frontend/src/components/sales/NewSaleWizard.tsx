@@ -12,6 +12,7 @@ import {
   Loader2,
   AlertCircle,
   Link2,
+  Plus,
 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useData } from "../../context/DataContext";
@@ -36,6 +37,7 @@ import {
   VisaForm,
   PassportForm,
   PetServiceForm,
+  BaggageForm,
   TicketForm,
 } from "./forms";
 import {
@@ -48,6 +50,7 @@ import {
   INITIAL_CHECKIN,
   INITIAL_MIGRATION,
   INITIAL_SIMCARD,
+  INITIAL_BAGGAGE,
   INITIAL_CAR_RENTAL,
   INITIAL_FINCA,
   INITIAL_TOUR,
@@ -312,7 +315,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     form.plans.forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
     form.checkIns.forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
     form.migrations.forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; });
-    form.simCards.forEach(s => { calcSupplierCost += Number(s.supplierCost) || 0; calcTa += Number(s.ta) || 0; });
+    form.simCards.forEach(sc => { calcSupplierCost += Number(sc.supplierCost) || 0; calcTa += Number(sc.ta) || 0; });
+    form.baggages.forEach(b => { calcSupplierCost += Number(b.supplierCost) || 0; calcTa += Number(b.ta) || 0; });
     form.carRentals.forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; });
     form.fincas.forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; });
     form.tours.forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
@@ -347,7 +351,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     }
   }, [
     form.tickets, form.hotels, form.insurances, form.plans, form.checkIns,
-    form.migrations, form.simCards, form.carRentals, form.fincas, form.tours,
+    form.migrations, form.simCards, form.baggages, form.carRentals, form.fincas, form.tours,
     form.conventions, form.restaurants, form.visas, form.passports, form.petServices
   ]);
 
@@ -1239,6 +1243,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         case "checkin": targetKey = "checkIns"; break;
         case "documentacion_migratoria": targetKey = "migrations"; break;
         case "simcard": targetKey = "simCards"; break;
+        case "equipaje": targetKey = "baggages"; break;
         case "renta_vehiculos": targetKey = "carRentals"; break;
         case "renta_fincas": targetKey = "fincas"; break;
         case "tours": targetKey = "tours"; break;
@@ -1409,10 +1414,48 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               </p>
             </div>
           </div>
-          <Button 
-            type="submit"
-            size="sm" 
-            className="bg-primary hover:bg-primary/90 text-white disabled:bg-gray-300 disabled:cursor-not-allowed text-xs sm:text-sm px-3 sm:px-4 py-1.5"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!activeForm) return;
+                let targetKey: string | null = null;
+                let initialFn: any = null;
+                switch (activeForm) {
+                  case "tiqueteria": targetKey = "tickets"; initialFn = INITIAL_TICKET; break;
+                  case "hoteleria": targetKey = "hotels"; initialFn = INITIAL_HOTEL; break;
+                  case "seguros_viaje": targetKey = "insurances"; initialFn = INITIAL_INSURANCE; break;
+                  case "planes": targetKey = "plans"; initialFn = INITIAL_PLAN; break;
+                  case "checkin": targetKey = "checkIns"; initialFn = INITIAL_CHECKIN; break;
+                  case "documentacion_migratoria": targetKey = "migrations"; initialFn = INITIAL_MIGRATION; break;
+                  case "simcard": targetKey = "simCards"; initialFn = INITIAL_SIMCARD; break;
+                  case "equipaje": targetKey = "baggages"; initialFn = INITIAL_BAGGAGE; break;
+                  case "renta_vehiculos": targetKey = "carRentals"; initialFn = INITIAL_CAR_RENTAL; break;
+                  case "renta_fincas": targetKey = "fincas"; initialFn = INITIAL_FINCA; break;
+                  case "tours": targetKey = "tours"; initialFn = INITIAL_TOUR; break;
+                  case "centros_convencion": targetKey = "conventions"; initialFn = INITIAL_CONVENTION; break;
+                  case "restaurantes": targetKey = "restaurants"; initialFn = INITIAL_RESTAURANT; break;
+                  case "visa": targetKey = "visas"; initialFn = INITIAL_VISA; break;
+                  case "pasaporte": targetKey = "passports"; initialFn = INITIAL_PASSPORT; break;
+                  case "servicio_mascotas": targetKey = "petServices"; initialFn = INITIAL_PET_SERVICE; break;
+                }
+                if (targetKey && initialFn) {
+                  const client = data.clients.find((c: any) => c.name === form.clientId);
+                  const currentItems = (form as any)[targetKey] || [];
+                  const newItem = initialFn(client);
+                  const nextItems = [...currentItems, newItem];
+                  setForm((prev: any) => ({ ...prev, [targetKey!]: nextItems }));
+                  setActiveIdx(nextItems.length - 1);
+                }
+              }}
+              className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-primary/30 text-primary hover:bg-primary/10 transition-colors flex items-center gap-1"
+            >
+              <Plus size={14} /> Añadir otro
+            </button>
+            <Button 
+              type="submit"
+              size="sm" 
+              className="bg-primary hover:bg-primary/90 text-white disabled:bg-gray-300 disabled:cursor-not-allowed text-xs sm:text-sm px-3 sm:px-4 py-1.5"
             disabled={(() => {
               if (!activeForm || activeIdx === null) return false;
               if (activeForm === "tiqueteria") return isTicketFormEmpty;
@@ -1426,6 +1469,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 case "checkin": targetKey = "checkIns"; break;
                 case "documentacion_migratoria": targetKey = "migrations"; break;
                 case "simcard": targetKey = "simCards"; break;
+                case "equipaje": targetKey = "baggages"; break;
                 case "renta_vehiculos": targetKey = "carRentals"; break;
                 case "renta_fincas": targetKey = "fincas"; break;
                 case "tours": targetKey = "tours"; break;
@@ -1445,6 +1489,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
           >
             Listo
           </Button>
+          </div>
         </div>
 
         {/* Sub-form Content */}
@@ -1700,6 +1745,22 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   triggerError={triggerError}
                 />
               );
+            case "equipaje":
+              return (
+                <BaggageForm
+                  baggage={form.baggages[activeIdx] || INITIAL_BAGGAGE(client)}
+                  client={client}
+                  airlines={data.config.airlines}
+                  suppliers={data.config.suppliers}
+                  paymentMethods={data.config.cards}
+                  onChange={(updates) => {
+                    const next = [...form.baggages];
+                    next[activeIdx] = { ...next[activeIdx], ...updates };
+                    set("baggages", next);
+                  }}
+                  triggerError={triggerError}
+                />
+              );
 
             default:
               return null;
@@ -1782,6 +1843,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       checkInData: form.checkIns.length > 0 ? form.checkIns : undefined,
       migrationData: form.migrations.length > 0 ? form.migrations : undefined,
       simCardData: form.simCards.length > 0 ? form.simCards : undefined,
+      baggageData: form.baggages.length > 0 ? form.baggages : undefined,
       carRentalData: form.carRentals.length > 0 ? form.carRentals : undefined,
       fincaData: form.fincas.length > 0 ? form.fincas : undefined,
       tourData: form.tours.length > 0 ? form.tours : undefined,
@@ -1807,7 +1869,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       localStorage.removeItem(draftKey);
 
       const hasVouchersToSend = [
-        ...form.plans, ...form.checkIns, ...form.migrations, ...form.simCards, ...form.carRentals,
+        ...form.plans, ...form.checkIns, ...form.migrations, ...form.simCards, ...form.baggages, ...form.carRentals,
         ...form.fincas, ...form.tours, ...form.conventions, ...form.restaurants,
         ...form.visas, ...form.passports, ...form.petServices
       ].some(item => item.sendVoucher);
@@ -1922,6 +1984,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   case "checkin": targetKey = "checkIns"; break;
                   case "documentacion_migratoria": targetKey = "migrations"; break;
                   case "simcard": targetKey = "simCards"; break;
+                 case "equipaje": targetKey = "baggages"; break;
                   case "renta_vehiculos": targetKey = "carRentals"; break;
                   case "renta_fincas": targetKey = "fincas"; break;
                   case "tours": targetKey = "tours"; break;
@@ -2106,6 +2169,17 @@ function isItemEmpty(item: any, category: SaleProductId): boolean {
         !item.medicalConditions &&
         !item.transportCompany &&
         !item.observations
+      );
+    case "equipaje":
+      return (
+        !item.airline &&
+        !item.passengerName &&
+        !item.reservationNumber &&
+        !item.fareType &&
+        !item.notes &&
+        (!item.personalItem || item.personalItem === "No") &&
+        (!item.carryOn || item.carryOn === "No") &&
+        (!item.checkedBag || item.checkedBag === "No")
       );
     default:
       return true;

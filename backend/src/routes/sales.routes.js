@@ -50,6 +50,14 @@ router.post('/:saleId/products/simcard', authorize('sales', 'create'), productsC
 router.put('/:saleId/products/simcard/:id', authorize('sales', 'edit'), productsController.updateSimcard);
 router.delete('/:saleId/products/simcard/:id', authorize('sales', 'delete'), productsController.deleteSimcard);
 
+router.post('/:saleId/products/baggage', authorize('sales', 'create'), productsController.createBaggage);
+router.put('/:saleId/products/baggage/:id', authorize('sales', 'edit'), productsController.updateBaggage);
+router.delete('/:saleId/products/baggage/:id', authorize('sales', 'delete'), productsController.deleteBaggage);
+
+router.post('/:saleId/products/equipaje', authorize('sales', 'create'), productsController.createBaggage);
+router.put('/:saleId/products/equipaje/:id', authorize('sales', 'edit'), productsController.updateBaggage);
+router.delete('/:saleId/products/equipaje/:id', authorize('sales', 'delete'), productsController.deleteBaggage);
+
 router.post('/:saleId/products/car-rental', authorize('sales', 'create'), productsController.createCarRental);
 router.put('/:saleId/products/car-rental/:id', authorize('sales', 'edit'), productsController.updateCarRental);
 router.delete('/:saleId/products/car-rental/:id', authorize('sales', 'delete'), productsController.deleteCarRental);
