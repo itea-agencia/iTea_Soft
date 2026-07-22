@@ -63,6 +63,7 @@ export default function Sales() {
   const [voucherFullSale, setVoucherFullSale] = useState<Sale | null>(null);
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [isSendingVoucher, setIsSendingVoucher] = useState(false);
+  const [showVoucherPrice, setShowVoucherPrice] = useState(true);
   const voucherRef = useRef<HTMLDivElement>(null);
   const airportMap = useMemo(() => buildAirportMap(data.config.airports || []), [data.config.airports]);
 
@@ -726,7 +727,7 @@ export default function Sales() {
       {/* ===== VOUCHER MODAL (Opciones de Voucher) ===== */}
       <Modal
         isOpen={!!voucherSale}
-        onClose={() => { if (!isPdfGenerating && !isSendingVoucher) { setVoucherSale(null); setVoucherFullSale(null); } }}
+        onClose={() => { if (!isPdfGenerating && !isSendingVoucher) { setVoucherSale(null); setVoucherFullSale(null); setShowVoucherPrice(true); } }}
         title="Opciones de Voucher"
         size="sm"
       >
@@ -735,6 +736,15 @@ export default function Sales() {
             ¿Qué deseas hacer con el voucher de la venta <strong>#{voucherSale?.id}</strong>?
           </p>
           <div className="flex flex-col gap-3 mt-4">
+            <label className="flex items-center gap-2 justify-center mb-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showVoucherPrice}
+                onChange={(e) => setShowVoucherPrice(e.target.checked)}
+                className="rounded border-gray-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 font-medium select-none">Mostrar totales y precio final</span>
+            </label>
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-white flex justify-center items-center gap-2"
               onClick={executeSendVoucher}
@@ -771,7 +781,7 @@ export default function Sales() {
       </Modal>
 
       {/* COMPONENTE OCULTO PARA GENERAR PDF - usa la venta completa cargada del API */}
-      <VoucherPDF ref={voucherRef} sale={voucherFullSale} airportMap={airportMap} baggageList={data.config.baggage} />
+      <VoucherPDF ref={voucherRef} sale={voucherFullSale} airportMap={airportMap} baggageList={data.config.baggage} showPrice={showVoucherPrice} />
     </div>
   );
 }

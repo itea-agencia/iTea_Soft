@@ -8,6 +8,7 @@ interface VoucherPDFProps {
   sale: Sale | null;
   airportMap?: Record<string, AirportInfo>;
   baggageList?: any[];
+  showPrice?: boolean;
 }
 
 function DataCell({ label, value, highlight, fullWidth }: { label: string; value: React.ReactNode; highlight?: boolean; fullWidth?: boolean }) {
@@ -190,7 +191,7 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
   );
 }
 
-export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, airportMap, baggageList }, ref) => {
+export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, airportMap, baggageList, showPrice = true }, ref) => {
   if (!sale) {
     return <div className="itea-voucher"><div ref={ref} /></div>;
   }
@@ -732,18 +733,20 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
             </div>
             <div className="v-endorsements">⚠ LOS SERVICIOS ESTÁN SUJETOS A LAS POLÍTICAS DE CADA PROVEEDOR</div>
           </div>
-          <div className="v-payment-col">
-            <h4>Resumen de Venta</h4>
-            <div className="v-payment-row"><label>Subtotal:</label><span>{formatCurrency(sale.total)}</span></div>
-            <div className="v-payment-row"><label>Impuestos:</label><span>Incluidos</span></div>
-            {(sale.creditPaidAmount ?? 0) > 0 && (
-              <div className="v-payment-row"><label>Abonado:</label><span>{formatCurrency(sale.creditPaidAmount!)}</span></div>
-            )}
-            <div className="v-payment-grand">
-              <label>Total:</label>
-              <span>{formatCurrency(sale.total)}</span>
+          {showPrice && (
+            <div className="v-payment-col">
+              <h4>Resumen de Venta</h4>
+              <div className="v-payment-row"><label>Subtotal:</label><span>{formatCurrency(sale.total)}</span></div>
+              <div className="v-payment-row"><label>Impuestos:</label><span>Incluidos</span></div>
+              {(sale.creditPaidAmount ?? 0) > 0 && (
+                <div className="v-payment-row"><label>Abonado:</label><span>{formatCurrency(sale.creditPaidAmount!)}</span></div>
+              )}
+              <div className="v-payment-grand">
+                <label>Total:</label>
+                <span>{formatCurrency(sale.total)}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ══ LEGAL ═══════════════════════════════════════════════════ */}
