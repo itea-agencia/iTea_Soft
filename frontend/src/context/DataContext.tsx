@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
-import { AppData, User, Client, Sale, Flight, RolePermissions, normalizeRolePermissions } from '../types';
+import { AppData, User, Client, Sale, Flight, RolePermissions, normalizeRolePermissions, DEFAULT_ASESOR_PERMISSIONS, DEFAULT_FREELANCER_PERMISSIONS } from '../types';
 import * as api from '../api';
 import { useAuth } from './AuthContext';
 import { getCurrentMonth } from '../utils/formatters';
@@ -83,6 +83,7 @@ interface DataContextType {
   addResponsable: (responsable: any) => Promise<any>;
   updateResponsable: (id: number, responsable: any) => Promise<void>;
   deleteResponsable: (id: number) => Promise<void>;
+  toggleResponsableStatus: (id: number, status: string) => Promise<void>;
   addSale: (sale: Omit<Sale, 'id'>) => Promise<Sale>;
   updateSale: (id: number, sale: Partial<Sale>) => Promise<void>;
   deleteSale: (id: number) => Promise<void>;
@@ -110,8 +111,8 @@ const emptyData: AppData = {
     airlines: [], suppliers: [], airports: [],
     baggage: [], packages: [],
     rolePermissions: {
-      asesor: { dashboard: { view: 'own' }, sales: { view: 'own', create: true, edit: true }, clients: { view: 'own', create: true, edit: false }, responsables: { view: 'own', create: true, edit: true }, itineraries: { view: 'own', edit: false }, commissions: { view: false, create: false, edit: false, delete: false } },
-      freelancer: { dashboard: { view: 'own' }, sales: { view: 'own', create: true, edit: true }, clients: { view: 'own', create: true, edit: false }, responsables: { view: 'own', create: true, edit: true }, itineraries: { view: 'own', edit: false }, commissions: { view: false, create: false, edit: false, delete: false } },
+      asesor: DEFAULT_ASESOR_PERMISSIONS,
+      freelancer: DEFAULT_FREELANCER_PERMISSIONS,
     },
   },
   salesHistory: [],
@@ -386,6 +387,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const deleteResponsable = async (id: number) => {
     await api.deleteResponsable(id);
+    await fetchResponsables();
+  };
+
+  const toggleResponsableStatus = async (id: number, status: string) => {
+    await api.toggleResponsableStatus(id, status);
     await fetchResponsables();
   };
 
@@ -685,6 +691,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addResponsable,
       updateResponsable,
       deleteResponsable,
+      toggleResponsableStatus,
       addSale,
       updateSale,
       deleteSale,

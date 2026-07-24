@@ -18,33 +18,45 @@ interface PermissionsContextType {
 const PermissionsContext = createContext<PermissionsContextType | undefined>(undefined);
 
 function buildPermissionsFromApiPermisos(permisos: { modulo: string; accion: string; valor?: string }[]): RolePermissions {
+  // Base structure MUST include ALL modules defined in RolePermissions
+  // so that permissions saved to the DB are never silently ignored.
   const base: any = {
     dashboard: { view: 'none' },
-    sales: { view: 'none', create: false, edit: false },
-    clients: { view: 'none', create: false, edit: false },
-    responsables: { view: 'none', create: false, edit: false },
-    itineraries: { view: 'none', edit: false },
+    sales: { view: 'none', create: false, edit: 'none' },
+    clients: { view: 'none', create: false, edit: 'none' },
+    responsables: { view: 'none', create: false, edit: 'none', delete: false },
+    itineraries: { view: 'none', edit: 'none' },
     commissions: { view: false, create: false, edit: false, delete: false },
+    config: { view: false, create: false, edit: false },
   };
 
+  const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
+  const SCOPED_EDIT_MODULES = ['sales', 'clients', 'responsables', 'itineraries'];
+
   for (const { modulo, accion, valor } of permisos) {
-    if (!base[modulo]) continue;
+    if (base[modulo] === undefined) continue;
     if (valor !== undefined && valor !== null) {
       if (valor === 'true') {
-        if (modulo === 'itineraries' && accion === 'view') base[modulo][accion] = 'all';
+        if (SCOPED_VIEW_MODULES.includes(modulo) && accion === 'view') base[modulo][accion] = 'all';
+        else if (SCOPED_EDIT_MODULES.includes(modulo) && accion === 'edit') base[modulo][accion] = 'all';
         else base[modulo][accion] = true;
-      }
-      else if (valor === 'false') {
-        if (modulo === 'itineraries' && accion === 'view') base[modulo][accion] = 'none';
+      } else if (valor === 'false') {
+        if (SCOPED_VIEW_MODULES.includes(modulo) && accion === 'view') base[modulo][accion] = 'none';
+        else if (SCOPED_EDIT_MODULES.includes(modulo) && accion === 'edit') base[modulo][accion] = 'none';
         else base[modulo][accion] = false;
+      } else {
+        // valor es un string como 'all', 'own', 'none'
+        base[modulo][accion] = valor;
       }
-      else base[modulo][accion] = valor;
     } else {
-      if (['dashboard', 'sales', 'clients', 'itineraries'].includes(modulo) && accion === 'view') base[modulo].view = 'all';
+      if (SCOPED_VIEW_MODULES.includes(modulo) && accion === 'view') base[modulo].view = 'all';
+      else if (SCOPED_EDIT_MODULES.includes(modulo) && accion === 'edit') base[modulo].edit = 'all';
       else if (base[modulo][accion] !== undefined) base[modulo][accion] = true;
     }
   }
 
+  // normalizeRolePermissions uses DEFAULT_ASESOR_PERMISSIONS as base template,
+  // which now includes 'config', so nothing will be missing.
   return normalizeRolePermissions(base as RolePermissions);
 }
 

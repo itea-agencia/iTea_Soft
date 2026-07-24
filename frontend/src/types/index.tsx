@@ -23,40 +23,44 @@ export interface User {
 
 export interface RolePermissions {
   dashboard: { view: "all" | "own" | "none" };
-  sales: { view: "all" | "own" | "none"; create: boolean; edit: boolean };
-  clients: { view: "all" | "own" | "none"; create: boolean; edit: boolean };
-  responsables: { view: "all" | "own" | "none"; create: boolean; edit: boolean };
-  itineraries: { view: "all" | "own" | "none"; edit: boolean };
+  sales: { view: "all" | "own" | "none"; create: boolean; edit: "all" | "own" | "none" };
+  clients: { view: "all" | "own" | "none"; create: boolean; edit: "all" | "own" | "none" };
+  responsables: { view: "all" | "own" | "none"; create: boolean; edit: "all" | "own" | "none"; delete: boolean };
+  itineraries: { view: "all" | "own" | "none"; edit: "all" | "own" | "none" };
   commissions: { view: boolean; create: boolean; edit: boolean; delete: boolean };
+  config: { view: boolean; create: boolean; edit: boolean };
 }
 
 export const DEFAULT_ASESOR_PERMISSIONS: RolePermissions = {
   dashboard: { view: "own" },
-  sales: { view: "own", create: true, edit: true },
-  clients: { view: "own", create: true, edit: true },
-  responsables: { view: "own", create: true, edit: true },
-  itineraries: { view: "own", edit: false },
+  sales: { view: "own", create: true, edit: "own" },
+  clients: { view: "own", create: true, edit: "own" },
+  responsables: { view: "own", create: true, edit: "own", delete: false },
+  itineraries: { view: "own", edit: "own" },
   commissions: { view: false, create: false, edit: false, delete: false },
+  config: { view: false, create: false, edit: false },
 };
 export const DEFAULT_FREELANCER_PERMISSIONS: RolePermissions = {
   dashboard: { view: "own" },
-  sales: { view: "own", create: true, edit: true },
-  clients: { view: "own", create: true, edit: true },
-  responsables: { view: "own", create: true, edit: true },
-  itineraries: { view: "own", edit: false },
+  sales: { view: "own", create: true, edit: "own" },
+  clients: { view: "own", create: true, edit: "own" },
+  responsables: { view: "own", create: true, edit: "own", delete: false },
+  itineraries: { view: "own", edit: "own" },
   commissions: { view: false, create: false, edit: false, delete: false },
+  config: { view: false, create: false, edit: false },
 };
 
 export const ADMIN_PERMISSIONS: RolePermissions = {
   dashboard: { view: "all" },
-  sales: { view: "all", create: true, edit: true },
-  clients: { view: "all", create: true, edit: true },
-  responsables: { view: "all", create: true, edit: true },
-  itineraries: { view: "all", edit: true },
+  sales: { view: "all", create: true, edit: "all" },
+  clients: { view: "all", create: true, edit: "all" },
+  responsables: { view: "all", create: true, edit: "all", delete: true },
+  itineraries: { view: "all", edit: "all" },
   commissions: { view: true, create: true, edit: true, delete: true },
+  config: { view: true, create: true, edit: true },
 };
 
-const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
+const SCOPED_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
 
 export function normalizeRolePermissions(perms: Partial<RolePermissions>, baseTemplate: RolePermissions = DEFAULT_ASESOR_PERMISSIONS): RolePermissions {
   const normalized = JSON.parse(JSON.stringify(baseTemplate)) as RolePermissions;
@@ -69,8 +73,13 @@ export function normalizeRolePermissions(perms: Partial<RolePermissions>, baseTe
       for (const key of Object.keys(dst)) {
         if (src[key] !== undefined) {
           const val = src[key];
-          if (key === 'view' && SCOPED_VIEW_MODULES.includes(mod)) {
-            dst[key] = val === true ? 'all' : val === false ? 'none' : val;
+          if ((key === 'view' || key === 'edit') && SCOPED_MODULES.includes(mod)) {
+            // Manejar migración de booleanos a strings
+            if (typeof val === 'boolean') {
+              dst[key] = val ? (mod === 'dashboard' ? 'all' : 'own') : 'none';
+            } else {
+              dst[key] = val;
+            }
           } else {
             dst[key] = typeof val === 'string' ? val !== 'none' && val !== 'false' : !!val;
           }

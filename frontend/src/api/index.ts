@@ -8,7 +8,7 @@ export {
   listClients, getClient, createClient, updateClient, toggleClientStatus,
 } from './clients';
 export {
-  listResponsables, getResponsable, createResponsable, updateResponsable, deleteResponsable,
+  listResponsables, getResponsable, createResponsable, updateResponsable, deleteResponsable, toggleResponsableStatus,
 } from './responsables';
 export {
   listSales, getSale, createSale, updateSale, deleteSale, voidSale,

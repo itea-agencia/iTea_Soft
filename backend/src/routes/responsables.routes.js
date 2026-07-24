@@ -5,20 +5,14 @@ const auth = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
 const paginate = require('../middleware/paginate');
 
-const requireAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
-    return next();
-  }
-  return res.status(403).json({ success: false, error: 'Acceso denegado: Solo administradores' });
-};
 
 router.use(auth);
-router.use(requireAdmin);
 
-router.get('/', paginate, controller.list);
-router.post('/', controller.create);
-router.get('/:id', controller.getById);
-router.put('/:id', controller.update);
-router.delete('/:id', controller.delete);
+router.get('/', authorize('responsables', 'view'), paginate, controller.list);
+router.post('/', authorize('responsables', 'create'), controller.create);
+router.get('/:id', authorize('responsables', 'view'), controller.getById);
+router.put('/:id', authorize('responsables', 'edit'), controller.update);
+router.delete('/:id', authorize('responsables', 'delete'), controller.delete);
+router.patch('/:id/toggle-status', authorize('responsables', 'delete'), controller.toggleStatus);
 
 module.exports = router;

@@ -6,50 +6,59 @@ const MODULE_ACTIONS = {
   dashboard: ['view'],
   sales: ['view', 'create', 'edit'],
   clients: ['view', 'create', 'edit'],
+  responsables: ['view', 'create', 'edit', 'delete'],
   itineraries: ['view', 'edit'],
   commissions: ['view', 'create', 'edit', 'delete'],
+  config: ['view', 'create', 'edit'],
 };
 
 const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
+const SCOPED_EDIT_MODULES = ['sales', 'clients', 'responsables', 'itineraries'];
 
 const DEFAULT_ROLE_VALUES = {
   asesor: {
     dashboard: { view: 'own' },
-    sales: { view: 'own', create: 'true', edit: 'true' },
-    clients: { view: 'own', create: 'true', edit: 'true' },
-    itineraries: { view: 'own', edit: 'false' },
+    sales: { view: 'own', create: 'true', edit: 'own' },
+    clients: { view: 'own', create: 'true', edit: 'own' },
+    responsables: { view: 'own', create: 'true', edit: 'own', delete: 'false' },
+    itineraries: { view: 'own', edit: 'own' },
     commissions: { view: 'false', create: 'false', edit: 'false', delete: 'false' },
+    config: { view: 'false', create: 'false', edit: 'false' },
   },
   freelancer: {
     dashboard: { view: 'own' },
-    sales: { view: 'own', create: 'true', edit: 'true' },
-    clients: { view: 'own', create: 'true', edit: 'true' },
-    itineraries: { view: 'own', edit: 'false' },
+    sales: { view: 'own', create: 'true', edit: 'own' },
+    clients: { view: 'own', create: 'true', edit: 'own' },
+    responsables: { view: 'own', create: 'true', edit: 'own', delete: 'false' },
+    itineraries: { view: 'own', edit: 'own' },
     commissions: { view: 'false', create: 'false', edit: 'false', delete: 'false' },
+    config: { view: 'false', create: 'false', edit: 'false' },
   },
 };
 
 function parseValor(accion, modulo, valor, role) {
+  // Módulos con vista jerárquica (all/own/none)
   if (accion === 'view' && SCOPED_VIEW_MODULES.includes(modulo)) {
-    // El dashboard NUNCA puede ser 'all' para no-admins.
-    // Clientes y ventas sí pueden ser configurados como 'all'.
     if (valor === 'all') {
       if (modulo === 'dashboard' && role !== 'admin') return 'own';
       return 'all';
     }
     if (valor === 'own') return 'own';
-    if (valor === 'true') {
-      // Para dashboard, 'true' = 'own'; para otros módulos, 'true' = 'all'
-      return modulo === 'dashboard' ? 'own' : 'all';
-    }
+    if (valor === 'true') return modulo === 'dashboard' ? 'own' : 'all';
     return 'none';
   }
-  // boolean value
+  // Módulos con edición jerárquica (all/own/none)
+  if (accion === 'edit' && SCOPED_EDIT_MODULES.includes(modulo)) {
+    if (valor === 'all') return 'all';
+    if (valor === 'own') return 'own';
+    if (valor === 'true') return 'own';
+    return 'none';
+  }
+  // boolean value (create, delete, view en commissions/config, edit en commissions/config)
   return valor === 'true' || valor === true;
 }
 
 function encodeValor(value) {
-  // Convert frontend value to stored string
   if (value === 'all' || value === 'own' || value === 'none') return value;
   if (value === true) return 'true';
   if (value === false) return 'false';
@@ -69,8 +78,8 @@ exports.getPermissions = async (req, res, next) => {
       include: { permiso: true }
     });
 
-    // Start with default structure for all modules the role can configure
-    const MODULES = ['dashboard', 'sales', 'clients', 'itineraries', 'commissions'];
+    // Build structure for ALL configurable modules
+    const MODULES = Object.keys(MODULE_ACTIONS);
     const defaults = DEFAULT_ROLE_VALUES[role] || DEFAULT_ROLE_VALUES.asesor;
     const grouped = {};
 

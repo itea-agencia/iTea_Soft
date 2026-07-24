@@ -21,9 +21,9 @@ import AvatarPicker, { AVATARS } from '../components/ui/AvatarPicker';
 import { DatePicker } from '../components/sales/forms/TicketForm';
 
 export default function Responsables() {
-  const { data, addResponsable, updateResponsable, deleteResponsable, fetchResponsables, fetchSales } = useData();
+  const { data, addResponsable, updateResponsable, deleteResponsable, toggleResponsableStatus, fetchResponsables, fetchSales } = useData();
   const { user } = useAuth();
-  const { permissions, canCreate, canEdit } = usePermissions();
+  const { permissions, canCreate, canEdit, canDelete } = usePermissions();
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -284,7 +284,7 @@ export default function Responsables() {
   };
 
   const handleToggleStatus = (responsable: Responsable) => {
-    if (!canEdit('responsables')) return;
+    if (!canDelete('responsables')) return;
     setConfirmToggle({
       id: responsable.id,
       name: responsable.name,
@@ -297,22 +297,8 @@ export default function Responsables() {
     setIsToggling(true);
     try {
       const { id, newStatus } = confirmToggle;
-      // Actualizar el estado en lugar de eliminar
-      const responsableData = data.responsables.find(r => r.id === id);
-      if (!responsableData) throw new Error('Responsable no encontrado en el estado');
       
-      const updateData = {
-        firstName: responsableData.name.split(' ')[0],
-        lastName: responsableData.name.split(' ').slice(1).join(' '),
-        docType: responsableData.docType,
-        docNumber: responsableData.docNumber,
-        phone: responsableData.phone,
-        email: responsableData.email,
-        birthDate: responsableData.birthDate,
-        status: newStatus
-      };
-
-      await updateResponsable(id, updateData);
+      await toggleResponsableStatus(id, newStatus);
       setSuccessMessage(`Responsable ${newStatus === 'active' ? 'activado' : 'desactivado'} exitosamente`);
       setShowSuccess(true);
       setToggledResponsableId(id);
@@ -587,20 +573,20 @@ export default function Responsables() {
                     <Eye size={14} />
                   </Button>
                   {canEdit('responsables') && (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => handleOpenModal(responsable)} title="Editar">
-                        <Pencil size={14} />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleToggleStatus(responsable)}
-                        title={responsable.status === 'active' ? 'Desactivar' : 'Activar'}
-                        className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-                      >
-                        <UserX size={14} className="text-red-500" />
-                      </Button>
-                    </>
+                    <Button variant="outline" size="sm" onClick={() => handleOpenModal(responsable)} title="Editar">
+                      <Pencil size={14} />
+                    </Button>
+                  )}
+                  {canDelete('responsables') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleToggleStatus(responsable)}
+                      title={responsable.status === 'active' ? 'Desactivar' : 'Activar'}
+                      className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                    >
+                      <UserX size={14} className="text-red-500" />
+                    </Button>
                   )}
                 </div>
               </TableCell>

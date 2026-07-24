@@ -305,3 +305,34 @@ exports.delete = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.toggleStatus = async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+
+    const responsable = await prisma.responsables.findUnique({ where: { id } });
+    if (!responsable || responsable.deletedAt) return error(res, 'Responsable no encontrado', 404);
+
+    if (status === 'inactive' && responsable.status === 'active') {
+      const debtCheck = await prisma.$queryRawUnsafe(`
+        SELECT SUM(v.monto_total - COALESCE(v.monto_pagado_credito, 0)) as "deuda"
+        FROM ventas v
+        WHERE v.responsable_id = $1 AND v.status IN ('credito', 'abonado')
+      `, id);
+      const pendingDebt = Number(debtCheck[0]?.deuda) || 0;
+      if (pendingDebt > 0) {
+        return error(res, `No se puede desactivar: El responsable tiene una deuda de $${pendingDebt.toLocaleString('es-CO')}`, 400);
+      }
+    }
+
+    const updated = await prisma.responsables.update({
+      where: { id },
+      data: { status }
+    });
+
+    success(res, updated);
+  } catch (err) {
+    next(err);
+  }
+};

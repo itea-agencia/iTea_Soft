@@ -24,3 +24,8 @@ export async function deleteResponsable(id: number) {
   const res = await api.delete(`/responsables/${id}`);
   return res.data;
 }
+
+export async function toggleResponsableStatus(id: number, status: string) {
+  const res = await api.patch(`/responsables/${id}/toggle-status`, { status });
+  return res.data;
+}

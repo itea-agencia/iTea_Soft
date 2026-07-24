@@ -54,19 +54,23 @@ export function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
     { to: "/commissions", icon: Coins, label: "Comisionistas", permission: 'commissions' as const },
   ];
 
-  const adminLinks = [
+  // Solo para administradores (gestionados por rol)
+  const adminOnlyLinks = [
     { to: "/users", icon: UserCog, label: "Usuarios", permission: 'users' as const },
+  ];
+
+  // Links que cualquier rol puede ver si tiene el permiso configurado
+  const permissionBasedAdminLinks = [
     { to: "/responsables", icon: UserCheck, label: "Responsables", permission: 'responsables' as const },
     { to: "/config", icon: Database, label: "Gestión Interna", permission: 'config' as const },
   ];
 
   const filteredMainLinks = mainLinks.filter(link => canView(link.permission));
-  const filteredAdminLinks = (adminLinks as any[]).filter(link => {
-    if (link.permission === 'users' || link.permission === 'config' || link.permission === 'responsables') {
-      return isAdmin;
-    }
-    return canView(link.permission);
-  });
+  const filteredAdminOnlyLinks = isAdmin ? adminOnlyLinks : [];
+  const filteredPermBasedLinks = permissionBasedAdminLinks.filter(link => canView(link.permission));
+
+  // Combinamos para el render de la sección admin (solo si hay algo que mostrar)
+  const allAdminLinks = [...filteredAdminOnlyLinks, ...filteredPermBasedLinks];
 
   return (
     <aside 
@@ -129,7 +133,7 @@ export function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
             ))}
           </ul>
 
-          {isAdmin && filteredAdminLinks.length > 0 && (
+          {allAdminLinks.length > 0 && (
             <div className="mt-8">
               <div className={`px-4 py-2 transition-all duration-300 ${isExpanded ? "opacity-100" : "opacity-0 h-0 py-0"}`}>
                 <span className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-[0.2em] whitespace-nowrap">
@@ -137,7 +141,7 @@ export function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
                 </span>
               </div>
               <ul className="space-y-2 px-3 mt-2">
-                {filteredAdminLinks.map((link) => (
+                {allAdminLinks.map((link) => (
                   <li key={link.to}>
                     <NavLink
                       to={link.to}

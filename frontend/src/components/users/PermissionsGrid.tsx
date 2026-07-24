@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ShoppingBag, Users as UsersGroup, Map, Lock, Settings, Coins } from 'lucide-react';
+import { ShoppingBag, Users as UsersGroup, Map, Settings, Coins, ShieldAlert } from 'lucide-react';
 import { RolePermissions } from '../../types';
 
 interface PermissionsGridProps {
@@ -24,11 +24,14 @@ export default function PermissionsGrid({ permissions, onChange }: PermissionsGr
     }
   };
 
+  // We explicitly omit 'dashboard' as per user request to keep it hidden from the global UI
   const modules: { id: keyof RolePermissions, label: string, icon: React.ReactNode }[] = [
     { id: 'sales', label: 'Ventas', icon: <ShoppingBag size={18} /> },
     { id: 'clients', label: 'Clientes', icon: <UsersGroup size={18} /> },
+    { id: 'responsables', label: 'Responsables', icon: <ShieldAlert size={18} /> },
     { id: 'itineraries', label: 'Itinerarios', icon: <Map size={18} /> },
-    { id: 'commissions', label: 'Comisionistas', icon: <Coins size={18} /> }
+    { id: 'commissions', label: 'Comisionistas', icon: <Coins size={18} /> },
+    { id: 'config', label: 'Gestión Interna', icon: <Settings size={18} /> },
   ];
 
   return (
@@ -40,12 +43,15 @@ export default function PermissionsGrid({ permissions, onChange }: PermissionsGr
             <span className="font-bold text-base text-gray-800 dark:text-slate-100">{mod.label}</span>
           </div>
           <div className="flex flex-col gap-3">
-            {Object.keys(permissions[mod.id]).map(permKey => {
+            {Object.keys(permissions[mod.id] || {}).map(permKey => {
               const val = (permissions[mod.id] as any)[permKey];
               const permLabels: Record<string, string> = {
                 view: 'Ver', create: 'Crear', edit: 'Editar', delete: 'Eliminar'
               };
-              const displayLabel = permLabels[permKey] || permKey;
+              let displayLabel = permLabels[permKey] || permKey;
+              if (mod.id === 'responsables' && permKey === 'delete') {
+                displayLabel = 'Desactivar';
+              }
               
               const isLocked = mod.id === 'dashboard' && permKey === 'view';
               

@@ -42,10 +42,10 @@ function AppRoutes() {
         <Route path="stats" element={<StatsView />} />
         <Route path="sales" element={<Sales />} />
         <Route path="clients" element={<Clients />} />
-        <Route path="responsables" element={<AdminRoute><Responsables /></AdminRoute>} />
+        <Route path="responsables" element={<Responsables />} />
         <Route path="itineraries" element={<Itineraries />} />
         <Route path="users" element={<AdminRoute><Users /></AdminRoute>} />
-        <Route path="config" element={<AdminRoute><Config /></AdminRoute>} />
+        <Route path="config" element={<Config />} />
         <Route path="commissions" element={<CommissionAgents />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
