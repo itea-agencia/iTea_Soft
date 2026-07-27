@@ -246,9 +246,12 @@ export default function Config() {
           if (!formData.checkedBag || formData.checkedBag.trim().length === 0) newErrors.checkedBag = 'La especificación de equipaje de bodega es obligatoria.';
           break;
         case 'packages':
-          if (!formData.name || formData.name.trim().length === 0) newErrors.name = 'El nombre del paquete es obligatorio.';
-          if (!formData.destination || formData.destination.trim().length === 0) newErrors.destination = 'El destino es obligatorio.';
-          if (!formData.nights || formData.nights <= 0) newErrors.nights = 'Debe ingresar un número válido de noches.';
+          // En paquetes todos los campos son opcionales
+          if (formData.nights !== undefined && formData.nights !== null && formData.nights !== '') {
+            if (Number(formData.nights) < 0) {
+              newErrors.nights = 'Debe ingresar un número válido de noches.';
+            }
+          }
           break;
       }
     }
