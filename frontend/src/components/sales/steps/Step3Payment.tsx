@@ -367,7 +367,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
 
         {form.commissionAgentId && (
           <>
-            <FormField label="% Comisión Bruta (sobre T.A.)">
+            <FormField label="% Comisión Bruta (sobre TA TOTAL)">
               <Input
                 type="number"
                 value={form.commissionAgentPercentage}
@@ -378,7 +378,8 @@ export function Step3Payment({ form, set, data, errors }: any) {
                   if (percentage > 100) { percentage = 100; val = "100"; }
                   
                   const ta = parseFloat(form.ta) || 0;
-                  const gross = ta * (percentage / 100);
+                  const taCre = parseFloat(form.taCre) || 0;
+                  const gross = (ta + taCre) * (percentage / 100);
                   
                   const retention = parseFloat(form.commissionAgentRetentionPercentage) || 0;
                   const net = gross * (1 - retention / 100);
@@ -432,54 +433,69 @@ export function Step3Payment({ form, set, data, errors }: any) {
           <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3">
             Resumen Financiero
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                Total
-              </p>
-              <p className="font-black text-gray-800 dark:text-slate-100">
-                ${Number(form.total).toLocaleString("es-CO")}
-              </p>
+          <div className="flex flex-col gap-4">
+            {/* Primera fila: 4 columnas */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  Total
+                </p>
+                <p className="font-black text-gray-800 dark:text-slate-100">
+                  ${Number(form.total).toLocaleString("es-CO")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  Pago proveedor
+                </p>
+                <p className="font-black text-rose-600 dark:text-rose-450">
+                  ${(Number(form.supplierCost) || 0).toLocaleString("es-CO")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  Valor TA
+                </p>
+                <p className="font-black text-emerald-600 dark:text-emerald-400">
+                  ${(Number(form.ta) || 0).toLocaleString("es-CO")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  Valor TA CRE
+                </p>
+                <p className="font-black text-amber-600 dark:text-amber-400">
+                  ${(Number(form.taCre) || 0).toLocaleString("es-CO")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                Pago proveedor
-              </p>
-              <p className="font-black text-rose-600 dark:text-rose-450">
-                ${(Number(form.supplierCost) || 0).toLocaleString("es-CO")}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                Valor TA
-              </p>
-              <p className="font-black text-emerald-600 dark:text-emerald-400">
-                ${(Number(form.ta) || 0).toLocaleString("es-CO")}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                Valor TA CRE
-              </p>
-              <p className="font-black text-amber-600 dark:text-amber-400">
-                ${(Number(form.taCre) || 0).toLocaleString("es-CO")}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                IVA (TA + TA CRE)
-              </p>
-              <p className="font-black text-emerald-600 dark:text-emerald-400">
-                ${(((Number(form.ta) || 0) + (Number(form.taCre) || 0)) * 0.19).toLocaleString("es-CO", { maximumFractionDigits: 0 })}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                Comisionista
-              </p>
-              <p className="font-black text-amber-600 dark:text-amber-400">
-                ${(Number(form.commissionAgentNetPayment) || 0).toLocaleString("es-CO")}
-              </p>
+            
+            {/* Segunda fila: 3 columnas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  TA TOTAL NETA
+                </p>
+                <p className="font-black text-indigo-600 dark:text-indigo-400">
+                  ${(((Number(form.ta) || 0) + (Number(form.taCre) || 0)) - (Number(form.commissionAgentNetPayment) || 0)).toLocaleString("es-CO")}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  IVA (TA TOTAL)
+                </p>
+                <p className="font-black text-emerald-600 dark:text-emerald-400">
+                  ${(((Number(form.ta) || 0) + (Number(form.taCre) || 0)) * 0.19).toLocaleString("es-CO", { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
+                  Comisionista
+                </p>
+                <p className="font-black text-amber-600 dark:text-amber-400">
+                  ${(Number(form.commissionAgentNetPayment) || 0).toLocaleString("es-CO")}
+                </p>
+              </div>
             </div>
           </div>
         </div>

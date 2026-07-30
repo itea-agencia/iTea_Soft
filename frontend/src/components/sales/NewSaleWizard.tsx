@@ -309,34 +309,36 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   useEffect(() => {
     let calcSupplierCost = 0;
     let calcTa = 0;
+    let calcTaCre = 0;
 
-    (form.tickets || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
-    (form.hotels || []).forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; });
-    (form.insurances || []).forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; });
-    (form.plans || []).forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
-    (form.checkIns || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
-    (form.migrations || []).forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; });
-    (form.simCards || []).forEach(sc => { calcSupplierCost += Number(sc.supplierCost) || 0; calcTa += Number(sc.ta) || 0; });
-    (form.baggages || []).forEach(b => { calcSupplierCost += Number(b.supplierCost) || 0; calcTa += Number(b.ta) || 0; });
-    (form.carRentals || []).forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; });
-    (form.fincas || []).forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; });
-    (form.tours || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; });
-    (form.conventions || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; });
-    (form.restaurants || []).forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; });
-    (form.visas || []).forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; });
-    (form.passports || []).forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; });
-    (form.petServices || []).forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; });
+    (form.tickets || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
+    (form.hotels || []).forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; calcTaCre += Number(h.taCre) || 0; });
+    (form.insurances || []).forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; calcTaCre += Number(i.taCre) || 0; });
+    (form.plans || []).forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
+    (form.checkIns || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
+    (form.migrations || []).forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; calcTaCre += Number(m.taCre) || 0; });
+    (form.simCards || []).forEach(sc => { calcSupplierCost += Number(sc.supplierCost) || 0; calcTa += Number(sc.ta) || 0; calcTaCre += Number(sc.taCre) || 0; });
+    (form.baggages || []).forEach(b => { calcSupplierCost += Number(b.supplierCost) || 0; calcTa += Number(b.ta) || 0; calcTaCre += Number(b.taCre) || 0; });
+    (form.carRentals || []).forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; calcTaCre += Number(cr.taCre) || 0; });
+    (form.fincas || []).forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; calcTaCre += Number(f.taCre) || 0; });
+    (form.tours || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
+    (form.conventions || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
+    (form.restaurants || []).forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; calcTaCre += Number(r.taCre) || 0; });
+    (form.visas || []).forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; calcTaCre += Number(v.taCre) || 0; });
+    (form.passports || []).forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
+    (form.petServices || []).forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; calcTaCre += Number(ps.taCre) || 0; });
 
-    const calcTotal = calcSupplierCost + calcTa;
+    const calcTotal = calcSupplierCost + calcTa + calcTaCre;
 
     if (
       form.supplierCost !== calcSupplierCost.toString() ||
       form.ta !== calcTa.toString() ||
+      form.taCre !== calcTaCre.toString() ||
       form.total !== calcTotal.toString()
     ) {
       setForm(prev => {
         const commPercentage = parseFloat(prev.commissionAgentPercentage || "0");
-        const newCommAmount = calcTa * (commPercentage / 100);
+        const newCommAmount = (calcTa + calcTaCre) * (commPercentage / 100);
         const retention = parseFloat(prev.commissionAgentRetentionPercentage || "0");
         const newCommNet = newCommAmount * (1 - retention / 100);
         
@@ -344,6 +346,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
           ...prev,
           supplierCost: calcSupplierCost.toString(),
           ta: calcTa.toString(),
+          taCre: calcTaCre.toString(),
           total: calcTotal.toString(),
           commissionAgentAmount: newCommAmount.toString(),
           commissionAgentNetPayment: newCommNet.toString()
@@ -1853,6 +1856,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       commissionAgentNetPayment: Number(form.commissionAgentNetPayment) || undefined,
       isSettled: !!form.commissionAgentId ? false : undefined,
       ta: Number(form.ta) || 0,
+      taCre: Number(form.taCre) || 0,
       supplierCost: Number(form.supplierCost) || 0,
     };
 

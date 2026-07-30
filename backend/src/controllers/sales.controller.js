@@ -67,6 +67,7 @@ exports.list = async (req, res, next) => {
           v.monto_comision_neto as "montoComisionNeto",
           v.costo_proveedor_total as "costoProveedorTotal",
           v.ta_total as "taTotal",
+          v.ta_cre_total as "taCreTotal",
           v.comision_liquidada as "comisionLiquidada",
           v.responsable_id as "responsableId",
           cp.nombres || ' ' || cp.apellidos as "clientName",
@@ -187,6 +188,7 @@ exports.list = async (req, res, next) => {
         commissionAgentNetPayment: v.montoComisionNeto,
         supplierCost: v.costoProveedorTotal,
         ta: v.taTotal,
+        taCre: v.taCreTotal,
         isSettled: v.comisionLiquidada,
         payments: (v.pagosVenta || []).map(p => ({
           id: p.id,
@@ -1735,6 +1737,7 @@ exports.create = async (req, res, next) => {
       commissionAgentNetPayment: created.montoComisionNeto,
       supplierCost: created.costoProveedorTotal,
       ta: created.taTotal,
+      taCre: created.taCreTotal,
       isSettled: created.comisionLiquidada,
       payments: (created.pagosVenta || []).map(p => ({
         id: p.id,

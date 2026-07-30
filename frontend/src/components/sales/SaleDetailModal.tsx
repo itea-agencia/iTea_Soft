@@ -345,8 +345,8 @@ export default function SaleDetailModal({
 
             <hr className="border-gray-100 dark:border-slate-800" />
 
-            {/* Fila 2: Valor TA, Valor TA CRE, IVA, Pago Comisionista */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            {/* Fila 2: Valor TA, Valor TA CRE, TA TOTAL NETA, IVA, Pago Comisionista */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <div>
                 <span className="text-gray-500 text-xs block">
                   Valor TA
@@ -361,6 +361,14 @@ export default function SaleDetailModal({
                 </span>
                 <span className="font-medium text-amber-600">
                   {formatCurrency(taCre)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">
+                  TA TOTAL NETA
+                </span>
+                <span className="font-bold text-indigo-600">
+                  {formatCurrency((ta + taCre) - commissionAmount)}
                 </span>
               </div>
               <div>
