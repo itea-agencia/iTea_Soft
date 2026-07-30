@@ -357,7 +357,7 @@ export default function SaleDetailModal({
               </div>
               <div>
                 <span className="text-gray-500 text-xs block">
-                  Valor TA CRE
+                  TA SAE
                 </span>
                 <span className="font-medium text-amber-600">
                   {formatCurrency(taCre)}

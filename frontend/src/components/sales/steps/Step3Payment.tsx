@@ -462,7 +462,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
               </div>
               <div>
                 <p className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase">
-                  Valor TA CRE
+                  TA SAE
                 </p>
                 <p className="font-black text-amber-600 dark:text-amber-400">
                   ${(Number(form.taCre) || 0).toLocaleString("es-CO")}
