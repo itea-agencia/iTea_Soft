@@ -150,8 +150,9 @@ exports.createAgent = async (req, res, next) => {
     }
 
     // Check if agent with this document already exists
+    let existingAgent = null;
     if (data.docNumber) {
-      const existingAgent = await prisma.comisionistas.findFirst({
+      existingAgent = await prisma.comisionistas.findFirst({
         where: { persona: { documento: data.docNumber } }
       });
       if (existingAgent) {

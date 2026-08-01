@@ -658,8 +658,7 @@ async function main() {
               tipoSeguro: 'todo_riesgo',
               coberturaUsd: 100000,
               diasCobertura: 15,
-              contactoEmergencia: 'Contacto de emergencia',
-              telefonoEmergencia: '3000000000'
+              telefonoContacto: '3000000000'
             }
           });
           break;
