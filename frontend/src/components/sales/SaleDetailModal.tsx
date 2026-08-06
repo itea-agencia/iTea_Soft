@@ -316,21 +316,13 @@ export default function SaleDetailModal({
           </h4>
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-4">
             {/* Fila 1: Asesor, Proveedor(es), Pago a Proveedores */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <span className="text-gray-500 text-xs block">
                   Asesor
                 </span>
                 <span className="font-medium text-gray-800">
                   {sale.asesorName}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 text-xs block">
-                  Proveedor(es)
-                </span>
-                <span className="font-medium text-gray-800 break-words" title={suppliersList}>
-                  {suppliersList}
                 </span>
               </div>
               <div>

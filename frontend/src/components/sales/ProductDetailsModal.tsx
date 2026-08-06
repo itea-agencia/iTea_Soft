@@ -223,6 +223,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
                 { label: "Equipaje", value: ticket.baggagePlan || "-" },
                 { label: "Reserva Global", value: ticket.reservationNumber || "-" },
                 { label: "Vuelo Ida", value: ticket.flightNumber || ticket.legs?.[0]?.flightNumber || "-" },
+                { label: "Proveedor", value: ticket.supplier || ticket.supplierName },
+                { label: "Costo Proveedor", value: ticket.supplierCost ? formatCurrency(ticket.supplierCost) : "-" },
               ])}
 
               {/* Outbound Flights (Trayecto de Ida) */}
@@ -334,6 +336,7 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
             {renderGrid([
               { label: "Destino", value: hotel.destination },
               { label: "Proveedor", value: hotel.supplier || hotel.hotelName },
+              { label: "Costo Proveedor", value: hotel.supplierCost ? formatCurrency(hotel.supplierCost) : "-" },
               { label: "Reserva", value: hotel.reservationNumber },
               { label: "Fechas", value: hotel.startDate && hotel.endDate ? `${formatDate(hotel.startDate)} al ${formatDate(hotel.endDate)}` : (hotel.startDate ? formatDate(hotel.startDate) : (hotel.endDate ? formatDate(hotel.endDate) : "-")) },
             ])}
@@ -356,6 +359,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Días", value: ins.coverageDays },
               { label: "Fecha Inicio", value: ins.startDate ? formatDate(ins.startDate) : "-" },
               { label: "Fecha Fin", value: ins.endDate ? formatDate(ins.endDate) : "-" },
+              { label: "Proveedor", value: ins.supplier || ins.supplierName },
+              { label: "Costo Proveedor", value: ins.supplierCost ? formatCurrency(ins.supplierCost) : "-" },
               { label: "Contacto Emergencia", value: ins.contactName },
               { label: "Teléfono Emergencia", value: ins.contactNumber },
               { label: "Dirección Asegurado", value: ins.address },
@@ -378,6 +383,7 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
                 renderGrid([
                   { label: "Tipo de Paquete", value: "Por Proveedor" },
                   { label: "Proveedor / Operador", value: plan.supplier || "—" },
+                  { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
                   ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
                 ])
               ) : (
@@ -386,6 +392,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
                   { label: "Hotel", value: plan.hotelName },
                   { label: plan.transportType === 'Terrestre' ? "Transportadora" : "Aerolínea", value: plan.airlineName || plan.airline },
                   { label: "Reserva", value: plan.reservationNumber },
+                  { label: "Proveedor", value: plan.supplier || plan.supplierName },
+                  { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
                   { label: plan.transportType === 'Terrestre' ? "Puesto/Tiquete" : "Nro Tiquete", value: plan.ticketNumber },
                   { label: "Confirmación", value: plan.confirmationNumber },
                   { label: "Check-in Hotel", value: plan.startDate ? formatDateTime(plan.startDate) : "-" },
@@ -419,6 +427,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Asiento", value: item.seat },
               { label: "Equipaje/Maletas", value: item.baggage },
               { label: "Teléfono", value: item.phone },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
               { label: "Usa Silla Ruedas", value: item.needsWheelchair ? "Sí" : "No" },
             ])}
             {item.specialNeeds && (
@@ -442,6 +452,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Nro Pasaporte", value: item.passportNumber },
               { label: "Vencimiento Pasaporte", value: item.passportExpiry ? formatDate(item.passportExpiry) : "-" },
               { label: "País Destino", value: item.destinationCountry },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
         ));
@@ -459,6 +471,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Plan de Datos", value: item.dataPlan },
               { label: "Tipo SIM", value: item.simType },
               { label: "Método de Entrega", value: item.deliveryMethod },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
         ));
@@ -479,6 +493,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Cond. Adicionales", value: item.additionalDrivers },
               { label: "Tipo de Seguro", value: item.insuranceType },
               { label: "Garantía de Tarjeta", value: item.guaranteeCreditCard },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
         ));
@@ -498,6 +514,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Niños", value: item.childrenCount },
               { label: "Tiene Mascotas", value: item.hasPets ? "Sí" : "No" },
               { label: "Tipo Mascota", value: item.petType },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.additionalServices && item.additionalServices.length > 0 && (
               <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
@@ -523,6 +541,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Requiere Transporte", value: item.needsTransport ? "Sí" : "No" },
               { label: "Punto de Encuentro", value: item.pickupPoint },
               { label: "Teléfono", value: item.phone },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {renderPassengers(item.guests)}
             {item.medicalConditions && (
@@ -557,6 +577,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Tipo de Evento", value: item.eventType },
               { label: "Equipos AV", value: Array.isArray(item.avEquipment) ? item.avEquipment.join(", ") : item.avEquipment },
               { label: "Requiere Catering", value: item.hasCatering ? "Sí" : "No" },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.cateringNotes && (
               <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
@@ -581,6 +603,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Tipo de Menú", value: item.menuType },
               { label: "Ocasión Especial", value: item.specialOccasion },
               { label: "Teléfono", value: item.phone },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.dietaryRestrictions && (
               <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
@@ -607,6 +631,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Tipo de Visa", value: item.visaType },
               { label: "Viaje Estimado", value: item.estimatedTravelDate ? formatDate(item.estimatedTravelDate) : "-" },
               { label: "Correo", value: item.email },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
         ));
@@ -625,6 +651,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Tipo Trámite", value: item.processType },
               { label: "Viaje Estimado", value: item.estimatedTravelDate ? formatDate(item.estimatedTravelDate) : "-" },
               { label: "Teléfono", value: item.phone },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
         ));
@@ -645,6 +673,8 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Fecha de Viaje", value: item.travelDate ? formatDate(item.travelDate) : "-" },
               { label: "País Destino", value: item.destinationCountry },
               { label: "Teléfono", value: item.phone },
+              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.medicalConditions && (
               <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
