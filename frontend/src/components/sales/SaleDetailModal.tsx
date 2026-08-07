@@ -16,7 +16,8 @@ import {
   PawPrint,
   ShoppingBag,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Receipt
 } from "lucide-react";
 import * as api from "../../api";
 import { Modal } from "../ui/Modal";
@@ -92,6 +93,11 @@ export default function SaleDetailModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pendingProductView, setPendingProductView] = useState<{ key: string; label: string } | null>(null);
+  
+  // Siigo Integration State
+  const [isInvoicing, setIsInvoicing] = useState(false);
+  const [invoiceSuccess, setInvoiceSuccess] = useState(false);
+  const [invoiceError, setInvoiceError] = useState("");
 
   useEffect(() => {
     if (isOpen && selectedSale) {
@@ -123,6 +129,24 @@ export default function SaleDetailModal({
       setPendingProductView(null);
     }
   }, [fullSale, pendingProductView]);
+
+  const handleGenerateInvoice = async () => {
+    if (!sale) return;
+    setIsInvoicing(true);
+    setInvoiceError("");
+    setInvoiceSuccess(false);
+    
+    try {
+      await api.createSiigoInvoice(sale.id);
+      setInvoiceSuccess(true);
+      setTimeout(() => setInvoiceSuccess(false), 5000);
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || "Ocurrió un error inesperado al facturar en Siigo.";
+      setInvoiceError(msg);
+    } finally {
+      setIsInvoicing(false);
+    }
+  };
 
   if (!selectedSale) return null;
 
@@ -212,9 +236,19 @@ export default function SaleDetailModal({
       title={`Detalle de Venta #${formatSaleId(sale.id)}`}
       size="lg"
       footer={
-        <Button variant="outline" onClick={onClose}>
-          Cerrar
-        </Button>
+        <div className="flex items-center justify-between w-full">
+          <Button 
+            className="bg-[#003A70] hover:bg-[#002855] text-white flex items-center gap-2"
+            onClick={handleGenerateInvoice}
+            disabled={isInvoicing}
+          >
+            {isInvoicing ? <Loader2 size={16} className="animate-spin" /> : <Receipt size={16} />}
+            {isInvoicing ? "Generando Factura..." : "Generar Factura en Siigo"}
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
       }
     >
       {loading ? (
@@ -228,6 +262,22 @@ export default function SaleDetailModal({
             <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               <AlertCircle size={14} />
               {error}
+            </div>
+          )}
+
+          {/* Mensajes de Siigo */}
+          {invoiceSuccess && (
+            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
+              <ShieldCheck size={18} />
+              <strong>¡Éxito!</strong> La factura electrónica ha sido generada correctamente en Siigo.
+            </div>
+          )}
+          {invoiceError && (
+            <div className="flex items-start gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <strong>Error al facturar:</strong> {invoiceError}
+              </div>
             </div>
           )}
 

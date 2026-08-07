@@ -13,7 +13,7 @@ export {
 export {
   listSales, getSale, createSale, updateSale, deleteSale, voidSale,
   registerPayment, deletePayment, getSalePayments, createProduct, updateProduct, deleteProduct,
-  sendVoucher, updateReviewStatus,
+  sendVoucher, updateReviewStatus, createSiigoInvoice
 } from './sales';
 export {
   listFlights, updateCheckin,

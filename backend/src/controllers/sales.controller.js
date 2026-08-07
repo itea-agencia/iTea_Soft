@@ -6,6 +6,7 @@ const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
 const { getSamturLogoBase64 } = require('../utils/logoHelper');
 const crypto = require('crypto');
+const siigoService = require('../services/siigo.service');
 
 exports.list = async (req, res, next) => {
   try {
@@ -2523,6 +2524,35 @@ exports.sendVoucher = async (req, res, next) => {
     }
 
     success(res, { message: `Voucher enviado a ${clientEmail}`, email: clientEmail });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.generateSiigoInvoice = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const venta = await prisma.ventas.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        cliente: { include: { persona: true } }
+      }
+    });
+
+    if (!venta) {
+      return error(res, 'Venta no encontrada', 404);
+    }
+
+    const customerSiigo = await siigoService.getOrCreateCustomer(venta.cliente.persona);
+    const siigoInvoice = await siigoService.createInvoice(venta, customerSiigo);
+
+    success(res, {
+      message: 'Factura generada exitosamente en Siigo',
+      siigoId: siigoInvoice.id,
+      invoiceName: siigoInvoice.name
+    });
+
   } catch (err) {
     next(err);
   }

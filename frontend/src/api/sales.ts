@@ -68,3 +68,8 @@ export async function updateReviewStatus(id: number, isReviewed: boolean) {
   const res = await api.patch(`/sales/${id}/review-status`, { isReviewed });
   return res.data.data;
 }
+
+export async function createSiigoInvoice(id: number) {
+  const res = await api.post(`/sales/${id}/invoice`);
+  return res.data;
+}

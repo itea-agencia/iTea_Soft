@@ -20,6 +20,7 @@ router.post('/:id/payments', authorize('sales', 'edit'), salesController.registe
 router.delete('/:saleId/payments/:paymentId', authorize('sales', 'edit'), salesController.deletePayment);
 router.get('/:id/payments', authorize('sales', 'view'), salesController.listPayments);
 router.post('/:id/send-voucher', authorize('sales', 'view'), salesController.sendVoucher);
+router.post('/:id/invoice', authorize('sales', 'view'), salesController.generateSiigoInvoice);
 
 // 15 endpoints de productos
 router.post('/:saleId/products/ticket', authorize('sales', 'create'), productsController.createTicket);

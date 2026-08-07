@@ -1,5 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import * as api from "../api";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   Plus,
   ShoppingBag,
@@ -33,7 +35,6 @@ import SalesTable from "../components/sales/SalesTable";
 import StatCard from "../components/ui/StatCard";
 import CreditDashboard from "../components/sales/CreditDashboard";
 import { VoucherPDF } from "../components/sales/VoucherPDF";
-import { useRef } from "react";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
 export default function Sales() {
@@ -259,8 +260,6 @@ export default function Sales() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // 5. Capturar canvas por cada página y armar el jsPDF
-    const html2canvas = (await import('html2canvas')).default;
-    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF('p', 'mm', 'a4');
     const imgWidth = 210;
     const imgHeight = 297; // exact A4 height in mm
