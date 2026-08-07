@@ -238,12 +238,11 @@ export default function SaleDetailModal({
       footer={
         <div className="flex items-center justify-between w-full">
           <Button 
-            className="bg-[#003A70] hover:bg-[#002855] text-white flex items-center gap-2"
-            onClick={handleGenerateInvoice}
-            disabled={isInvoicing}
+            className="bg-gray-400 text-white flex items-center gap-2 cursor-not-allowed"
+            disabled={true}
           >
-            {isInvoicing ? <Loader2 size={16} className="animate-spin" /> : <Receipt size={16} />}
-            {isInvoicing ? "Generando Factura..." : "Generar Factura en Siigo"}
+            <Receipt size={16} />
+            Generar Factura en Siigo (Mantenimiento)
           </Button>
           <Button variant="outline" onClick={onClose}>
             Cerrar
