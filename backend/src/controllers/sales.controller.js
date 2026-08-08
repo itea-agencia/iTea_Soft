@@ -2379,6 +2379,11 @@ exports.sendVoucher = async (req, res, next) => {
                       <strong style="color:#032650;">voucher oficial de viaje</strong> correspondiente a la 
                       <strong style="color:#07818e;">Orden #${saleId}</strong>.
                     </p>
+                    <div style="margin-top:16px;font-size:14px;color:#0b396b;line-height:1.6;background:#e0f2fe;border-left:4px solid #0284c7;padding:12px 16px;border-radius:0 8px 8px 0;">
+                      <strong>Por favor, verifique detalladamente</strong> la información contenida en su itinerario adjunto. 
+                      Si identifica alguna discrepancia o error en sus datos personales, fechas o servicios contratados, 
+                      le agradecemos notificarlo de manera inmediata a su asesor para realizar las correcciones oportunas.
+                    </div>
                   </td>
                 </tr>
 
