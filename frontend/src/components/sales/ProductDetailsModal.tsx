@@ -229,46 +229,46 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
 
               {/* Outbound Flights (Trayecto de Ida) */}
               {outboundLegs.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
-                    <p className="text-xs font-bold text-gray-700 uppercase flex items-center gap-1">
+                <div className="bg-gray-50 dark:bg-slate-800/50 rounded-lg p-3 border border-gray-100 dark:border-slate-700/50">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200 dark:border-slate-700">
+                    <p className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase flex items-center gap-1">
                       <ArrowRight size={11} className="text-primary" />
                       Trayecto de Ida
                     </p>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase">
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-primary/10 dark:bg-primary/20 text-primary uppercase">
                       {outboundTypeLabel}
                     </span>
                   </div>
                   {outboundLegs.map((leg: any, lIdx: number) => (
-                    <div key={lIdx} className="grid grid-cols-1 sm:grid-cols-8 gap-2 text-xs mb-2 pb-2 last:border-0 last:pb-0 border-b border-gray-150 items-center">
-                      <div className="font-semibold text-gray-800">{getAirport(leg.origin, airportMap)} <span className="text-gray-400 mx-1">→</span> {getAirport(leg.destination, airportMap)}</div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Aerolínea</span>
-                        <span className="font-medium text-gray-800">{leg.airline || ticket.airlineName || ticket.airline || "-"}</span>
+                    <div key={lIdx} className="grid grid-cols-1 sm:grid-cols-8 gap-2 text-xs mb-2 pb-2 last:border-0 last:pb-0 border-b border-gray-150 dark:border-slate-700/50 items-center">
+                      <div className="font-semibold text-gray-800 dark:text-slate-200">{getAirport(leg.origin, airportMap)} <span className="text-gray-400 dark:text-slate-500 mx-1">→</span> {getAirport(leg.destination, airportMap)}</div>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Aerolínea</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.airline || ticket.airlineName || ticket.airline || "-"}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Equipaje</span>
-                        <span className="font-medium text-gray-800">{leg.baggagePlan || ticket.baggagePlan || "-"}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Equipaje</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.baggagePlan || ticket.baggagePlan || "-"}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Salida</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Salida</span>
                         {leg.date ? `${formatDate(leg.date)} ${formatTimeAMPM(leg.time)}` : "-"}
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Llegada</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Llegada</span>
                         {leg.arrivalDate ? `${formatDate(leg.arrivalDate)} ${formatTimeAMPM(leg.arrivalTime)}` : "-"}
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Vuelo</span>
-                        <span className="font-medium text-gray-800">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Vuelo</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Asiento</span>
-                        <span className="font-medium text-gray-800">{leg.seat || "-"}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.seat || "-"}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">N° Tiquete</span>
-                        <span className="font-medium text-gray-800 break-all">{leg.ticketNumber || "-"}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">N° Tiquete</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200 break-all">{leg.ticketNumber || "-"}</span>
                       </div>
                     </div>
                   ))}
@@ -277,46 +277,46 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
 
               {/* Return Flights (Trayecto de Regreso) */}
               {flightMode === "round_trip" && returnLegs.length > 0 && (
-                <div className="bg-blue-50/40 rounded-lg p-3 mt-2.5 border border-blue-100/60">
-                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100">
-                    <p className="text-xs font-bold text-blue-700 uppercase flex items-center gap-1">
+                <div className="bg-blue-50/40 dark:bg-blue-900/10 rounded-lg p-3 mt-2.5 border border-blue-100/60 dark:border-blue-800/30">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100 dark:border-blue-800/40">
+                    <p className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase flex items-center gap-1">
                       <ArrowLeft size={11} />
                       Trayecto de Regreso
                     </p>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase">
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 uppercase">
                       {returnTypeLabel}
                     </span>
                   </div>
                   {returnLegs.map((leg: any, lIdx: number) => (
-                    <div key={lIdx} className="grid grid-cols-1 sm:grid-cols-8 gap-2 text-xs mb-2 pb-2 last:border-0 last:pb-0 border-b border-blue-50 items-center">
-                      <div className="font-semibold text-blue-800">{getAirport(leg.origin, airportMap)} <span className="text-gray-400 mx-1">→</span> {getAirport(leg.destination, airportMap)}</div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Aerolínea</span>
-                        <span className="font-medium text-blue-800">{leg.airline || ticket.airlineName || ticket.airline || "-"}</span>
+                    <div key={lIdx} className="grid grid-cols-1 sm:grid-cols-8 gap-2 text-xs mb-2 pb-2 last:border-0 last:pb-0 border-b border-blue-50 dark:border-blue-900/30 items-center">
+                      <div className="font-semibold text-blue-800 dark:text-blue-300">{getAirport(leg.origin, airportMap)} <span className="text-gray-400 dark:text-slate-500 mx-1">→</span> {getAirport(leg.destination, airportMap)}</div>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Aerolínea</span>
+                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.airline || ticket.airlineName || ticket.airline || "-"}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Equipaje</span>
-                        <span className="font-medium text-blue-800">{leg.baggagePlan || ticket.baggagePlan || "-"}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Equipaje</span>
+                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.baggagePlan || ticket.baggagePlan || "-"}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Salida</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Salida</span>
                         {leg.date ? `${formatDate(leg.date)} ${formatTimeAMPM(leg.time)}` : "-"}
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Llegada</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Llegada</span>
                         {leg.arrivalDate ? `${formatDate(leg.arrivalDate)} ${formatTimeAMPM(leg.arrivalTime)}` : "-"}
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Vuelo</span>
-                        <span className="font-medium text-blue-800">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Vuelo</span>
+                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">Asiento</span>
-                        <span className="font-medium text-blue-800">{leg.seat || "-"}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
+                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.seat || "-"}</span>
                       </div>
-                      <div className="text-gray-600">
-                        <span className="font-bold text-[10px] text-gray-400 block uppercase mb-0.5">N° Tiquete</span>
-                        <span className="font-medium text-blue-800 break-all">{leg.ticketNumber || "-"}</span>
+                      <div className="text-gray-600 dark:text-slate-400">
+                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">N° Tiquete</span>
+                        <span className="font-medium text-blue-800 dark:text-blue-300 break-all">{leg.ticketNumber || "-"}</span>
                       </div>
                     </div>
                   ))}

@@ -656,7 +656,7 @@ export interface Flight {
   date: string;
   time: string;
   type: "ida" | "regreso";
-  checkin: "pendiente" | "realizado" | "critico";
+  checkin: "pendiente" | "realizado" | "critico" | "omitido";
   flightNumber?: string;
   seat?: string | null;
   reservationNumber?: string;

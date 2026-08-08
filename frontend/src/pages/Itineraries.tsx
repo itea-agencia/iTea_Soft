@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { 
   ChevronLeft, ChevronRight, Plane, X, Calendar as CalendarIcon, 
   UserCheck, PlaneTakeoff, PlaneLanding, Search, Filter, AlertCircle,
-  Clock, CheckCircle2, UploadCloud, ExternalLink, Package
+  Clock, CheckCircle2, UploadCloud, ExternalLink, Package, EyeOff
 } from 'lucide-react';
 import { Card, CardHeader, CardBody } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -36,10 +36,15 @@ export default function Itineraries() {
   const [selectedFlightForCheckin, setSelectedFlightForCheckin] = useState<Flight | null>(null);
   const [checkinFiles, setCheckinFiles] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [isOmitModalOpen, setIsOmitModalOpen] = useState(false);
+  const [flightToOmit, setFlightToOmit] = useState<{ id: string, passenger: string } | null>(null);
 
   const getFlightStatus = (flight: Flight) => {
+    if (flight.checkin === 'omitido') {
+      return { isRealizado: false, isVencido: false, isUrgente: false, isOmitido: true };
+    }
     if (flight.checkin === 'realizado') {
-      return { isRealizado: true, isVencido: false, isUrgente: false };
+      return { isRealizado: true, isVencido: false, isUrgente: false, isOmitido: false };
     }
     const [yr, mo, dy] = flight.date.split('-').map(Number);
     const [hr, mn] = (flight.time || '00:00').split(':').map(Number);
@@ -47,7 +52,7 @@ export default function Itineraries() {
     const now = new Date();
     const isVencido = flightDateTime < now;
     const isUrgente = !isVencido && (flightDateTime.getTime() <= now.getTime() + (48 * 60 * 60 * 1000));
-    return { isRealizado: false, isVencido, isUrgente };
+    return { isRealizado: false, isVencido, isUrgente, isOmitido: false };
   };
 
   // Lazy Load Fetch
@@ -105,6 +110,32 @@ export default function Itineraries() {
       setSelectedFlightForCheckin(flight);
       setIsCheckinModalOpen(true);
       setCheckinFiles([]);
+    }
+  };
+
+  const handleOmitCheckin = (flightId: string, passengerName: string) => {
+    setFlightToOmit({ id: flightId, passenger: passengerName });
+    setIsOmitModalOpen(true);
+  };
+
+  const confirmOmitCheckin = async () => {
+    if (!flightToOmit) return;
+    try {
+      setIsSending(true);
+      await updateFlight(flightToOmit.id, { checkin: 'omitido' });
+      setSuccessMessage(`Check-in omitido para ${flightToOmit.passenger}`);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+      await fetchFlights();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error?.message || 'Error al omitir check-in';
+      setErrorMessage(msg);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 5000);
+    } finally {
+      setIsSending(false);
+      setIsOmitModalOpen(false);
+      setFlightToOmit(null);
     }
   };
 
@@ -352,7 +383,9 @@ export default function Itineraries() {
                               key={flight.id}
                               title={`${isPlan ? '📦 ' : ''}${flight.passenger}${docInfo}\nHora: ${flight.time}\nCheck-in: ${isPlan ? 'N/A (Paquete)' : flight.checkin}${flight.reservationNumber ? `\nReserva: ${flight.reservationNumber}` : ''}${isPlan ? `\nPlan: ${flight.route}` : ''}${isPlan && flight.additionalPassengers ? `\nAcompañantes: ${flight.additionalPassengers}` : ''}`}
                               className={`px-2 py-1 rounded-md text-[10px] font-semibold border flex items-center gap-1 shadow-sm transition-transform hover:scale-[1.02] ${
-                                 isPlan
+                                 flight.checkin === 'omitido'
+                                   ? 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-800/50 text-red-700 dark:text-red-300 opacity-70 line-through decoration-red-300'
+                                   : isPlan
                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-100 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300'
                                    : flight.type === 'ida' 
                                      ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-100 dark:border-blue-800/50 text-blue-700 dark:text-blue-300' 
@@ -363,10 +396,11 @@ export default function Itineraries() {
                               <span className="truncate flex-1">{flight.passenger}</span>
                               <span className="opacity-60 shrink-0">{flight.time}</span>
                               {!isPlan && (() => {
-                                 const { isRealizado, isVencido } = getFlightStatus(flight);
+                                 const { isRealizado, isVencido, isOmitido } = getFlightStatus(flight);
+                                 if (isOmitido) return <EyeOff size={10} className="shrink-0 ml-auto opacity-50" />;
                                  return (
                                    <span title={isRealizado ? 'Check-in realizado' : isVencido ? 'Check-in vencido' : 'Check-in pendiente'}
-                                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${isRealizado ? 'bg-green-500' : isVencido ? 'bg-red-500' : 'bg-yellow-400'}`}
+                                     className={`w-1.5 h-1.5 rounded-full ml-auto shrink-0 ${isRealizado ? 'bg-green-500' : isVencido ? 'bg-red-500' : 'bg-yellow-400'}`}
                                    />
                                  );
                                })()}
@@ -426,18 +460,26 @@ export default function Itineraries() {
                                 <span className="text-[9px] font-semibold text-emerald-500 uppercase tracking-wider">Paquete</span>
                               </>
                             ) : (() => {
-                              const { isRealizado, isVencido } = getFlightStatus(flight);
-                              return (
-                                <>
-                                  <span title={isRealizado ? 'Check-in realizado' : isVencido ? 'Check-in vencido' : 'Check-in pendiente'}
-                                    className={`w-2 h-2 rounded-full ${isRealizado ? 'bg-green-500' : isVencido ? 'bg-red-500' : 'bg-yellow-400'}`}
-                                  />
-                                  <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">
-                                    {isRealizado ? 'Listo' : isVencido ? 'Vencido' : 'Pendiente'}
-                                  </span>
-                                </>
-                              );
-                            })()}
+                                const { isRealizado, isVencido, isOmitido } = getFlightStatus(flight);
+                                if (isOmitido) {
+                                  return (
+                                    <>
+                                      <EyeOff size={14} className="text-red-400" />
+                                      <span className="text-[9px] font-semibold text-red-400 uppercase tracking-wider">Omitido</span>
+                                    </>
+                                  );
+                                }
+                                return (
+                                  <>
+                                    <span title={isRealizado ? 'Check-in realizado' : isVencido ? 'Check-in vencido' : 'Check-in pendiente'}
+                                      className={`w-2 h-2 rounded-full ${isRealizado ? 'bg-green-500' : isVencido ? 'bg-red-500' : 'bg-yellow-400'}`}
+                                    />
+                                    <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">
+                                      {isRealizado ? 'Listo' : isVencido ? 'Vencido' : 'Pendiente'}
+                                    </span>
+                                  </>
+                                );
+                              })()}
                           </div>
                         </div>
                       );
@@ -534,13 +576,25 @@ export default function Itineraries() {
                               </div>
                             </div>
                             {canEditItinerary('itineraries') && (
-                              <Button 
-                                size="sm" 
-                                onClick={() => handleMarkCheckin(flight.id, flight.passenger)}
-                                className="shadow-md shadow-primary/10 w-full sm:w-auto justify-center"
-                              >
-                                <UserCheck size={16} /> Realizar Check-in
-                              </Button>
+                              <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
+                                <Button 
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOmitCheckin(flight.id, flight.passenger)}
+                                  className="text-gray-500 hover:text-red-600 hover:bg-red-50 border-gray-200 transition-colors shadow-sm"
+                                  disabled={isSending}
+                                >
+                                  <EyeOff size={16} /> <span className="hidden sm:inline">Omitir</span>
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleMarkCheckin(flight.id, flight.passenger)}
+                                  className="shadow-md shadow-primary/10 w-full sm:w-auto justify-center"
+                                  disabled={isSending}
+                                >
+                                  <UserCheck size={16} /> Realizar Check-in
+                                </Button>
+                              </div>
                             )}
                           </div>
                         );
@@ -749,6 +803,37 @@ export default function Itineraries() {
             <AlertCircle size={14} className="shrink-0 mt-0.5" />
             <p>Al confirmar, el documento se enviará automáticamente al correo registrado del cliente.</p>
           </div>
+        </div>
+      </Modal>
+
+      {/* Modal Confirmación de Omitir */}
+      <Modal
+        isOpen={isOmitModalOpen}
+        onClose={() => {
+          if (!isSending) {
+            setIsOmitModalOpen(false);
+            setFlightToOmit(null);
+          }
+        }}
+        title="Omitir Check-in"
+        size="sm"
+        footer={
+          <div className="flex gap-2 justify-end w-full">
+            <Button variant="outline" onClick={() => { setIsOmitModalOpen(false); setFlightToOmit(null); }} disabled={isSending}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmOmitCheckin} disabled={isSending}>
+              {isSending ? 'Procesando...' : 'Sí, omitir'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div className="flex items-center gap-3 text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
+            <AlertCircle size={24} className="shrink-0" />
+            <p className="text-sm font-medium">¿Seguro que deseas omitir o anular el check-in pendiente para <strong className="font-bold">{flightToOmit?.passenger}</strong>?</p>
+          </div>
+          <p className="text-sm text-gray-600">Al omitirlo, este check-in desaparecerá por completo de tu lista de pendientes y de tu calendario.</p>
         </div>
       </Modal>
     </div>
