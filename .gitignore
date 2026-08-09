@@ -97,3 +97,6 @@ Dockerfile*
 
 # Scripts
 backend/scripts/
+
+# Manuales y Guías Locales
+GUIA_ERRORES_LOGIN.md
