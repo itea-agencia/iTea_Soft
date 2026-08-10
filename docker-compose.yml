@@ -1,0 +1,54 @@
+services:
+  # PostgreSQL Database
+  base_datos:
+    image: postgres:15
+    container_name: mi_postgres_monorepo
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1033488906b
+      POSTGRES_DB: samtur-development
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # PgAdmin GUI
+  interfaz_grafica:
+    image: dpage/pgadmin4
+    container_name: mi_pgadmin_local
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@prueba.com 
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    ports:
+      - "8080:80" # Ahora sí responderá en http://localhost:8080
+
+  # El servicio del Backend
+  backend:
+    container_name: mi_backend_app
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment: 
+      DATABASE_URL: "postgresql://postgres:1033488906b@base_datos:5432/samtur-development?schema=public"
+      DIRECT_URL: "postgresql://postgres:1033488906b@base_datos:5432/samtur-development?schema=public"
+      DB_HOST: base_datos 
+      DB_USER: postgres
+      DB_PASSWORD: 1033488906b
+      DB_NAME: samtur-development
+      SIIGO_USERNAME: "sandbox@siigoapi.com"
+      SIIGO_ACCESS_KEY: "YmEzYTcyOGYtN2JhZi00OTIzLWE5ZjktYTgxNTVhNWUxZDM2Ojc0ODllKUZrSFM="
+    depends_on:
+      - base_datos
+
+  # El servicio del Frontend
+  frontend:
+    container_name: mi_frontend_app
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

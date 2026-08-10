@@ -62,32 +62,32 @@ export const ADMIN_PERMISSIONS: RolePermissions = {
 
 const SCOPED_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
 
-export function normalizeRolePermissions(perms: Partial<RolePermissions>, baseTemplate: RolePermissions = DEFAULT_ASESOR_PERMISSIONS): RolePermissions {
-  const normalized = JSON.parse(JSON.stringify(baseTemplate)) as RolePermissions;
-  if (!perms) return normalized;
+export function normalizeRolePermissions(perms: Partial<RolePermissions>, baseTemplate?: RolePermissions): RolePermissions {
+  if (!perms) return {} as RolePermissions;
 
-  for (const mod of Object.keys(normalized) as (keyof RolePermissions)[]) {
-    if (perms[mod]) {
-      const src = perms[mod] as any;
-      const dst = normalized[mod] as any;
-      for (const key of Object.keys(dst)) {
-        if (src[key] !== undefined) {
-          const val = src[key];
-          if ((key === 'view' || key === 'edit') && SCOPED_MODULES.includes(mod)) {
-            // Manejar migración de booleanos a strings
-            if (typeof val === 'boolean') {
-              dst[key] = val ? (mod === 'dashboard' ? 'all' : 'own') : 'none';
-            } else {
-              dst[key] = val;
-            }
-          } else {
-            dst[key] = typeof val === 'string' ? val !== 'none' && val !== 'false' : !!val;
-          }
+  // Si no hay baseTemplate (como cuando cargamos los roles globales desde DB), 
+  // no rellenamos con valores por defecto. Si hay baseTemplate (como cuando editamos
+  // un usuario específico), lo usamos como base.
+  const normalized = baseTemplate ? JSON.parse(JSON.stringify(baseTemplate)) : {};
+
+  for (const mod of Object.keys(perms)) {
+    const src = (perms as any)[mod];
+    if (!normalized[mod]) normalized[mod] = {};
+    
+    for (const key of Object.keys(src)) {
+      const val = src[key];
+      if ((key === 'view' || key === 'edit') && SCOPED_MODULES.includes(mod)) {
+        if (typeof val === 'boolean') {
+          normalized[mod][key] = val ? (mod === 'dashboard' ? 'all' : 'own') : 'none';
+        } else {
+          normalized[mod][key] = val;
         }
+      } else {
+        normalized[mod][key] = typeof val === 'string' ? val !== 'none' && val !== 'false' : !!val;
       }
     }
   }
-  return normalized;
+  return normalized as RolePermissions;
 }
 
 export interface Client {

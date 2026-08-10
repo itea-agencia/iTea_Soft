@@ -1,0 +1,27 @@
+{
+  "name": "itea_soft",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itea-agencia/iTea_Soft.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/itea-agencia/iTea_Soft/issues"
+  },
+  "homepage": "https://github.com/itea-agencia/iTea_Soft#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.4"
+  }
+}

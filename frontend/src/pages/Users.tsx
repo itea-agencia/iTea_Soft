@@ -234,6 +234,15 @@ export default function Users() {
     ]).finally(() => setIsLoading(false));
   }, [fetchUsers, fetchSales]);
 
+  // Update permissions state when config changes (e.g., after F5 load finishes)
+  useEffect(() => {
+    if (editingRole === 'asesor') {
+      setEditingUserPermissions(data.config.rolePermissions.asesor);
+    } else {
+      setEditingUserPermissions(data.config.rolePermissions.freelancer);
+    }
+  }, [data.config.rolePermissions, editingRole]);
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
