@@ -195,7 +195,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
               value={hotel.supplierCost ?? ""}
               onChange={(val) => {
                 onChange({
-                  supplierCost: val === "" ? "" : Number(val),
+                  supplierCost: Number(val) || 0,
                 });
               }}
             />
@@ -206,7 +206,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
               value={hotel.ta ?? ""}
               onChange={(val) => {
                 onChange({
-                  ta: val === "" ? "" : Number(val),
+                  ta: Number(val) || 0,
                 });
               }}
             />
@@ -216,7 +216,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
               value={hotel.taCre ?? ""}
               onChange={(val) => {
                 onChange({
-                  taCre: val === "" ? "" : Number(val),
+                  taCre: val === "" ? undefined : Number(val),
                 });
               }}
             />

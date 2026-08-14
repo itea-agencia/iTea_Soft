@@ -83,7 +83,7 @@ const authLimiter = rateLimit({
     error: { message: "Demasiados intentos de login" },
   },
 });
-app.use("/api/v1/auth/login", authLimiter);
+app.use(["/api/v1/auth/login", "/api/auth/login"], authLimiter);
 
 // Parsing
 app.use(express.json({ limit: "50mb" }));
@@ -97,8 +97,9 @@ if (env.nodeEnv === "development") {
 
 
 
-// Rutas  versionadas
+// Rutas de la API (Soporta /api y /api/v1)
 app.use("/api/v1", routes);
+app.use("/api", routes);
 
 // Health check
 app.get("/api/health", (req, res) => {

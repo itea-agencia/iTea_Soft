@@ -1344,20 +1344,20 @@ export function TicketForm({
             <CurrencyInput
               required
               value={ticket.supplierCost ?? ""}
-              onChange={(val) => onChange({ supplierCost: val === "" ? "" : Number(val) })}
+              onChange={(val) => onChange({ supplierCost: Number(val) || 0 })}
             />
           </FormField>
           <FormField label="Valor TA *">
             <CurrencyInput
               required
               value={ticket.ta ?? ""}
-              onChange={(val) => onChange({ ta: val === "" ? "" : Number(val) })}
+              onChange={(val) => onChange({ ta: Number(val) || 0 })}
             />
           </FormField>
           <FormField label="Valor TA CRE">
             <CurrencyInput
               value={ticket.taCre ?? ""}
-              onChange={(val) => onChange({ taCre: val === "" ? "" : Number(val) })}
+              onChange={(val) => onChange({ taCre: val === "" ? undefined : Number(val) })}
             />
           </FormField>
           <FormField label="Método de Pago Proveedor">

@@ -335,7 +335,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               value={plan.supplierCost ?? ""}
               onChange={(val) =>
                 onChange({
-                  supplierCost: val === "" ? "" : Number(val),
+                  supplierCost: val === "" ? undefined : Number(val),
                 })
               }
             />
@@ -345,7 +345,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               value={plan.ta ?? ""}
               onChange={(val) =>
                 onChange({
-                  ta: val === "" ? "" : Number(val),
+                  ta: val === "" ? undefined : Number(val),
                 })
               }
             />

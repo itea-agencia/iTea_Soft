@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: itea_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1033488906b
+      POSTGRES_DB: samtur-development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d samtur-development"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks:
+      - itea_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: itea_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
+      DIRECT_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
+      PORT: "3000"
+      NODE_ENV: "development"
+      FRONTEND_URL: "http://localhost"
+    volumes:
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - itea_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: itea_frontend
+    restart: always
+    ports:
+      - "80:80"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - itea_network
+
+volumes:
+  postgres_data:
+
+networks:
+  itea_network:
+    driver: bridge

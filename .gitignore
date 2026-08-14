@@ -1,26 +1,80 @@
 # ==========================================
-# iTea Soft - Root Gitignore for Monorepo
+# iTea Soft - Root Gitignore (Monorepo)
 # ==========================================
 
-# Node / Dependencies
+# ------------------------------------------
+# Dependencias y Administradores de Paquetes
+# ------------------------------------------
 node_modules/
+**/node_modules/
+.pnp
+.pnp.js
+.npm/
+.pnpm-store/
+.yarn/cache/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Environment files (Never commit sensitive credentials!)
+# ------------------------------------------
+# Archivos de Entorno y Secretos (NUNCA en Prod)
+# ------------------------------------------
 .env
-.env.local
-.env.production
-.env.development
-.env.test
-.env*.local
-.env.example
+.env.*
+!.env.example
+*.local
 
-# IDEs / Editors / System Files
-.vscode/
+# ------------------------------------------
+# Artefactos de Compilación y Caché
+# ------------------------------------------
+dist/
+dist-ssr/
+build/
+**/dist/
+**/build/
+frontend/.vite/
+frontend/.tsbuildinfo
+.eslintcache
+.stylelintcache
+coverage/
+.nyc_output/
+*.lcov
+cache/
+
+# ------------------------------------------
+# Base de Datos Local y Cargas de Archivos
+# ------------------------------------------
+backend/prisma/*.db
+backend/prisma/*.db-journal
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.sql
+*.dump
+*.tar
+*.bak
+
+# ------------------------------------------
+# Archivos Temporales, Scripts y Desarrollo Local
+# ------------------------------------------
+logs/
+scratch/
+frontend-makeup/
+backend-makeup/
+backend/sync_prod_data.js
+backend/test_email.js
+backend/scripts/
+GUIA_ERRORES_LOGIN.md
+PLAN_REFACTOR_SERVICIOS.md
+PRUEBAS_REFACTOR_ROLES.md
+
+# ------------------------------------------
+# IDEs, Editores y Sistema Operativo
+# ------------------------------------------
+.vscode/*
+!.vscode/extensions.json
 .idea/
 *.suo
 *.ntvs*
@@ -31,75 +85,19 @@ lerna-debug.log*
 Thumbs.db
 ehthumbs.db
 *.tmp
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# ==========================================
-# Backend Specific
-# ==========================================
-backend/node_modules/
-backend/dist/
-backend/build/
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/prisma/*.db
-backend/prisma/*.db-journal
-
-# ==========================================
-# Frontend Specific
-# ==========================================
-frontend/node_modules/
-frontend/dist/
-frontend/dist-ssr/
-frontend/.tsbuildinfo
-frontend/.vite/
-frontend/build/
-
-# Temporary & logs
-logs/
-scratch/
-*.log
-
-frontend-makeup/
-backend-makeup/
-
-# ==========================================
-# Testing & Code Coverage
-# ==========================================
-coverage/
-.nyc_output/
-.tox/
-.coverage
-*.lcov
-
-# ==========================================
-# Caches & Tooling
-# ==========================================
-.eslintcache
-.stylelintcache
-.npm/
-.pnpm-store/
-.yarn/cache/
-
-# ==========================================
-# Archivos subidos por usuarios (Por si acaso se filtran)
-# ==========================================
+# ------------------------------------------
+# Documentos y Adjuntos No Requeridos
+# ------------------------------------------
 *.pdf
 *.csv
 *.xlsx
-!backend/prisma/seed.js
-
-# ==========================================
-# Docker
-# ==========================================
-docker-compose*.yml
-Dockerfile*
-.dockerignore
-.docker/
-
-# Scripts
-backend/scripts/
-
-# Manuales y Guías Locales
-GUIA_ERRORES_LOGIN.md
-
-# Agentes
-.agents/
+frontend/alcance.md
+frontend/exampleBD.md
+frontend/diagram_bd_ITEA.sql
+frontend/diagram_dbdiagram.dbml
+frontend/pdf_formato
