@@ -5,7 +5,7 @@
       "source": "wshobson/agents",
       "sourceType": "github",
       "skillPath": "plugins/backend-development/skills/api-design-principles/SKILL.md",
-      "computedHash": "a91429c25bb978f99f5da8d8752b8ae87ece51abcb24acb3953a5b1662c9bd5c"
+      "computedHash": "19715a3a3ff7bf7b1e2ab1cb631ebe810d5b050ed6b3ab0c358e39e5e2e6d33a"
     },
     "web-design-guidelines": {
       "source": "vercel-labs/agent-skills",

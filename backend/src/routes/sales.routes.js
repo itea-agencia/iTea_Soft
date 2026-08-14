@@ -5,7 +5,7 @@ const productsController = require('../controllers/products.controller');
 const auth = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
 const paginate = require('../middleware/paginate');
-const upload = require('../middleware/upload');
+
 
 router.use(auth);
 
@@ -91,7 +91,6 @@ router.post('/:saleId/products/pet-service', authorize('sales', 'create'), produ
 router.put('/:saleId/products/pet-service/:id', authorize('sales', 'edit'), productsController.updatePetService);
 router.delete('/:saleId/products/pet-service/:id', authorize('sales', 'delete'), productsController.deletePetService);
 
-// Voucher upload
-router.post('/:saleId/products/:category/:productId/voucher', authorize('sales', 'edit'), upload.single('file'), productsController.uploadVoucher);
+
 
 module.exports = router;

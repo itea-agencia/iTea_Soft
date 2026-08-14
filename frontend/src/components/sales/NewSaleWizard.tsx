@@ -484,7 +484,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               }
               
               // Campos financieros
-              if (ticket.supplierCost <= 0) return false;
+              if (ticket.supplierCost < 0) return false;
               if (ticket.ta < 0) return false;
               if (!ticket.supplierPaymentMethod) return false;
               return true;
@@ -518,7 +518,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               now.setHours(0, 0, 0, 0);
               if (new Date(hotel.startDate) < now || new Date(hotel.endDate) < now) return false;
 
-              if (hotel.supplierCost <= 0) return false;
+              if (hotel.supplierCost < 0) return false;
               if (hotel.ta < 0) return false;
               if (!hotel.supplierPaymentMethod) return false;
               return true;
@@ -550,7 +550,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (cleanedPhone.length < 7 || cleanedPhone.length > 15) return false;
 
               // Validar financieros: obligatorios y mayores de 0
-              if (ins.supplierCost <= 0 || ins.ta < 0) return false;
+              if (ins.supplierCost < 0 || ins.ta < 0) return false;
               if (!ins.supplierPaymentMethod) return false;
 
               return true;
@@ -965,8 +965,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               
               if (rest.dateTime && new Date(rest.dateTime) < now) errors.push("Fecha y Hora no puede ser pasada");
 
-              if (rest.ta === undefined || rest.ta <= 0) {
-                errors.push("Tarifa Admin (TA) obligatoria (> $0)");
+              if (rest.ta === undefined || rest.ta < 0) {
+                errors.push("Tarifa Admin (TA) obligatoria (>= $0)");
               }
             }
 
@@ -1355,7 +1355,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 // Voucher is optional now
               }
 
-              if (plan.supplierCost === undefined || plan.supplierCost <= 0) errors.push("Costo Proveedor (> $0)");
+              if (plan.supplierCost === undefined || plan.supplierCost < 0) errors.push("Costo Proveedor (>= $0)");
               if (plan.ta === undefined || plan.ta < 0) errors.push("Valor TA (>= $0)");
 
               if (plan.guests && plan.guests.length > 0) {

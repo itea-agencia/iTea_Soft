@@ -332,20 +332,20 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           </FormField>
           <FormField label="Costo Proveedor">
             <CurrencyInput
-              value={plan.supplierCost === 0 ? "" : plan.supplierCost}
+              value={plan.supplierCost ?? ""}
               onChange={(val) =>
                 onChange({
-                  supplierCost: val === "" ? 0 : Number(val),
+                  supplierCost: val === "" ? "" : Number(val),
                 })
               }
             />
           </FormField>
           <FormField label="Valor TA">
             <CurrencyInput
-              value={plan.ta === 0 ? "" : plan.ta}
+              value={plan.ta ?? ""}
               onChange={(val) =>
                 onChange({
-                  ta: val === "" ? 0 : Number(val),
+                  ta: val === "" ? "" : Number(val),
                 })
               }
             />

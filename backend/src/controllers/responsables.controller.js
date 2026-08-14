@@ -42,7 +42,7 @@ exports.list = async (req, res, next) => {
           p.documento as "docNumber",
           p.telefono as "phone",
           p.email,
-          p.birth_date as "birthDate",
+
           r.status,
           td.abreviatura as "docType",
           COALESCE(
@@ -69,7 +69,7 @@ exports.list = async (req, res, next) => {
       docNumber: r.docNumber,
       phone: r.phone,
       email: r.email,
-      birthDate: r.birthDate,
+
       status: r.status,
       creadoAt: r.creadoAt,
       deudaTotal: parseFloat(r.deudaTotal)
@@ -128,7 +128,7 @@ exports.getById = async (req, res, next) => {
       docNumber: responsable.persona.documento,
       phone: responsable.persona.telefono,
       email: responsable.persona.email,
-      birthDate: responsable.persona.birthDate,
+
       status: responsable.status,
       creadoAt: responsable.creadoAt,
       deudaTotal,
@@ -143,7 +143,7 @@ exports.getById = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, birthDate } = req.body;
+    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email } = req.body;
 
     // Resolve docTypeId from abbreviation if not provided as integer
     let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
@@ -166,7 +166,6 @@ exports.create = async (req, res, next) => {
             documento: docNumber || null,
             telefono: phone,
             email: email,
-            birthDate: birthDate ? new Date(birthDate) : null,
           }
         });
       } else {
@@ -189,8 +188,7 @@ exports.create = async (req, res, next) => {
                 apellidos: lastName,
                 tipoDocumentoId: docTypeId || persona.tipoDocumentoId,
                 telefono: phone || persona.telefono,
-                email: email || persona.email,
-                birthDate: birthDate ? new Date(birthDate) : persona.birthDate
+                email: email || persona.email
               }
             });
             return existingResponsable;
@@ -203,8 +201,7 @@ exports.create = async (req, res, next) => {
             apellidos: lastName,
             tipoDocumentoId: docTypeId || persona.tipoDocumentoId,
             telefono: phone || persona.telefono,
-            email: email || persona.email,
-            birthDate: birthDate ? new Date(birthDate) : persona.birthDate
+            email: email || persona.email
           }
         });
       }
@@ -231,7 +228,7 @@ exports.create = async (req, res, next) => {
 exports.update = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, birthDate, status } = req.body;
+    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, status } = req.body;
 
     // Resolve docTypeId from abbreviation if not provided as integer
     let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
@@ -271,8 +268,7 @@ exports.update = async (req, res, next) => {
           tipoDocumentoId: docTypeId,
           documento: docNumber,
           telefono: phone,
-          email: email,
-          birthDate: birthDate ? new Date(birthDate) : null
+          email: email
         }
       }),
       prisma.responsables.update({

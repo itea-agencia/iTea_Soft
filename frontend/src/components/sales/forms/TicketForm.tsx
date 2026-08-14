@@ -1343,21 +1343,21 @@ export function TicketForm({
           <FormField label="Valor Pagado al Proveedor *">
             <CurrencyInput
               required
-              value={ticket.supplierCost === 0 ? "" : ticket.supplierCost}
-              onChange={(val) => onChange({ supplierCost: val === "" ? 0 : Number(val) })}
+              value={ticket.supplierCost ?? ""}
+              onChange={(val) => onChange({ supplierCost: val === "" ? "" : Number(val) })}
             />
           </FormField>
           <FormField label="Valor TA *">
             <CurrencyInput
               required
-              value={ticket.ta === 0 ? "" : ticket.ta}
-              onChange={(val) => onChange({ ta: val === "" ? 0 : Number(val) })}
+              value={ticket.ta ?? ""}
+              onChange={(val) => onChange({ ta: val === "" ? "" : Number(val) })}
             />
           </FormField>
           <FormField label="Valor TA CRE">
             <CurrencyInput
-              value={ticket.taCre === 0 ? "" : ticket.taCre}
-              onChange={(val) => onChange({ taCre: val === "" ? 0 : Number(val) })}
+              value={ticket.taCre ?? ""}
+              onChange={(val) => onChange({ taCre: val === "" ? "" : Number(val) })}
             />
           </FormField>
           <FormField label="Método de Pago Proveedor">

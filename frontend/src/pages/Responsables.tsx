@@ -112,18 +112,6 @@ export default function Responsables() {
         else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) errorMsg = 'El correo no es válido';
         else if (value.length > 40) errorMsg = 'El correo no puede exceder 40 caracteres';
         break;
-      case 'birthDate':
-        if (!value) {
-          errorMsg = 'La fecha de nacimiento es obligatoria';
-        } else {
-          const selectedDate = new Date(value);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (selectedDate > today) {
-            errorMsg = 'La fecha de nacimiento no puede ser superior a la fecha actual';
-          }
-        }
-        break;
     }
     
     setErrors(prev => ({ ...prev, [name]: errorMsg }));
@@ -145,7 +133,7 @@ export default function Responsables() {
     docNumber: '',
     phone: '',
     email: '',
-    birthDate: '',
+
     status: 'active' as 'active' | 'inactive'
   });
 
@@ -164,7 +152,7 @@ export default function Responsables() {
         docNumber: responsable.docNumber,
         phone: responsable.phone,
         email: responsable.email,
-        birthDate: responsable.birthDate || '',
+
         status: responsable.status
       });
     } else {
@@ -176,7 +164,7 @@ export default function Responsables() {
         docNumber: '',
         phone: '',
         email: '',
-        birthDate: '',
+
         status: 'active'
       });
     }
@@ -233,7 +221,7 @@ export default function Responsables() {
     else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email)) newErrors.email = 'El correo no es válido';
     else if (formData.email.length > 40) newErrors.email = 'El correo no puede exceder 40 caracteres';
     
-    if (!formData.birthDate) newErrors.birthDate = 'La fecha de nacimiento es obligatoria';
+
 
     const isDuplicateDoc = data.responsables.some(c => 
       c.docNumber === formData.docNumber && (!editingResponsable || c.id !== editingResponsable.id)
@@ -740,20 +728,6 @@ export default function Responsables() {
                   placeholder="3001234567"
                   error={errors.phone}
                   maxLength={15}
-                />
-              </FormField>
-              <FormField label="Fecha de Nacimiento" error={errors.birthDate}>
-                <DatePicker
-                  value={formData.birthDate}
-                  onChange={(val) => {
-                    setFormData({ ...formData, birthDate: val });
-                    if (errors.birthDate) setErrors(prev => ({ ...prev, birthDate: '' }));
-                    validateField('birthDate', val);
-                  }}
-                  max={todayStr()}
-                  fieldName="Nacimiento del responsablee"
-                  popoverDirection="up"
-                  triggerError={triggerError}
                 />
               </FormField>
             </div>

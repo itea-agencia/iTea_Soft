@@ -273,9 +273,9 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
           <div className="relative group">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
             <CurrencyInput 
-              value={supplierCost || ""} 
+              value={supplierCost ?? ""} 
               onChange={(val) => handleNumericChange('supplierCost', val)} 
-              className={`pl-7 transition-all ${!supplierCost ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
+              className={`pl-7 transition-all ${supplierCost === undefined || supplierCost === null ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
               placeholder="0.00" 
             />
           </div>
@@ -284,9 +284,9 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
           <div className="relative group">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
             <CurrencyInput 
-              value={ta || ""} 
+              value={ta ?? ""} 
               onChange={(val) => handleNumericChange('ta', val)} 
-              className={`pl-7 transition-all ${!ta ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
+              className={`pl-7 transition-all ${ta === undefined || ta === null ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
               placeholder="0.00" 
             />
           </div>
@@ -295,9 +295,9 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
           <div className="relative group">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">$</span>
             <CurrencyInput 
-              value={taCre || ""} 
+              value={taCre ?? ""} 
               onChange={(val) => handleNumericChange('taCre', val)} 
-              className={`pl-7 transition-all ${!taCre ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
+              className={`pl-7 transition-all ${taCre === undefined || taCre === null ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 focus:border-emerald-500 dark:focus:border-emerald-400 dark:bg-slate-900/50'}`}
               placeholder="0.00" 
             />
           </div>
