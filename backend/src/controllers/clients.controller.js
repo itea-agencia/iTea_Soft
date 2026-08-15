@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
+const siigoService = require('../services/siigo.service');
 
 exports.list = async (req, res, next) => {
   try {
@@ -214,6 +215,14 @@ exports.create = async (req, res, next) => {
       });
     }
 
+    // Sincronización en segundo plano con Siigo
+    // Lo ejecutamos sin await para no bloquear la respuesta al frontend
+    if (persona.documento) {
+      siigoService.getOrCreateCustomer(persona).catch(siigoError => {
+        console.error("El cliente se creó en iTea pero falló la sincronización automática con Siigo", siigoError.message);
+      });
+    }
+
     success(res, {
       id: cliente.id,
       firstName: persona.nombres,
@@ -268,11 +277,19 @@ exports.update = async (req, res, next) => {
     if (data.avatar) personaData.avatarUrl = data.avatar;
     if (data.birthDate) personaData.birthDate = new Date(data.birthDate);
 
+    let updatedPersona = cliente.persona;
     if (Object.keys(personaData).length > 0) {
       personaData.updatedAt = new Date();
-      await prisma.personas.update({
+      updatedPersona = await prisma.personas.update({
         where: { id: cliente.personaId },
         data: personaData
+      });
+    }
+
+    // Sincronización en segundo plano con Siigo
+    if (updatedPersona.documento) {
+      siigoService.getOrCreateCustomer(updatedPersona).catch(err => {
+        console.error("Falló la sincronización con Siigo al actualizar el cliente", err.message);
       });
     }
 
