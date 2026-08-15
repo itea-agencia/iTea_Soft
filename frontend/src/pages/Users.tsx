@@ -43,7 +43,7 @@ import Avatar from "../components/ui/Avatar";
 import SortIcon from "../components/ui/SortIcon";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
-import AvatarPicker, { AVATARS } from "../components/ui/AvatarPicker";
+
 import { capitalizeName, formatId, todayStr } from "../utils/formatters";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 
@@ -245,7 +245,6 @@ export default function Users() {
     phone: "",
     birthDate: "",
     status: "active" as "active" | "inactive",
-    avatar: AVATARS[0],
   });
 
   const stats = useMemo(() => {
@@ -298,7 +297,6 @@ export default function Users() {
         phone: user.phone || "",
         birthDate: user.birthDate || "",
         status: user.status,
-        avatar: user.avatar || AVATARS[0],
       });
     } else {
       setEditingUser(null);
@@ -313,7 +311,6 @@ export default function Users() {
         phone: "",
         birthDate: "",
         status: "active",
-        avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
       });
     }
     setErrors({});
@@ -763,16 +760,13 @@ export default function Users() {
               <TableRow key={user.id}>
                 <TableCell>{formatId(user.id)}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar src={user.avatar} name={user.name} />
-                    <div className="flex flex-col">
-                      <span className="font-medium text-gray-900 leading-tight">
-                        {user.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {user.email}
-                      </span>
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium text-gray-900 leading-tight">
+                      {user.name}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {user.email}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -958,11 +952,6 @@ export default function Users() {
           </>
         }
       >
-        <AvatarPicker
-          value={formData.avatar}
-          onChange={(avatar) => setFormData({ ...formData, avatar })}
-        />
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField label="Nombres" error={errors.firstName}>
             <Input

@@ -17,7 +17,6 @@ import { formatDate, capitalizeName, formatId, todayStr } from '../utils/formatt
 import { Responsable } from '../types';
 import LoadingScreen from '../components/ui/LoadingScreen';
 
-import AvatarPicker, { AVATARS } from '../components/ui/AvatarPicker';
 import { DatePicker } from '../components/sales/forms/TicketForm';
 
 export default function Responsables() {

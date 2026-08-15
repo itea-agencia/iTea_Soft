@@ -127,19 +127,19 @@ exports.list = async (req, res, next) => {
         const labelMap = {
           tiqueteria: 'Tiquetería',
           hoteleria: 'Hotelería',
-          seguros: 'Seguro',
+          seguros_viaje: 'Seguro',
           planes: 'Plan',
           checkin: 'Check-in',
-          migracion: 'Migración',
+          documentacion_migratoria: 'Migración',
           simcard: 'SIM Card',
-          autos: 'Renta de Auto',
-          fincas: 'Finca',
+          renta_vehiculos: 'Renta de Auto',
+          renta_fincas: 'Finca',
           tours: 'Tour',
-          eventos: 'Evento',
+          centros_convencion: 'Evento',
           restaurantes: 'Restaurante',
-          visas: 'Visa',
-          pasaportes: 'Pasaporte',
-          mascotas: 'Mascota'
+          visa: 'Visa',
+          pasaporte: 'Pasaporte',
+          servicio_mascotas: 'Mascota'
         };
 
         if (labelMap[tipo]) {
@@ -148,18 +148,19 @@ exports.list = async (req, res, next) => {
 
         // Build elegant detail based on generic fields
         const route = (d.origen && d.destino) ? `${d.origen}→${d.destino}` : null;
-        const pax = d.pasajerosDetalle?.[0]?.persona;
-        const paxName = pax ? `${pax.nombres} ${pax.apellidos}` : null;
+        const paxNames = (d.pasajerosDetalle || [])
+          .map(p => p.persona ? `${p.persona.nombres} ${p.persona.apellidos}` : null)
+          .filter(Boolean);
 
         if (tipo === 'tiqueteria') {
-          detail = [route, paxName].filter(Boolean).join(' · ');
+          detail = [route, ...paxNames].filter(Boolean).join(' · ');
         } else {
           // For other services, use nombreServicio if it's different from the generic label, or route/pax
           const hasCustomName = d.nombreServicio && d.nombreServicio !== label;
           detail = [
             hasCustomName ? d.nombreServicio : null,
             route,
-            paxName
+            ...paxNames
           ].filter(Boolean).join(' · ');
         }
 
@@ -254,7 +255,7 @@ function mapPassengers(detalle) {
     esTitular: p.esTitular,
     asiento: p.asiento,
     nombreCompleto: p.persona ? `${p.persona.nombres} ${p.persona.apellidos}` : null,
-    tipoDocumento: p.persona?.tipoDocumentoId,
+    tipoDocumento: p.persona?.tipoDocumento?.abreviatura || String(p.persona?.tipoDocumentoId || ''),
     nroDocumento: p.persona?.documento,
     nroReserva: p.nroReserva,
     nroTiquete: p.nroTiquete
@@ -693,7 +694,7 @@ exports.getById = async (req, res, next) => {
       prisma.detalleVenta.findMany({
         where: { ventaId: id },
         include: {
-          pasajerosDetalle: { include: { persona: true } },
+          pasajerosDetalle: { include: { persona: { include: { tipoDocumento: true } } } },
           proveedor: true
         }
       })
@@ -759,24 +760,30 @@ exports.getById = async (req, res, next) => {
         const labelMap = {
           tiqueteria: 'Tiquetería',
           hoteleria: 'Hotelería',
-          seguros: 'Seguro',
+          seguros_viaje: 'Seguro',
           planes: 'Plan',
           checkin: 'Check-in',
-          migracion: 'Migración',
+          documentacion_migratoria: 'Migración',
           simcard: 'SIM Card',
-          autos: 'Renta de Auto',
-          fincas: 'Finca',
+          renta_vehiculos: 'Renta de Auto',
+          renta_fincas: 'Finca',
           tours: 'Tour',
-          eventos: 'Evento',
+          centros_convencion: 'Evento',
           restaurantes: 'Restaurante',
-          visas: 'Visa',
-          pasaportes: 'Pasaporte',
-          mascotas: 'Mascota'
+          visa: 'Visa',
+          pasaporte: 'Pasaporte',
+          servicio_mascotas: 'Mascota'
         };
         if (labelMap[tipo]) {
           label = labelMap[tipo];
         }
-        return { tipo, label };
+        // Include all passenger names (not just the first one)
+        const route = (d.origen && d.destino) ? `${d.origen}→${d.destino}` : null;
+        const paxNames = (d.pasajerosDetalle || [])
+          .map(p => p.persona ? `${p.persona.nombres} ${p.persona.apellidos}` : null)
+          .filter(Boolean);
+        const detail = [route, ...paxNames].filter(Boolean).join(' · ') || null;
+        return { tipo, label, detail };
       }),
       observations: venta.observaciones,
       isCredit: venta.esCredito,
@@ -1433,11 +1440,11 @@ exports.create = async (req, res, next) => {
 
            const pasajerosDetalleData = [];
           if (personaId) {
-            const hasPassengerInfo = item.passengers || item.passengerInfo || item.guests || item.passengerName || item.ownerName ||
+            const hasPassengerInfo = item.passengers || item.passengerInfo || item.guests || item.members || item.passengerName || item.ownerName ||
               ['checkin', 'documentacion_migratoria', 'simcard', 'tours', 'servicio_mascotas', 'renta_vehiculos'].includes(handler.category);
             
             if (hasPassengerInfo) {
-              const passengers = item.passengers ? item.passengers : (item.passengerInfo ? [item.passengerInfo] : (item.guests || [{}]));
+              const passengers = item.passengers ? item.passengers : (item.passengerInfo ? [item.passengerInfo] : (item.guests || item.members || [{}]));
               for (const p of passengers) {
                 const pid = await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver, p.docType || item.docType, p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber, personaId);
                 pasajerosDetalleData.push({
@@ -1885,8 +1892,8 @@ exports.update = async (req, res, next) => {
 
           const pid = personaId;
           const passengersToCreate = [];
-          if (item.passengerInfo || item.guests) {
-            const passengers = item.passengerInfo ? [item.passengerInfo] : (item.guests || []);
+          if (item.passengerInfo || item.guests || item.passengers || item.members) {
+            const passengers = item.passengers ? item.passengers : (item.passengerInfo ? [item.passengerInfo] : (item.guests || item.members || []));
             for (const p of passengers) {
               const resolvedPid = await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName, p.docType, p.docNumber, pid);
               passengersToCreate.push({

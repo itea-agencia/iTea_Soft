@@ -167,20 +167,20 @@ export default function SaleDetailModal({
   const productSections = [
     { key: "ticketData", label: "Tiquetería", summaryType: "tiqueteria" },
     { key: "hotelData", label: "Hotelería", summaryType: "hoteleria" },
-    { key: "insuranceData", label: "Seguros", summaryType: "seguros" },
+    { key: "insuranceData", label: "Seguros", summaryType: "seguros_viaje" },
     { key: "planData", label: "Planes", summaryType: "planes" },
     { key: "checkInData", label: "CheckIn", summaryType: "checkin" },
-    { key: "migrationData", label: "Migración", summaryType: "migracion" },
+    { key: "migrationData", label: "Migración", summaryType: "documentacion_migratoria" },
     { key: "simCardData", label: "SimCard", summaryType: "simcard" },
     { key: "baggageData", label: "Equipaje", summaryType: "equipaje" },
-    { key: "carRentalData", label: "AlquilerAutos", summaryType: "autos" },
-    { key: "fincaData", label: "Finca", summaryType: "fincas" },
+    { key: "carRentalData", label: "AlquilerAutos", summaryType: "renta_vehiculos" },
+    { key: "fincaData", label: "Finca", summaryType: "renta_fincas" },
     { key: "tourData", label: "Tour", summaryType: "tours" },
-    { key: "conventionData", label: "Evento", summaryType: "eventos" },
+    { key: "conventionData", label: "Evento", summaryType: "centros_convencion" },
     { key: "restaurantData", label: "Restaurante", summaryType: "restaurantes" },
-    { key: "visaData", label: "Visa", summaryType: "visas" },
-    { key: "passportData", label: "Pasaporte", summaryType: "pasaportes" },
-    { key: "petServiceData", label: "Mascotas", summaryType: "mascotas" },
+    { key: "visaData", label: "Visa", summaryType: "visa" },
+    { key: "passportData", label: "Pasaporte", summaryType: "pasaporte" },
+    { key: "petServiceData", label: "Mascotas", summaryType: "servicio_mascotas" },
   ];
 
   const suppliersList = (() => {
@@ -324,7 +324,7 @@ export default function SaleDetailModal({
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
             <div className="col-span-2 sm:col-span-1">
-              <span className="text-gray-500 text-xs block">Nombre</span>
+              <span className="text-gray-500 text-xs block">Nombre Titular</span>
               <span className="font-medium text-gray-800">
                 {sale.clientName}
               </span>
@@ -356,6 +356,106 @@ export default function SaleDetailModal({
               </div>
             )}
           </div>
+
+          {/* Lista de Clientes Registrados para la Venta */}
+          {(() => {
+            const allClients: any[] = [];
+
+            // 1. Añadir al cliente titular de la venta
+            if (sale.clientName) {
+              allClients.push({
+                name: sale.clientName,
+                esTitular: true,
+                docType: (sale as any).clientDocType || '',
+                docNumber: (sale as any).clientDocNumber || ''
+              });
+            }
+
+            // 2. Extraer de los servicios resumidos o los objetos de producto
+            productSections.forEach(({ key }) => {
+              const items = (sale as any)[key];
+              if (Array.isArray(items)) {
+                items.forEach((item: any) => {
+                  const paxList = item.passengers || item.guests || item.members || 
+                    (item.passengerName ? [{ name: item.passengerName, docType: item.docType || item.tipoDocumento, docNumber: item.docNumber || item.nroDocumento }] : 
+                    (item.passengerInfo ? [item.passengerInfo] : []));
+
+                  if (Array.isArray(paxList)) {
+                    paxList.forEach((pax: any) => {
+                      const paxNameCandidate = pax?.name || pax?.passengerName || pax?.fullName || 
+                               (pax?.firstName ? `${pax.firstName} ${pax.lastName || ''}`.trim() : null) ||
+                               (pax?.nombres ? `${pax.nombres} ${pax.apellidos || ''}`.trim() : null) ||
+                               (pax?.persona?.nombres ? `${pax.persona.nombres} ${pax.persona.apellidos || ''}`.trim() : null);
+                      const name = typeof pax === 'string' ? pax : paxNameCandidate;
+                      
+                      if (name && name.trim() !== "" && !allClients.some(existing => existing.name?.toLowerCase().trim() === name.toLowerCase().trim())) {
+                        allClients.push({
+                          name: name.trim(),
+                          esTitular: typeof pax === 'object' ? (pax.esTitular || false) : false,
+                          docType: typeof pax === 'object' ? (pax.docType || pax.tipoDocumento || pax.documentType || '') : '',
+                          docNumber: typeof pax === 'object' ? (pax.docNumber || pax.nroDocumento || pax.nroTiquete || pax.documentNumber || '') : ''
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            });
+
+            // 3. Revisar también en servicesSummary si existen detalles
+            if (Array.isArray(sale.servicesSummary)) {
+              sale.servicesSummary.forEach((s: any) => {
+                if (s.detail) {
+                  // Los nombres suelen concatenarse con " · "
+                  const parts = s.detail.split(' · ');
+                  parts.forEach((p: string) => {
+                    const trimmed = p.trim();
+                    // Evitar rutas con flechas "Medellin→Bogota" o términos genéricos
+                    if (trimmed && !trimmed.includes('→') && !allClients.some(existing => existing.name?.toLowerCase().trim() === trimmed.toLowerCase())) {
+                      // Si tiene al menos dos palabras o pinta como nombre de persona
+                      if (trimmed.split(/\s+/).length >= 2) {
+                        allClients.push({
+                          name: trimmed,
+                          esTitular: false,
+                          docType: '',
+                          docNumber: ''
+                        });
+                      }
+                    }
+                  });
+                }
+              });
+            }
+
+            if (allClients.length === 0) return null;
+
+            return (
+              <div className="mt-3 bg-gray-50/80 dark:bg-slate-800/80 p-4 rounded-xl border border-gray-200 dark:border-slate-700 transition-colors">
+                <span className="text-xs font-bold text-gray-700 dark:text-slate-300 uppercase tracking-wide block mb-2">
+                  Clientes Registrados en la Venta ({allClients.length})
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {allClients.map((c, index) => (
+                    <div key={index} className="flex items-center justify-between text-xs bg-white dark:bg-slate-700 px-3 py-2 rounded-lg border border-gray-150 dark:border-slate-600 shadow-2xs transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-800 dark:text-slate-200">{c.name}</span>
+                        {c.esTitular && (
+                          <span className="text-[9px] bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-light px-1.5 py-0.5 rounded font-bold uppercase">
+                            Titular
+                          </span>
+                        )}
+                      </div>
+                      {(c.docNumber || c.docType) && (
+                        <span className="text-gray-500 dark:text-slate-400 font-mono">
+                          {c.docType ? `${c.docType}: ` : ''}{c.docNumber}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Sección Operativo y Financiero */}

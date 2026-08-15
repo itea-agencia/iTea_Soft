@@ -16,7 +16,7 @@ import { usePermissions } from '../context/PermissionsContext';
 import { formatDate, capitalizeName, formatId, todayStr } from '../utils/formatters';
 import { Client } from '../types';
 
-import AvatarPicker, { AVATARS } from '../components/ui/AvatarPicker';
+
 import { DatePicker } from '../components/sales/forms/TicketForm';
 
 
@@ -145,7 +145,6 @@ export default function Clients() {
     email: '',
     birthDate: '',
     status: 'active' as 'active' | 'inactive',
-    avatar: AVATARS[0]
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -165,7 +164,6 @@ export default function Clients() {
         email: client.email,
         birthDate: client.birthDate || '',
         status: client.status,
-        avatar: client.avatar || AVATARS[0]
       });
     } else {
       setEditingClient(null);
@@ -178,7 +176,6 @@ export default function Clients() {
         email: '',
         birthDate: '',
         status: 'active',
-        avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)]
       });
     }
     setErrors({});
@@ -552,18 +549,9 @@ export default function Clients() {
             <TableRow key={client.id} className={toggledClientId === client.id ? (toggleAction === 'activated' ? 'animate-flash-green' : 'animate-flash-red') : ''}>
               <TableCell>{formatId(client.id)}</TableCell>
               <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent font-semibold overflow-hidden">
-                    {client.avatar ? (
-                      <img src={client.avatar} alt={client.name} className="w-full h-full object-cover" />
-                    ) : (
-                      client.name.charAt(0)
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-gray-900">{client.name}</span>
-                    <span className="text-xs text-gray-500">{client.email}</span>
-                  </div>
+                <div className="flex flex-col">
+                  <span className="font-medium text-gray-900">{client.name}</span>
+                  <span className="text-xs text-gray-500">{client.email}</span>
                 </div>
               </TableCell>
               <TableCell>{client.docType}</TableCell>
@@ -651,11 +639,6 @@ export default function Clients() {
           </>
         }
       >
-        <AvatarPicker 
-          value={formData.avatar} 
-          onChange={(avatar) => setFormData({...formData, avatar})} 
-        />
-
         <div className="space-y-6">
           <section>
             <h3 className="text-sm font-semibold text-primary uppercase tracking-wide mb-3 pb-2 border-b border-gray-border flex items-center gap-2">

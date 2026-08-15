@@ -63,7 +63,6 @@ app.use(
   }),
 );
 
-
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 60 * 1000,
@@ -94,8 +93,6 @@ app.use(cookieParser());
 if (env.nodeEnv === "development") {
   app.use(morgan("dev"));
 }
-
-
 
 // Rutas de la API (Soporta /api y /api/v1)
 app.use("/api/v1", routes);

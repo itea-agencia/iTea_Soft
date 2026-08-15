@@ -124,7 +124,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
             <Users size={14} />
             Huéspedes
           </h4>
-          <Button variant="outline" size="sm" onClick={addGuest}>
+          <Button type="button" variant="outline" size="sm" onClick={addGuest}>
             <PlusCircle size={14} className="mr-1" />
             Agregar
           </Button>
@@ -175,7 +175,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
                 />
               </div>
               {hotel.guests.length > 1 && (
-                <Button variant="outline" size="sm" onClick={() => removeGuest(gIdx)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => removeGuest(gIdx)}>
                   <Trash2 size={14} className="text-red-500" />
                 </Button>
               )}

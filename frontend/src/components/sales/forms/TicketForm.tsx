@@ -896,7 +896,7 @@ export function TicketForm({
               <ArrowRight size={12} className="text-primary" />
               Trayecto{ticket.legs.length > 1 ? "s" : ""} de Ida
             </h5>
-            <Button variant="outline" size="sm" onClick={addLeg} className="h-7 text-[10px]">
+            <Button type="button" variant="outline" size="sm" onClick={addLeg} className="h-7 text-[10px]">
               <PlusCircle size={11} className="mr-1" /> Añadir Tramo
             </Button>
           </div>

@@ -507,25 +507,16 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             const hotel = form.hotels[i];
             const isStrictlyValid = (() => {
               if (!hotel) return false;
-              if (!hotel.hotelName || hotel.hotelName.trim().length < 2 || hotel.hotelName.trim().length > 50) return false;
-              if (!hotel.destination || hotel.destination.trim().length === 0) return false;
-              if (!hotel.supplier || hotel.supplier.trim().length === 0) return false;
-              if (!hotel.reservationNumber || hotel.reservationNumber.trim().length === 0 || hotel.reservationNumber.trim().length > 20) return false;
-              if (!hotel.startDate || !hotel.endDate) return false;
+              if (hotel.hotelName && (hotel.hotelName.trim().length < 2 || hotel.hotelName.trim().length > 50)) return false;
+              if (hotel.reservationNumber && hotel.reservationNumber.trim().length > 20) return false;
               
-              // Validar que fechas no sean del pasado
-              const now = new Date();
-              now.setHours(0, 0, 0, 0);
-              if (new Date(hotel.startDate) < now || new Date(hotel.endDate) < now) return false;
-
-              if (hotel.supplierCost < 0) return false;
-              if (hotel.ta < 0) return false;
-              if (!hotel.supplierPaymentMethod) return false;
+              if (hotel.supplierCost !== undefined && hotel.supplierCost < 0) return false;
+              if (hotel.ta !== undefined && hotel.ta < 0) return false;
               return true;
             })();
 
             if (!isStrictlyValid) {
-              triggerError(`El servicio de Hotelería #${i + 1} tiene campos requeridos vacíos o inválidos (El nombre de hotel debe tener entre 2 y 50 letras, la reserva máximo 20 caracteres y sin caracteres especiales, las fechas deben ser futuras y los montos obligatorios). Por favor, edítalo.`);
+              triggerError(`El servicio de Hotelería #${i + 1} tiene datos inválidos.`);
               errs.hoteleriaValidation = "invalid";
               break;
             }
@@ -542,22 +533,21 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             const isStrictlyValid = (() => {
               if (!ins) return false;
               
-              // Validar tipo de seguro
-              if (!ins.insuranceType || ins.insuranceType.trim().length < 3 || ins.insuranceType.trim().length > 40) return false;
+              // Si ingresó tipo de seguro, validar su longitud
+              if (ins.insuranceType && (ins.insuranceType.trim().length < 3 || ins.insuranceType.trim().length > 40)) return false;
 
-              // Validar teléfono del cliente: limpiar a números y medir de 7 a 15
+              // Si ingresó teléfono del cliente, validar rango de dígitos
               const cleanedPhone = ins.phone ? ins.phone.replace(/\D/g, "") : "";
-              if (cleanedPhone.length < 7 || cleanedPhone.length > 15) return false;
+              if (cleanedPhone && (cleanedPhone.length < 7 || cleanedPhone.length > 15)) return false;
 
-              // Validar financieros: obligatorios y mayores de 0
-              if (ins.supplierCost < 0 || ins.ta < 0) return false;
-              if (!ins.supplierPaymentMethod) return false;
+              // Validar financieros: montos no negativos
+              if ((ins.supplierCost !== undefined && ins.supplierCost < 0) || (ins.ta !== undefined && ins.ta < 0)) return false;
 
               return true;
             })();
 
             if (!isStrictlyValid) {
-              triggerError(`El servicio de Seguro de Viaje #${i + 1} tiene campos requeridos vacíos o inválidos. El tipo de seguro debe tener entre 3 y 40 caracteres, el teléfono entre 7 y 15 dígitos y los costos financieros obligatorios.`);
+              triggerError(`El servicio de Seguro de Viaje #${i + 1} tiene campos requeridos vacíos o inválidos. Por favor verifica que el tipo de seguro tenga al menos 3 caracteres y el teléfono entre 7 y 15 dígitos.`);
               errs.segurosValidation = "invalid";
               break;
             }
@@ -1190,10 +1180,12 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
 
     }
     if (s === 3) {
-      if (!form.total || Number(form.total) <= 0) errs.total = "El valor total debe ser mayor a $0";
+      if (form.total === undefined || form.total === null || Number(form.total) < 0) {
+        errs.total = "El valor total no puede ser negativo";
+      }
       
       const hasPayments = form.payments && form.payments.length > 0;
-      if (form.status !== "credito" && !form.paymentMethod && !hasPayments) {
+      if (form.status !== "credito" && form.status !== "pagado" && !form.paymentMethod && !hasPayments) {
         errs.paymentMethod = "La forma de pago es obligatoria";
       }
       
@@ -1204,7 +1196,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const isCreditState = form.status === "credito" || form.status === "abonado";
       if (isCreditState) {
         if (!form.creditDueDate) {
-          errs.creditDueDate = "La fecha de vencimiento es obligatoria";
+          errs.creditDueDate = "La fecha de vencimiento es obligatoria para crédito o abonos";
         } else {
           const selectedDate = new Date(form.creditDueDate);
           const today = new Date();
@@ -1768,15 +1760,22 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
+    console.log("👉 Intentando finalizar venta. Paso actual:", step, "Form state:", form);
     if (!validateStep(1)) {
+      console.warn("⚠️ Validación falló en Paso 1");
+      triggerError("Por favor revisa los datos del cliente en el Paso 1.");
       setStep(1);
       return;
     }
     if (!validateStep(2)) {
+      console.warn("⚠️ Validación falló en Paso 2");
+      triggerError("Por favor revisa la configuración de los productos seleccionados en el Paso 2.");
       setStep(2);
       return;
     }
     if (!validateStep(3)) {
+      console.warn("⚠️ Validación falló en Paso 3. Errores:", errors);
+      triggerError("Por favor revisa el estado y la fecha de vencimiento en el Paso 3.");
       return;
     }
     if (isSubmittingRef.current) return;
@@ -1784,6 +1783,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     setIsSubmitting(true);
     const client = data.clients.find((c: any) => c.name === form.clientId);
     if (!client) {
+      console.warn("⚠️ Cliente no encontrado:", form.clientId);
+      triggerError("El cliente seleccionado no es válido.");
       setErrors({ ...errors, clientId: "El cliente no es válido" });
       setStep(1);
       isSubmittingRef.current = false;

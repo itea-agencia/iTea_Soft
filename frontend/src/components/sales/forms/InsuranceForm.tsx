@@ -87,7 +87,7 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
             <Users size={14} />
             Miembros del Grupo
           </h4>
-          <Button variant="outline" size="sm" onClick={addMember}>
+          <Button type="button" variant="outline" size="sm" onClick={addMember}>
             <PlusCircle size={14} className="mr-1" />
             Agregar
           </Button>
@@ -137,8 +137,8 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
                 />
               </div>
               {insurance.members.length > 1 && (
-                <Button variant="outline" size="sm" onClick={() => removeMember(mIdx)}>
-                  <Trash2 size={14} className="text-red-500" />
+                <Button type="button" variant="outline" size="sm" onClick={() => removeMember(mIdx)}>
+                  <Trash2 size={14} className="text-rose-500" />
                 </Button>
               )}
             </div>

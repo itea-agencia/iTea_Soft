@@ -55,7 +55,6 @@ export default function SalesTable({
         "Cliente",
         "Asesor",
         "Comisionista",
-        "T.A / Costos",
         "Total",
         "Fecha",
         "Estado",
@@ -70,26 +69,13 @@ export default function SalesTable({
           <TableRow key={sale.id}>
             <TableCell>{formatSaleId(sale.id)}</TableCell>
             <TableCell>
-              <div className="flex items-center gap-3">
-                {sale.clientAvatar ? (
-                  <img
-                    src={sale.clientAvatar}
-                    className="w-8 h-8 rounded-full border border-gray-200"
-                    alt={sale.clientName}
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs border border-primary/20">
-                    {sale.clientName.charAt(0)}
-                  </div>
-                )}
-                <div className="flex flex-col">
-                  <span className="font-medium text-primary leading-tight">
-                    {sale.clientName}
-                  </span>
-                  <span className="text-[10px] text-gray-500">
-                    {sale.clientEmail || "Sin correo"}
-                  </span>
-                </div>
+              <div className="flex flex-col">
+                <span className="font-medium text-primary leading-tight">
+                  {sale.clientName}
+                </span>
+                <span className="text-[10px] text-gray-500">
+                  {sale.clientEmail || "Sin correo"}
+                </span>
               </div>
             </TableCell>
             <TableCell>
@@ -109,16 +95,6 @@ export default function SalesTable({
                   {sale.commissionAgentName || "Venta Directa"}
                 </span>
               </div>  
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-emerald-600">
-                  T.A: {formatCurrency(sale.ta || 0)}
-                </span>
-                <span className="text-[10px] text-gray-400">
-                  Costo: {formatCurrency(sale.supplierCost || 0)}
-                </span>
-              </div>
             </TableCell>
             <TableCell>
               <div className="flex flex-col">

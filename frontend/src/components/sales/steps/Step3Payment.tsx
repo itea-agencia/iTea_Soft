@@ -99,10 +99,18 @@ export function Step3Payment({ form, set, data, errors }: any) {
 
   // Automated state handler based on payment progress
   useEffect(() => {
-    if (totalSale === 0) return;
+    if (totalSale === 0) {
+      // Si el valor total de la venta es $0 (pago proveedor 0 y TA 0), no forzar "credito" automáticamente
+      // Permitir que el usuario conserve la opción "pagado" (Completada) o "credito"
+      if (form.status !== "credito" && form.status !== "pagado") {
+        set("status", "pagado");
+        set("isCredit", false);
+      }
+      return;
+    }
 
     if (totalPaid === 0) {
-      if (form.status !== "credito") {
+      if (form.status !== "credito" && form.status !== "pagado") {
         set("status", "credito");
         set("isCredit", true);
       }
@@ -121,6 +129,12 @@ export function Step3Payment({ form, set, data, errors }: any) {
   }, [totalPaid, totalSale, form.status, set]);
 
   const getStatusOptions = () => {
+    if (totalSale === 0 || totalPaid === 0) {
+      return [
+        { value: "credito", label: "Crédito" },
+        { value: "pagado", label: "Completada" },
+      ];
+    }
     if (totalSale > 0 && totalPaid >= totalSale) {
       return [{ value: "pagado", label: "Completada" }];
     }
@@ -130,7 +144,10 @@ export function Step3Payment({ form, set, data, errors }: any) {
         { value: "abonado", label: "Abonada" },
       ];
     }
-    return [{ value: "credito", label: "Crédito" }];
+    return [
+      { value: "credito", label: "Crédito" },
+      { value: "pagado", label: "Completada" },
+    ];
   };
 
   return (
