@@ -743,7 +743,7 @@ export default function Clients() {
                   }}
                   max={todayStr()}
                   fieldName="Nacimiento del cliente"
-                  popoverDirection="up"
+                  popoverDirection="down"
                   triggerError={triggerError}
                 />
               </FormField>
