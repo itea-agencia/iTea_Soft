@@ -62,7 +62,7 @@ exports.dashboard = async (req, res, next) => {
       prisma.$queryRawUnsafe(aggregatesSql),
       prisma.detalleVenta.groupBy({
         by: ['categoria'],
-        _sum: { subtotal: true },
+        _sum: { subtotal: true, ta: true, taCre: true },
         _count: true,
         where: { venta: { ...where, deletedAt: null } }
       }),
@@ -96,6 +96,21 @@ exports.dashboard = async (req, res, next) => {
     `;
     monthlyTrend = await prisma.$queryRawUnsafe(trendSql);
 
+    const userConditionIva = req.permissionScope === 'own' ? `AND v.usuario_id = ${req.user.id}` : '';
+    const ivaTrendSql = `
+      SELECT 
+        EXTRACT(YEAR FROM v.creado_at)::int as year,
+        EXTRACT(MONTH FROM v.creado_at)::int as month,
+        COALESCE(SUM((dv.ta + dv.ta_cre) * 0.19), 0) as total
+      FROM ventas v
+      JOIN detalle_venta dv ON v.id = dv.venta_id
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${userConditionIva}
+        AND EXTRACT(YEAR FROM v.creado_at) IN (${currentYear}, ${currentYear - 1})
+      GROUP BY 1, 2
+      ORDER BY 1 ASC, 2 ASC
+    `;
+    const ivaTrendRaw = await prisma.$queryRawUnsafe(ivaTrendSql);
+
     // O(1) properties assignment
     const agg = aggregatesRaw[0];
     const totalRevenue = Number(agg.totalRevenue) || 0;
@@ -119,12 +134,16 @@ exports.dashboard = async (req, res, next) => {
       visa: 'Visa', pasaporte: 'Pasaporte', servicio_mascotas: 'Mascotas'
     };
 
-    const totalCategoria = categoryStats.reduce((sum, d) => sum + (d._sum.subtotal || 0), 0);
-    const categoryDistribution = categoryStats.map(d => ({
-      name: categoryMap[d.categoria] || d.categoria,
-      value: d._sum.subtotal || 0,
-      percentage: totalCategoria > 0 ? Math.round((d._sum.subtotal / totalCategoria) * 10000) / 100 : 0
-    }));
+    const getGanancia = (d) => (d._sum.ta || 0) + (d._sum.taCre || 0);
+    const totalCategoria = categoryStats.reduce((sum, d) => sum + getGanancia(d), 0);
+    const categoryDistribution = categoryStats.map(d => {
+      const ganancia = getGanancia(d);
+      return {
+        name: categoryMap[d.categoria] || d.categoria,
+        value: ganancia,
+        percentage: totalCategoria > 0 ? Math.round((ganancia / totalCategoria) * 10000) / 100 : 0
+      };
+    });
 
     const carteraTotal = paids + credits + partPaids || 1;
     const carteraStatus = [
@@ -143,7 +162,7 @@ exports.dashboard = async (req, res, next) => {
     for (const cs of categoryStats) {
       const rawCat = cs.categoria;
       const cat = rawCat === 'hoteleria' ? 'hoteles' : rawCat;
-      const sum = cs._sum.subtotal || 0;
+      const sum = (cs._sum.ta || 0) + (cs._sum.taCre || 0);
       const cnt = cs._count;
       if (categoryBreakdown[cat]) {
         categoryBreakdown[cat].count = cnt;
@@ -164,7 +183,68 @@ exports.dashboard = async (req, res, next) => {
       };
     });
 
+    const groupedIvaTrend = Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const currentData = ivaTrendRaw.find(t => t.month === m && t.year === currentYear);
+      const previousData = ivaTrendRaw.find(t => t.month === m && t.year === currentYear - 1);
+      return {
+        month: m,
+        currentYear: currentData ? Math.round(currentData.total) : 0,
+        previousYear: previousData ? Math.round(previousData.total) : 0
+      };
+    });
 
+    let vDateCondition = '';
+    if (dateFrom && dateTo) {
+      vDateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}' AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
+    } else if (dateFrom) {
+      vDateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}'`;
+    } else if (dateTo) {
+      vDateCondition = `AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
+    }
+
+    let vUserCondition = '';
+    if (req.permissionScope === 'own') {
+      vUserCondition = `AND v.usuario_id = '${req.user.id}'`;
+    }
+
+    const sqlResponsables = `
+      SELECT 
+        p.nombres || ' ' || p.apellidos as "name",
+        COUNT(v.id)::int as "cantidad",
+        COALESCE(SUM(v.monto_total), 0) as "ventas"
+      FROM responsables r
+      JOIN personas p ON r.persona_id = p.id
+      LEFT JOIN ventas v ON v.responsable_id = r.id AND v.deleted_at IS NULL ${vDateCondition} ${vUserCondition}
+      GROUP BY r.id, p.nombres, p.apellidos
+      ORDER BY "ventas" DESC
+      LIMIT 10
+    `;
+    const responsablesRaw = await prisma.$queryRawUnsafe(sqlResponsables);
+    const topResponsables = responsablesRaw.map(a => ({
+      name: a.name,
+      ventas: Math.round(Number(a.ventas)),
+      cantidad: a.cantidad
+    }));
+
+    const sqlComisionistas = `
+      SELECT 
+        p.nombres || ' ' || p.apellidos as "name",
+        COUNT(v.id)::int as "cantidad",
+        COALESCE(SUM(v.monto_comision_neto), 0) as "comision"
+      FROM comisionistas c
+      JOIN personas p ON c.persona_id = p.id
+      LEFT JOIN ventas v ON v.comisionista_id = c.id AND v.deleted_at IS NULL ${vDateCondition} ${vUserCondition}
+      GROUP BY c.id, p.nombres, p.apellidos
+      ORDER BY "comision" DESC
+      LIMIT 10
+    `;
+    const comisionistasRaw = await prisma.$queryRawUnsafe(sqlComisionistas);
+    const topComisionistas = comisionistasRaw.map(a => ({
+      name: a.name,
+      comision: Math.round(Number(a.comision)),
+      cantidad: a.cantidad
+    }));
 
     success(res, {
       totalRevenue: Math.round(totalRevenue),
@@ -179,6 +259,7 @@ exports.dashboard = async (req, res, next) => {
       categoryDistribution: categoryDistribution.slice(0, 8),
       carteraStatus,
       monthlyTrend: groupedTrend,
+      ivaTrend: groupedIvaTrend,
       totalClients,
       activeClients,
       totalFlights,
@@ -194,6 +275,8 @@ exports.dashboard = async (req, res, next) => {
       supplierCount,
       creditProveedores: Math.round(creditProveedores),
       creditTa: Math.round(creditTa),
+      topResponsables,
+      topComisionistas,
     });
   } catch (err) {
     next(err);
@@ -345,7 +428,7 @@ exports.categoryDistribution = async (req, res, next) => {
 
     const detalles = await prisma.detalleVenta.groupBy({
       by: ['categoria'],
-      _sum: { subtotal: true },
+      _sum: { subtotal: true, ta: true, taCre: true },
       where: { venta: { ...where.venta, deletedAt: null } }
     });
 
@@ -357,12 +440,16 @@ exports.categoryDistribution = async (req, res, next) => {
       visa: 'Visa', pasaporte: 'Pasaporte', servicio_mascotas: 'Mascotas'
     };
 
-    const total = detalles.reduce((s, d) => s + (d._sum.subtotal || 0), 0);
-    success(res, detalles.map(d => ({
-      name: categoryMap[d.categoria] || d.categoria,
-      value: d._sum.subtotal || 0,
-      percentage: total > 0 ? Math.round((d._sum.subtotal / total) * 10000) / 100 : 0
-    })));
+    const getGanancia = (d) => (d._sum.ta || 0) + (d._sum.taCre || 0);
+    const total = detalles.reduce((s, d) => s + getGanancia(d), 0);
+    success(res, detalles.map(d => {
+      const ganancia = getGanancia(d);
+      return {
+        name: categoryMap[d.categoria] || d.categoria,
+        value: ganancia,
+        percentage: total > 0 ? Math.round((ganancia / total) * 10000) / 100 : 0
+      };
+    }));
   } catch (err) {
     next(err);
   }

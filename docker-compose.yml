@@ -30,11 +30,11 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
-      DIRECT_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
       PORT: "3000"
       NODE_ENV: "development"
       FRONTEND_URL: "http://localhost"
+      DATABASE_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
+      DIRECT_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
     volumes:
       - ./backend/uploads:/app/uploads
     depends_on:
@@ -47,6 +47,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://localhost:3000/api/v1"
     container_name: itea_frontend
     restart: always
     ports:

@@ -60,6 +60,27 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
+function getDashboardDateParams() {
+  const params: Record<string, unknown> = {};
+  try {
+    const saved = localStorage.getItem('dashboardDateRange');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.startDate) {
+        const d = new Date(parsed.startDate);
+        d.setHours(0, 0, 0, 0);
+        params.dateFrom = d.toISOString();
+      }
+      if (parsed.endDate) {
+        const d = new Date(parsed.endDate);
+        d.setHours(23, 59, 59, 999);
+        params.dateTo = d.toISOString();
+      }
+    }
+  } catch (e) {}
+  return params;
+}
+
 function TopClients() {
   const [data, setData] = useState<{ name: string; total: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +88,7 @@ function TopClients() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getTopClients({ limit: 8 })
+    getTopClients({ limit: 8, ...getDashboardDateParams() })
       .then((res) => {
         if (!cancelled) {
           setData((res as any[]).map((c: any) => ({
@@ -142,7 +163,7 @@ function TopAsesores() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getAsesorPerformance()
+    getAsesorPerformance(getDashboardDateParams())
       .then((res) => {
         if (!cancelled) {
           const mapped = (res as any[])
@@ -208,7 +229,7 @@ function CategoryDistribution() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getCategoryDistribution()
+    getCategoryDistribution(getDashboardDateParams())
       .then((res) => {
         if (!cancelled) {
           setData((res as any[]).filter((d: any) => d.value > 0));

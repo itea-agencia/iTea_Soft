@@ -13,6 +13,10 @@ import {
   YAxis,
   CartesianGrid,
   Legend,
+  BarChart,
+  Bar,
+  ComposedChart,
+  Line,
 } from "recharts";
 import {
   Building,
@@ -31,17 +35,45 @@ import { Button } from "../components/ui/Button";
 import { AlertCircle } from "lucide-react";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
+const getPath = (x: number, y: number, width: number, height: number) => {
+  return `M${x},${y + height}C${x + width / 3},${y + height} ${x + width / 2},${y + height / 3}
+  ${x + width / 2}, ${y}
+  C${x + width / 2},${y + height / 3} ${x + (2 * width) / 3},${y + height} ${x + width}, ${y + height}
+  Z`;
+};
+
+const TriangleBar = (props: any) => {
+  const { fill, x, y, width, height } = props;
+  return <path d={getPath(x, y, width, height)} stroke="none" fill={fill} />;
+};
+
 export default function Dashboard() {
   const { dashboardData, dashboardLoading, fetchDashboard } = useData();
   const { start, end } = getCurrentMonth();
-  const [dateRange, setDateRange] = useState<any>({
-    startDate: new Date(start),
-    endDate: new Date(end),
+  const [dateRange, setDateRange] = useState<any>(() => {
+    const saved = localStorage.getItem('dashboardDateRange');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          startDate: new Date(parsed.startDate),
+          endDate: new Date(parsed.endDate)
+        };
+      } catch (e) {}
+    }
+    return {
+      startDate: new Date(start),
+      endDate: new Date(end),
+    };
   });
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'general' | 'asesores'>('general');
   const isInitialMount = React.useRef(true);
 
   useEffect(() => {
+    if (dateRange) {
+      localStorage.setItem('dashboardDateRange', JSON.stringify(dateRange));
+    }
     const params: Record<string, unknown> = {};
     if (dateRange?.startDate) {
       const s = typeof dateRange.startDate === 'string' ? dateRange.startDate.replace(/-/g, '/') : dateRange.startDate;
@@ -75,6 +107,7 @@ export default function Dashboard() {
     return {
       totalIngresos: d?.totalRevenue ?? 0,
       monthIngresos: d?.monthlyRevenue ?? 0,
+      totalOperations: d?.totalOperations ?? 0,
       totalPendiente: d?.pendingBalance ?? 0,
       PendienteCount: d?.pendingCount ?? 0,
       totalProveedores: d?.suppliersTotal ?? 0,
@@ -99,12 +132,23 @@ export default function Dashboard() {
           previous: apiMonth?.previousYear ?? 0,
         };
       }),
+      ivaTrendData: MONTH_NAMES.map((monthName, index) => {
+        const monthNum = index + 1;
+        const apiMonth = d?.ivaTrend?.find((m) => m.month === monthNum);
+        return {
+          name: monthName,
+          current: apiMonth?.currentYear ?? 0,
+          previous: apiMonth?.previousYear ?? 0,
+        };
+      }),
       recentSales: d?.recentSales ?? [],
       carteraData: d?.carteraStatus ?? [
         { name: "Pagado", value: 0, color: "#10b981" },
         { name: "Abonado", value: 0, color: "#3b82f6" },
         { name: "Pendiente", value: 0, color: "#f59e0b" },
       ],
+      topResponsables: d?.topResponsables ?? [],
+      topComisionistas: d?.topComisionistas ?? [],
     };
   }, [dashboardData]);
 
@@ -153,6 +197,32 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Tabs de Navegación */}
+      <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-slate-700/60 pb-2">
+        <button
+          onClick={() => setActiveTab('general')}
+          className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${
+            activeTab === 'general'
+              ? 'border-primary text-primary dark:text-teal-400 bg-primary/5 dark:bg-slate-800/50'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Resumen General
+        </button>
+        <button
+          onClick={() => setActiveTab('asesores')}
+          className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors border-b-2 ${
+            activeTab === 'asesores'
+              ? 'border-primary text-primary dark:text-teal-400 bg-primary/5 dark:bg-slate-800/50'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Responsables y Comisionistas
+        </button>
+      </div>
+
+      {activeTab === 'general' && (
+        <div className="space-y-8">
       {/* Modern Glassmorphism KPIs */}
       {dashboardLoading && !dashboardData ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
@@ -167,7 +237,7 @@ export default function Dashboard() {
               label: "T.A INGRESADA",
               value: formatCurrency(stats.totalIngresos),
               subtitle: "Ventas Totales",
-              detail: `+${formatCurrency(stats.monthIngresos)} mes`,
+              detail: `${stats.totalOperations} ventas en el periodo`,
               icon: <DollarSign size={24} />,
               gradient: "from-emerald-500 to-teal-400",
               lightBg: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300",
@@ -425,6 +495,107 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+      </div>
+      )}
+
+      {activeTab === 'asesores' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
+          {/* Top Responsables (Ingresos) */}
+          <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm p-4 sm:p-6">
+            <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Top Responsables (por Ventas)</h2>
+            <div className="h-80 w-full">
+              {dashboardLoading && !dashboardData ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.topResponsables} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b", fontWeight: 600 }} angle={-45} textAnchor="end" height={80} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(value) => `$${value / 1000}k`} />
+                    <Tooltip 
+                      cursor={{ fill: 'transparent' }} 
+                      formatter={(value: number) => [formatCurrency(value), "Ventas"]}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="ventas" fill="#4f46e5" shape={<TriangleBar />}>
+                      {stats.topResponsables.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={CARTERA_COLORS[index % CARTERA_COLORS.length] || '#4f46e5'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Top Comisionistas */}
+          <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm p-4 sm:p-6">
+            <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Top Comisionistas</h2>
+            <div className="h-80 w-full">
+              {dashboardLoading && !dashboardData ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.topComisionistas} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(value) => `$${value / 1000}k`} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b", fontWeight: 600 }} width={160} />
+                    <Tooltip 
+                      cursor={{ fill: 'rgba(0,0,0,0.05)' }} 
+                      formatter={(value: number) => [formatCurrency(value), "Comisión"]}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Bar dataKey="comision" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
+                      {stats.topComisionistas.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={["#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6"][index % 5]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Gráfico IVA Trend */}
+          <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm p-4 sm:p-6 lg:col-span-2">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
+                <DollarSign className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-gray-800 dark:text-white">Proyección de IVA por Meses</h2>
+                <span className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Generado vs Año Anterior</span>
+              </div>
+            </div>
+            <div className="h-80 w-full">
+              {dashboardLoading && !dashboardData ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={stats.ivaTrendData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorIvaCurrent" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.9}/>
+                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0.2}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148, 163, 184, 0.2)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                    <Tooltip 
+                      formatter={(value: number) => formatCurrency(value)} 
+                      contentStyle={{ borderRadius: "16px", border: "1px solid #f1f5f9", boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", padding: "12px", fontWeight: "bold" }} 
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", fontWeight: 600, paddingTop: "20px" }} />
+                    <Bar dataKey="current" name="Año Actual" fill="url(#colorIvaCurrent)" radius={[6, 6, 0, 0]} maxBarSize={40} className="hover:opacity-90 drop-shadow-sm transition-opacity" />
+                    <Line type="monotone" dataKey="previous" name="Año Anterior" stroke="#cbd5e1" strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4, fill: "#cbd5e1", strokeWidth: 2 }} activeDot={{ r: 6, fill: "#94a3b8", stroke: "#fff" }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== MODAL DETALLE CRÉDITO / CARTERA ===== */}
       <Modal

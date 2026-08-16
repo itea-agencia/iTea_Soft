@@ -42,6 +42,7 @@ interface RecentSale {
 interface DashboardData {
   totalRevenue: number;
   monthlyRevenue: number;
+  totalOperations?: number;
   pendingBalance: number;
   pendingCount: number;
   suppliersTotal: number;
@@ -53,9 +54,12 @@ interface DashboardData {
   categoryDistribution: { name: string; value: number; percentage: number }[];
   carteraStatus: { name: string; value: number; color: string }[];
   monthlyTrend: { month: number; currentYear: number; previousYear: number }[];
+  ivaTrend?: { month: number; currentYear: number; previousYear: number }[];
   categoryBreakdown: Record<string, { count: number; revenue: number }>;
   creditProveedores?: number;
   creditTa?: number;
+  topResponsables?: any[];
+  topComisionistas?: any[];
 }
 
 interface DataContextType {

@@ -5,7 +5,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres.tpoackpublplicfpkbvs:1033488906b@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model TiposDocumento {
