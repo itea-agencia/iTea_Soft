@@ -9,8 +9,11 @@ router.use(auth);
 
 
 
+const multer = require('multer');
+const upload = multer();
+
 router.get('/', authorize('itineraries', 'view'), paginate, flightsController.list);
 router.get('/:id', authorize('itineraries', 'view'), flightsController.getById);
-router.put('/:id/checkin', authorize('itineraries', 'edit'), flightsController.updateCheckin);
+router.put('/:id/checkin', authorize('itineraries', 'edit'), upload.array('files'), flightsController.updateCheckin);
 
 module.exports = router;
