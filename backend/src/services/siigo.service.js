@@ -94,7 +94,7 @@ class SiigoService {
 
       // 3. Si no existe, lo creamos. Siigo es MUY estricto con el formato de los datos.
       const payload = {
-        type: 'Person',                // Person (Persona natural) o Company (Empresa)
+        type: 'Customer',                // Customer (Cliente) o Supplier (Proveedor)
         person_type: 'Person',
         id_type: '13',                 // '13' es Cedula de Ciudadania en la DIAN
         identification: documento,
