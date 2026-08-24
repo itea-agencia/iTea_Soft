@@ -491,14 +491,14 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Localizador", value: lt.ticketLocator },
               { label: "Origen", value: lt.origin },
               { label: "Destino", value: lt.destination },
-              { label: "Salida", value: `${lt.departureDate} ${lt.departureTime || ""}` },
+              { label: "Salida", value: `${lt.departureDate ? formatDate(lt.departureDate) : "-"} ${lt.departureTime ? formatTimeAMPM(lt.departureTime) : ""}`.trim() },
               { label: "Asiento Ida", value: lt.seatNumber },
             ])}
             {lt.isRoundTrip && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <h5 className="text-xs font-bold text-gray-500 mb-2">Regreso</h5>
                 {renderGrid([
-                  { label: "Regreso", value: `${lt.returnDate} ${lt.returnTime || ""}` },
+                  { label: "Regreso", value: `${lt.returnDate ? formatDate(lt.returnDate) : "-"} ${lt.returnTime ? formatTimeAMPM(lt.returnTime) : ""}`.trim() },
                   { label: "Asiento Regreso", value: lt.returnSeatNumber },
                 ])}
               </div>

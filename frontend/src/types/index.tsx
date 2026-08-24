@@ -139,7 +139,8 @@ export type SaleProductId =
   | "restaurantes"
   | "visa"
   | "pasaporte"
-  | "servicio_mascotas";
+  | "servicio_mascotas"
+  | "viajes_terrestres";
 
 export interface SaleProductDef {
   id: SaleProductId;
@@ -205,6 +206,12 @@ export const SALE_PRODUCTS: SaleProductDef[] = [
     id: "servicio_mascotas",
     label: "Servicio de Mascotas",
     icon: "LuDog",
+    group: "other",
+  },
+  {
+    id: "viajes_terrestres",
+    label: "Viajes Terrestres",
+    icon: "LuBus",
     group: "other",
   },
 ];
@@ -585,6 +592,35 @@ export interface PetServiceData {
   ta?: number;
 }
 
+export interface LandTravelData {
+  linkedToPlanIndex?: number | null;
+  transportCompany: string;
+  ticketLocator: string;
+  origin: string;
+  destination: string;
+  departureDate: string;
+  departureTime?: string;
+  seatNumber?: string;
+  isRoundTrip: boolean;
+  returnDate?: string;
+  returnTime?: string;
+  returnSeatNumber?: string;
+  passengers: {
+    name: string;
+    docType: string;
+    docNumber: string;
+    esTitular: boolean;
+    asiento?: string;
+  }[];
+  supplierName?: string;
+  supplierCost?: number;
+  supplierPaymentMethod?: string;
+  ta?: number;
+  taCre?: number;
+  voucher?: { name: string; base64: string };
+  sendVoucher?: boolean;
+}
+
 export interface PaymentRecord {
   id: string;
   date: string;
@@ -626,6 +662,7 @@ export interface Sale {
   visaData?: VisaData[];
   passportData?: PassportData[];
   petServiceData?: PetServiceData[];
+  landTravelData?: LandTravelData[];
   isCredit?: boolean;
   creditDueDate?: string;
   creditPaidAmount?: number;

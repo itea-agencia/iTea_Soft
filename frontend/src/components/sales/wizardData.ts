@@ -298,6 +298,13 @@ export const INITIAL_LAND_TRAVEL = (client?: any): LandTravelData => ({
   returnDate: "",
   returnTime: "",
   returnSeatNumber: "",
+  passengers: client ? [{
+    name: client.name || `${client.firstName || ''} ${client.lastName || ''}`.trim(),
+    docType: client.docType || '',
+    docNumber: client.docNumber || '',
+    esTitular: true,
+    asiento: ''
+  }] : [],
   voucher: undefined,
   sendVoucher: false,
   supplierName: "",

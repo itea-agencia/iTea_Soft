@@ -1,5 +1,5 @@
 import { Bus, PlusCircle, User, Trash2 } from "lucide-react";
-import { FormField, Input } from "../../ui/Form";
+import { FormField, Input, Combobox } from "../../ui/Form";
 import { LandTravelData } from "../../../types";
 import { ClientInfoSection, VoucherField, FinancialSection } from "./VoucherField";
 import { DateTimePicker } from "./TicketForm";
@@ -7,13 +7,15 @@ import { DateTimePicker } from "./TicketForm";
 interface LandTravelFormProps {
   travel: LandTravelData;
   client: any;
+  clients?: any[];
+  documentTypes?: any[];
   suppliers?: any[];
   paymentMethods?: any[];
   onChange: (updates: Partial<LandTravelData>) => void;
   triggerError?: (msg: string) => void;
 }
 
-export function LandTravelForm({ travel, client, suppliers, paymentMethods, onChange, triggerError }: LandTravelFormProps) {
+export function LandTravelForm({ travel, client, clients = [], documentTypes, suppliers, paymentMethods, onChange, triggerError }: LandTravelFormProps) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -174,92 +176,143 @@ export function LandTravelForm({ travel, client, suppliers, paymentMethods, onCh
             if (rawPax.length > 0 && !rawPax.some((p: any) => p.esTitular)) {
               rawPax[0].esTitular = true;
             }
-            return rawPax.map((pax: any, idx: number) => (
-              <div key={idx} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-4 rounded-lg relative shadow-sm">
-                <div className="absolute -top-2 -left-2 bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md">
-                  {idx + 1}
-                </div>
-                {rawPax.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = [...rawPax];
-                      next.splice(idx, 1);
-                      if (pax.esTitular && next.length > 0) next[0].esTitular = true;
-                      onChange({ passengers: next });
-                    }}
-                    className="absolute -top-2 -right-2 bg-red-100 hover:bg-red-500 text-red-600 hover:text-white transition-colors w-6 h-6 rounded-full flex items-center justify-center shadow-sm"
-                    title="Eliminar pasajero"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-2">
-                  <FormField label="Nombre Completo">
-                    <Input
-                      value={pax.name || ''}
-                      onChange={(e) => {
+            return rawPax.map((pax: any, idx: number) => {
+              const isNew = !pax.name && !pax.docNumber;
+
+              return (
+                <div key={idx} className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-4 rounded-lg relative shadow-sm group">
+                  <div className="absolute -top-2 -left-2 bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
+                    {idx + 1}
+                  </div>
+                  {!pax.esTitular && rawPax.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => {
                         const next = [...rawPax];
-                        next[idx] = { ...next[idx], name: e.target.value.toUpperCase() };
+                        next.splice(idx, 1);
                         onChange({ passengers: next });
                       }}
-                      placeholder="Nombres y Apellidos"
-                    />
-                  </FormField>
-                  <FormField label="Tipo Doc.">
-                    <select
-                      value={pax.docType || ''}
-                      onChange={(e) => {
-                        const next = [...rawPax];
-                        next[idx] = { ...next[idx], docType: e.target.value };
-                        onChange({ passengers: next });
-                      }}
-                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="absolute -top-2 -right-2 bg-red-100 hover:bg-red-500 text-red-600 hover:text-white transition-colors w-6 h-6 rounded-full flex items-center justify-center shadow-sm md:opacity-0 md:group-hover:opacity-100 z-10"
+                      title="Eliminar pasajero"
                     >
-                      <option value="">Sel...</option>
-                      <option value="CC">CC</option>
-                      <option value="CE">CE</option>
-                      <option value="PA">Pasaporte</option>
-                      <option value="TI">TI</option>
-                      <option value="RC">RC</option>
-                    </select>
-                  </FormField>
-                  <FormField label="No. Documento">
-                    <Input
-                      value={pax.docNumber || ''}
-                      onChange={(e) => {
-                        const next = [...rawPax];
-                        next[idx] = { ...next[idx], docNumber: e.target.value.replace(/[^0-9A-Za-z]/g, '') };
-                        onChange({ passengers: next });
-                      }}
-                      placeholder="Número"
-                    />
-                  </FormField>
-                  <div className="flex items-end h-[68px] pb-1">
-                    <label className="flex items-center gap-2 cursor-pointer group">
-                      <div className="relative flex items-center justify-center w-5 h-5">
-                        <input
-                          type="radio"
-                          name={`titular-land-${travel.ticketLocator || Math.random()}`}
-                          checked={pax.esTitular}
-                          onChange={() => {
-                            const next = rawPax.map((p: any, i: number) => ({ ...p, esTitular: i === idx }));
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                  
+                  {isNew ? (
+                    <div className="flex flex-col gap-2 mt-2">
+                      <span className="text-xs font-bold text-gray-700 dark:text-slate-300">Seleccionar Cliente Registrado</span>
+                      <Combobox
+                        value=""
+                        onChange={(val) => {
+                          if (!val) return;
+                          const foundClient = clients.find(c => String(c.id) === val);
+                          if (foundClient) {
+                            const next = [...rawPax];
+                            next[idx] = {
+                              ...next[idx],
+                              name: foundClient.name || `${foundClient.firstName} ${foundClient.lastName || ''}`.trim(),
+                              docType: foundClient.docType || '',
+                              docNumber: foundClient.docNumber || ''
+                            };
+                            onChange({ passengers: next });
+                          }
+                        }}
+                        options={clients.map(c => ({ value: String(c.id), label: `${c.name || `${c.firstName} ${c.lastName || ''}`} - ${c.docNumber || ''}` }))}
+                        placeholder="Buscar cliente..."
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mt-2">
+                      <FormField label="Nombre Completo">
+                        <Input
+                          value={pax.name || ''}
+                          onChange={(e) => {
+                            const next = [...rawPax];
+                            next[idx] = { ...next[idx], name: e.target.value.toUpperCase() };
                             onChange({ passengers: next });
                           }}
-                          className="peer sr-only"
+                          placeholder="Nombres y Apellidos"
+                          className="text-gray-900 dark:text-white"
                         />
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded-full peer-checked:border-primary peer-checked:bg-primary transition-all"></div>
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        </div>
+                      </FormField>
+                      <FormField label="Tipo Doc.">
+                        <select
+                          value={pax.docType || ''}
+                          onChange={(e) => {
+                            const next = [...rawPax];
+                            next[idx] = { ...next[idx], docType: e.target.value };
+                            onChange({ passengers: next });
+                          }}
+                          className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm text-gray-900 dark:text-white ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="">Sel...</option>
+                          {documentTypes ? documentTypes.map((d: any) => (
+                            <option key={d.id || d.abreviatura} value={d.abreviatura}>{d.abreviatura}</option>
+                          )) : (
+                            <>
+                              <option value="CC">CC</option>
+                              <option value="CE">CE</option>
+                              <option value="PASAPORTE">Pasaporte</option>
+                              <option value="TI">TI</option>
+                              <option value="RC">RC</option>
+                            </>
+                          )}
+                          {pax.docType && (!documentTypes?.find((d: any) => d.abreviatura === pax.docType)) && !['CC', 'CE', 'PASAPORTE', 'TI', 'RC'].includes(pax.docType) && (
+                            <option value={pax.docType}>{pax.docType}</option>
+                          )}
+                        </select>
+                      </FormField>
+                      <FormField label="No. Documento">
+                        <Input
+                          value={pax.docNumber || ''}
+                          onChange={(e) => {
+                            const next = [...rawPax];
+                            next[idx] = { ...next[idx], docNumber: e.target.value.replace(/[^0-9A-Za-z]/g, '') };
+                            onChange({ passengers: next });
+                          }}
+                          placeholder="Número"
+                          className="text-gray-900 dark:text-white"
+                        />
+                      </FormField>
+                      <FormField label="Asiento">
+                        <Input
+                          value={pax.asiento || ''}
+                          onChange={(e) => {
+                            const next = [...rawPax];
+                            next[idx] = { ...next[idx], asiento: e.target.value.toUpperCase() };
+                            onChange({ passengers: next });
+                          }}
+                          placeholder="Ej. 4B"
+                          className="text-gray-900 dark:text-white"
+                        />
+                      </FormField>
+                      <div className="flex items-end h-[68px] pb-1">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <div className="relative flex items-center justify-center w-5 h-5">
+                            <input
+                              type="radio"
+                              name={`titular-land-${travel.ticketLocator || Math.random()}`}
+                              checked={pax.esTitular}
+                              onChange={() => {
+                                const next = rawPax.map((p: any, i: number) => ({ ...p, esTitular: i === idx }));
+                                onChange({ passengers: next });
+                              }}
+                              className="peer sr-only"
+                            />
+                            <div className="w-5 h-5 border-2 border-gray-300 rounded-full peer-checked:border-primary peer-checked:bg-primary transition-all"></div>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity">
+                              <div className="w-2 h-2 bg-white rounded-full"></div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors">Es Titular</span>
+                        </label>
                       </div>
-                      <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900 transition-colors">Es Titular</span>
-                    </label>
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ));
+              );
+            });
           })()}
         </div>
       </div>

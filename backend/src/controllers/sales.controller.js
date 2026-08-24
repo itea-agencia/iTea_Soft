@@ -666,11 +666,17 @@ const PRODUCT_TRANSFORMS = {
       returnDate: t.fechaRegreso?.toISOString() || null,
       returnTime: t.horaRegreso,
       returnSeatNumber: t.numeroAsientoRegreso,
-      supplier: d.proveedor?.nombre || null,
+      supplierName: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
-      passengers: passengers,
+      passengers: passengers.map(p => ({
+        name: p.nombreCompleto,
+        docType: p.tipoDocumento,
+        docNumber: p.nroDocumento,
+        esTitular: p.esTitular,
+        asiento: p.asiento
+      })),
     });
   },
   equipaje(d, passengers, target) {

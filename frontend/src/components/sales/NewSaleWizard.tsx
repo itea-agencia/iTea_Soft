@@ -240,7 +240,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     let targetKey: string | null = null;
     switch (activeForm) {
       case "tiqueteria": targetKey = "tickets"; break;
-      case "viajes_terrestres": targetKey = "landTravels"; break;
       case "hoteleria": targetKey = "hotels"; break;
       case "seguros_viaje": targetKey = "insurances"; break;
       case "checkin": targetKey = "checkIns"; break;
@@ -269,7 +268,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     let targetKey: string | null = null;
     switch (activeForm) {
       case "tiqueteria": targetKey = "tickets"; break;
-      case "viajes_terrestres": targetKey = "landTravels"; break;
       case "hoteleria": targetKey = "hotels"; break;
       case "seguros_viaje": targetKey = "insurances"; break;
       case "checkin": targetKey = "checkIns"; break;
@@ -1255,7 +1253,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       let targetKey: string | null = null;
       switch (activeForm) {
         case "tiqueteria": targetKey = "tickets"; break;
-      case "viajes_terrestres": targetKey = "landTravels"; break;
         case "hoteleria": targetKey = "hotels"; break;
         case "seguros_viaje": targetKey = "insurances"; break;
         case "planes": targetKey = "plans"; break;
@@ -1668,6 +1665,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 <LandTravelForm
                   travel={form.landTravels[activeIdx] || INITIAL_LAND_TRAVEL(client)}
                   client={client}
+                  clients={data.clients}
+                  documentTypes={data.config.documentTypes}
                   suppliers={data.config.suppliers}
                   paymentMethods={data.config.cards}
                   onChange={(updates) => {

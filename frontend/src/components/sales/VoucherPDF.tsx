@@ -4,6 +4,16 @@ import { formatDate, formatDateTime, formatCurrency, formatSaleId } from '../../
 import { type AirportInfo } from '../../utils/airportInfo';
 import './VoucherPDF.css';
 
+const formatTimeAMPM = (time24: string) => {
+  if (!time24) return "";
+  const [h, m] = time24.split(":");
+  if (!h || !m) return time24;
+  let hour = parseInt(h, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${m} ${ampm}`;
+};
+
 interface VoucherPDFProps {
   sale: Sale | null;
   airportMap?: Record<string, AirportInfo>;
@@ -572,15 +582,48 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Localizador" value={lt.ticketLocator} />
                   <DataCell label="Origen" value={lt.origin} />
                   <DataCell label="Destino" value={lt.destination} />
-                  <DataCell label="Salida" value={`${lt.departureDate} ${lt.departureTime || ''}`} />
+                  <DataCell label="Salida" value={`${lt.departureDate ? formatDate(lt.departureDate) : "-"} ${lt.departureTime ? formatTimeAMPM(lt.departureTime) : ""}`.trim()} />
                   <DataCell label="Asiento" value={lt.seatNumber} />
                   {lt.isRoundTrip && (
                     <>
-                      <DataCell label="Regreso" value={`${lt.returnDate} ${lt.returnTime || ''}`} />
+                      <DataCell label="Regreso" value={`${lt.returnDate ? formatDate(lt.returnDate) : "-"} ${lt.returnTime ? formatTimeAMPM(lt.returnTime) : ""}`.trim()} />
                       <DataCell label="Asiento Regreso" value={lt.returnSeatNumber} />
                     </>
                   )}
                 </div>
+
+                {lt.passengers && lt.passengers.length > 0 && (
+                  <div style={{ marginTop: '20px' }}>
+                    <div style={{ color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold' }}>
+                      PASAJEROS:
+                    </div>
+                    <table className="v-flight-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>NOMBRE</th>
+                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>TIPO DOC.</th>
+                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° DOCUMENTO</th>
+                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lt.passengers.map((p: any, j: number) => (
+                          <tr key={j} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#000000' }}>
+                              {p.name}
+                              {p.esTitular && (
+                                <span style={{ marginLeft: '8px', padding: '2px 8px', color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>PASAJERO PRINCIPAL</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docType || '—'}</td>
+                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docNumber || '—'}</td>
+                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asiento || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </React.Fragment>
             ))}
           </ProductCard>
