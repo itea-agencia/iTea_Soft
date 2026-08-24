@@ -92,5 +92,8 @@ router.put('/:saleId/products/pet-service/:id', authorize('sales', 'edit'), prod
 router.delete('/:saleId/products/pet-service/:id', authorize('sales', 'delete'), productsController.deletePetService);
 
 
+router.post('/:saleId/products/land-travel', authorize('sales', 'create'), productsController.createLandTravel);
+router.put('/:saleId/products/land-travel/:id', authorize('sales', 'edit'), productsController.updateLandTravel);
+router.delete('/:saleId/products/land-travel/:id', authorize('sales', 'delete'), productsController.deleteLandTravel);
 
 module.exports = router;

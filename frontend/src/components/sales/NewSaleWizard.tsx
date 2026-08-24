@@ -39,11 +39,13 @@ import {
   PetServiceForm,
   BaggageForm,
   TicketForm,
+  LandTravelForm,
 } from "./forms";
 import {
   WizardFormData,
   INITIAL_FORM,
   INITIAL_TICKET,
+  INITIAL_LAND_TRAVEL,
   INITIAL_HOTEL,
   INITIAL_INSURANCE,
   INITIAL_PLAN,
@@ -238,12 +240,14 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     let targetKey: string | null = null;
     switch (activeForm) {
       case "tiqueteria": targetKey = "tickets"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
       case "hoteleria": targetKey = "hotels"; break;
       case "seguros_viaje": targetKey = "insurances"; break;
       case "checkin": targetKey = "checkIns"; break;
       case "documentacion_migratoria": targetKey = "migrations"; break;
       case "simcard": targetKey = "simCards"; break;
       case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
       case "renta_fincas": targetKey = "fincas"; break;
       case "tours": targetKey = "tours"; break;
       case "centros_convencion": targetKey = "conventions"; break;
@@ -265,12 +269,14 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     let targetKey: string | null = null;
     switch (activeForm) {
       case "tiqueteria": targetKey = "tickets"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
       case "hoteleria": targetKey = "hotels"; break;
       case "seguros_viaje": targetKey = "insurances"; break;
       case "checkin": targetKey = "checkIns"; break;
       case "documentacion_migratoria": targetKey = "migrations"; break;
       case "simcard": targetKey = "simCards"; break;
       case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
       case "renta_fincas": targetKey = "fincas"; break;
       case "tours": targetKey = "tours"; break;
       case "centros_convencion": targetKey = "conventions"; break;
@@ -320,6 +326,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     (form.simCards || []).forEach(sc => { calcSupplierCost += Number(sc.supplierCost) || 0; calcTa += Number(sc.ta) || 0; calcTaCre += Number(sc.taCre) || 0; });
     (form.baggages || []).forEach(b => { calcSupplierCost += Number(b.supplierCost) || 0; calcTa += Number(b.ta) || 0; calcTaCre += Number(b.taCre) || 0; });
     (form.carRentals || []).forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; calcTaCre += Number(cr.taCre) || 0; });
+    (form.landTravels || []).forEach(lt => { calcSupplierCost += Number(lt.supplierCost) || 0; calcTa += Number(lt.ta) || 0; calcTaCre += Number(lt.taCre) || 0; });
     (form.fincas || []).forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; calcTaCre += Number(f.taCre) || 0; });
     (form.tours || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
     (form.conventions || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
@@ -355,7 +362,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     }
   }, [
     form.tickets, form.hotels, form.insurances, form.plans, form.checkIns,
-    form.migrations, form.simCards, form.baggages, form.carRentals, form.fincas, form.tours,
+    form.migrations, form.simCards, form.baggages, form.carRentals, form.landTravels, form.fincas, form.tours,
     form.conventions, form.restaurants, form.visas, form.passports, form.petServices
   ]);
 
@@ -819,6 +826,30 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         }
       }
 
+      if (form.selectedProducts.includes("viajes_terrestres")) {
+        if (!form.landTravels || form.landTravels.length === 0) {
+          errs.products = "Debes configurar al menos un Viaje Terrestre";
+        } else {
+          for (let i = 0; i < form.landTravels.length; i++) {
+            const lt = form.landTravels[i];
+            const errors: string[] = [];
+            if (!lt) errors.push("Viaje Terrestre inválido");
+            else {
+              if (!lt.transportCompany || lt.transportCompany.trim().length === 0) errors.push("Operador (requerido)");
+              if (!lt.origin || lt.origin.trim().length === 0) errors.push("Origen (requerido)");
+              if (!lt.destination || lt.destination.trim().length === 0) errors.push("Destino (requerido)");
+              if (!lt.departureDate) errors.push("Salida (requerida)");
+              if (lt.isRoundTrip && !lt.returnDate) errors.push("Regreso (requerido)");
+            }
+            if (errors.length > 0) {
+              triggerError(`El Viaje Terrestre #${i + 1} tiene errores: ${errors.join(", ")}`);
+              errs.landTravelValidation = "invalid";
+              break;
+            }
+          }
+        }
+      }
+
       if (form.selectedProducts.includes("renta_fincas")) {
         if (!form.fincas || form.fincas.length === 0) {
           errs.products = "Debes configurar al menos una Renta de Finca";
@@ -1224,6 +1255,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       let targetKey: string | null = null;
       switch (activeForm) {
         case "tiqueteria": targetKey = "tickets"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
         case "hoteleria": targetKey = "hotels"; break;
         case "seguros_viaje": targetKey = "insurances"; break;
         case "planes": targetKey = "plans"; break;
@@ -1232,6 +1264,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         case "simcard": targetKey = "simCards"; break;
         case "equipaje": targetKey = "baggages"; break;
         case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
         case "renta_fincas": targetKey = "fincas"; break;
         case "tours": targetKey = "tours"; break;
         case "centros_convencion": targetKey = "conventions"; break;
@@ -1418,6 +1451,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   case "simcard": targetKey = "simCards"; initialFn = INITIAL_SIMCARD; break;
                   case "equipaje": targetKey = "baggages"; initialFn = INITIAL_BAGGAGE; break;
                   case "renta_vehiculos": targetKey = "carRentals"; initialFn = INITIAL_CAR_RENTAL; break;
+                  case "viajes_terrestres": targetKey = "landTravels"; initialFn = INITIAL_LAND_TRAVEL; break;
                   case "renta_fincas": targetKey = "fincas"; initialFn = INITIAL_FINCA; break;
                   case "tours": targetKey = "tours"; initialFn = INITIAL_TOUR; break;
                   case "centros_convencion": targetKey = "conventions"; initialFn = INITIAL_CONVENTION; break;
@@ -1458,6 +1492,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 case "simcard": targetKey = "simCards"; break;
                 case "equipaje": targetKey = "baggages"; break;
                 case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
                 case "renta_fincas": targetKey = "fincas"; break;
                 case "tours": targetKey = "tours"; break;
                 case "centros_convencion": targetKey = "conventions"; break;
@@ -1624,6 +1659,21 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                     const next = [...form.carRentals];
                     next[activeIdx] = { ...next[activeIdx], ...updates };
                     set("carRentals", next);
+                  }}
+                  triggerError={triggerError}
+                />
+              );
+            case "viajes_terrestres":
+              return (
+                <LandTravelForm
+                  travel={form.landTravels[activeIdx] || INITIAL_LAND_TRAVEL(client)}
+                  client={client}
+                  suppliers={data.config.suppliers}
+                  paymentMethods={data.config.cards}
+                  onChange={(updates) => {
+                    const next = [...form.landTravels];
+                    next[activeIdx] = { ...next[activeIdx], ...updates };
+                    set("landTravels", next);
                   }}
                   triggerError={triggerError}
                 />
@@ -1841,6 +1891,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       simCardData: form.simCards.length > 0 ? form.simCards : undefined,
       baggageData: form.baggages.length > 0 ? form.baggages : undefined,
       carRentalData: form.carRentals.length > 0 ? form.carRentals : undefined,
+      landTravelData: form.landTravels.length > 0 ? form.landTravels : undefined,
       fincaData: form.fincas.length > 0 ? form.fincas : undefined,
       tourData: form.tours.length > 0 ? form.tours : undefined,
       conventionData: form.conventions.length > 0 ? form.conventions : undefined,
@@ -1866,7 +1917,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       localStorage.removeItem(draftKey);
 
       const hasVouchersToSend = [
-        ...form.plans, ...form.checkIns, ...form.migrations, ...form.simCards, ...form.baggages, ...form.carRentals,
+        ...form.plans, ...form.checkIns, ...form.migrations, ...form.simCards, ...form.baggages, ...form.carRentals, ...form.landTravels,
         ...form.fincas, ...form.tours, ...form.conventions, ...form.restaurants,
         ...form.visas, ...form.passports, ...form.petServices
       ].some(item => item.sendVoucher);
@@ -1983,6 +2034,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   case "simcard": targetKey = "simCards"; break;
                  case "equipaje": targetKey = "baggages"; break;
                   case "renta_vehiculos": targetKey = "carRentals"; break;
+      case "viajes_terrestres": targetKey = "landTravels"; break;
                   case "renta_fincas": targetKey = "fincas"; break;
                   case "tours": targetKey = "tours"; break;
                   case "centros_convencion": targetKey = "conventions"; break;
@@ -2066,7 +2118,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
 function isItemEmpty(item: any, category: SaleProductId): boolean {
   if (!item) return true;
   
-  if (Number(item.supplierCost) > 0 || Number(item.ta) > 0) return false;
+  if (Number(item.supplierCost) > 0 || Number(item.ta) > 0 || Number(item.taCre) > 0) return false;
   if (item.supplierName && item.supplierName.trim() !== "") return false;
 
   switch (category) {
@@ -2126,6 +2178,13 @@ function isItemEmpty(item: any, category: SaleProductId): boolean {
         !item.pickupDate &&
         !item.returnDate &&
         !item.guaranteeCreditCard
+      );
+    case "viajes_terrestres":
+      return (
+        !item.transportCompany &&
+        !item.origin &&
+        !item.destination &&
+        !item.departureDate
       );
     case "renta_fincas":
       return !item.checkInDate && !item.checkOutDate && !item.petType;

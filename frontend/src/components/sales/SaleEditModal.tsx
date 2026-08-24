@@ -3,7 +3,7 @@ import {
   Receipt, ShoppingBag, Wallet, Trash2,
   Plane, Hotel, Shield, Package, CheckSquare, Globe,
   Smartphone, Car, Home, Compass, Star, Utensils,
-  FileCheck, BookOpen, PawPrint
+  FileCheck, BookOpen, PawPrint, Bus
 } from "lucide-react";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -36,6 +36,7 @@ const SERVICE_CONFIG: Record<string, { icon: React.ReactNode; bg: string; text: 
   documentacion_migratoria: { icon: <Globe size={13} />, bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800/50' },
   simcard:      { icon: <Smartphone size={13} />,   bg: 'bg-indigo-50 dark:bg-indigo-950/40',   text: 'text-indigo-700 dark:text-indigo-300',   border: 'border-indigo-200 dark:border-indigo-800/50' },
   renta_vehiculos: { icon: <Car size={13} />,       bg: 'bg-orange-50 dark:bg-orange-950/40',   text: 'text-orange-700 dark:text-orange-300',   border: 'border-orange-200 dark:border-orange-800/50' },
+  viajes_terrestres: { icon: <Bus size={13} />, bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800/50' },
   renta_fincas: { icon: <Home size={13} />,         bg: 'bg-lime-50 dark:bg-lime-950/40',     text: 'text-lime-700 dark:text-lime-300',     border: 'border-lime-200 dark:border-lime-800/50' },
   tours:        { icon: <Compass size={13} />,      bg: 'bg-cyan-50 dark:bg-cyan-950/40',     text: 'text-cyan-700 dark:text-cyan-300',     border: 'border-cyan-200 dark:border-cyan-800/50' },
   centros_convencion: { icon: <Star size={13} />,   bg: 'bg-yellow-50 dark:bg-yellow-950/40',   text: 'text-yellow-700 dark:text-yellow-300',   border: 'border-yellow-200 dark:border-yellow-800/50' },

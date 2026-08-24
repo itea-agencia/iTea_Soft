@@ -6,7 +6,8 @@ const CATEGORIES = {
   plan: 'planes', checkin: 'checkin', migration: 'documentacion_migratoria',
   simcard: 'simcard', baggage: 'equipaje', carRental: 'renta_vehiculos', finca: 'renta_fincas',
   tour: 'tours', convention: 'centros_convencion', restaurant: 'restaurantes',
-  visa: 'visa', passport: 'pasaporte', petService: 'servicio_mascotas'
+  visa: 'visa', passport: 'pasaporte', petService: 'servicio_mascotas',
+  landTravel: 'viajes_terrestres'
 };
 
 async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaId) {
@@ -108,7 +109,7 @@ const productHandler = (category, tableName, transformData) => ({
           const docType = data.docType;
           const docNumber = data.docNumber || data.licenseNumber || data.passportNumber || data.idNumber;
           
-          if (passengerName || docNumber || ['checkin', 'documentacion_migratoria', 'simcard', 'tours', 'servicio_mascotas', 'renta_vehiculos'].includes(category)) {
+          if (passengerName || docNumber || ['checkin', 'documentacion_migratoria', 'simcard', 'tours', 'servicio_mascotas', 'renta_vehiculos', 'viajes_terrestres'].includes(category)) {
             const resolvedPid = await findOrCreatePersona(tx, passengerName, docType, docNumber, defaultPersonaId);
             pasajerosDetalleData.push({
               personaId: resolvedPid,
@@ -583,6 +584,27 @@ exports.updateBaggage = H(CATEGORIES.baggage, 'prodEquipajes').update;
 exports.deleteBaggage = H(CATEGORIES.baggage, 'prodEquipajes').delete;
 
 // =========================================================
+// Viajes Terrestres
+// =========================================================
+exports.createLandTravel = H(CATEGORIES.landTravel, 'prodViajesTerrestres', (d, detalleId) => ({
+  detalleVentaId: detalleId,
+  empresaTransporte: d.transportCompany || null,
+  origen: d.origin || null,
+  destino: d.destination || null,
+  fechaSalida: d.departureDate ? new Date(d.departureDate) : null,
+  horaSalida: d.departureTime || null,
+  numeroAsiento: d.seatNumber || null,
+  localizadorTicket: d.ticketLocator || null,
+  esIdaYVuelta: d.isRoundTrip || false,
+  fechaRegreso: d.returnDate ? new Date(d.returnDate) : null,
+  horaRegreso: d.returnTime || null,
+  numeroAsientoRegreso: d.returnSeatNumber || null
+})).create;
+
+exports.updateLandTravel = H(CATEGORIES.landTravel, 'prodViajesTerrestres').update;
+exports.deleteLandTravel = H(CATEGORIES.landTravel, 'prodViajesTerrestres').delete;
+
+// =========================================================
 // Voucher Upload
 // =========================================================
 exports.uploadVoucher = async (req, res, next) => {
@@ -596,7 +618,8 @@ exports.uploadVoucher = async (req, res, next) => {
       simcard: 'prodSimcards', baggage: 'prodEquipajes', equipaje: 'prodEquipajes',
       carRental: 'prodAutos', finca: 'prodFincas',
       tour: 'prodTours', convention: 'prodEventos', restaurant: 'prodRestaurantes',
-      visa: 'prodVisas', passport: 'prodPasaportes', petService: 'prodMascotas'
+      visa: 'prodVisas', passport: 'prodPasaportes', petService: 'prodMascotas',
+      landTravel: 'prodViajesTerrestres', viajes_terrestres: 'prodViajesTerrestres'
     };
 
     const tableName = productTables[category];

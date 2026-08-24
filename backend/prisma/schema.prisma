@@ -311,6 +311,7 @@ model DetalleVenta {
   prodTiqueteria        ProdTiqueteria?
   prodTours             ProdTours?
   prodVisas             ProdVisas?
+  prodViajesTerrestres  ProdViajesTerrestres?
 
   @@index([ventaId])
   @@index([creadoAt])
@@ -885,4 +886,23 @@ enum EstadoPaquete {
 enum FlightMode {
   one_way
   round_trip
+}
+
+model ProdViajesTerrestres {
+  id                 String       @id @default(uuid())
+  detalleVentaId     String       @unique @map("detalle_venta_id")
+  empresaTransporte  String?      @map("empresa_transporte")
+  origen             String?
+  destino            String?
+  fechaSalida        DateTime?    @map("fecha_salida")
+  horaSalida         String?      @map("hora_salida")
+  numeroAsiento      String?      @map("numero_asiento")
+  localizadorTicket  String?      @map("localizador_ticket")
+  esIdaYVuelta       Boolean?     @default(false) @map("es_ida_y_vuelta")
+  fechaRegreso       DateTime?    @map("fecha_regreso")
+  horaRegreso        String?      @map("hora_regreso")
+  numeroAsientoRegreso String?    @map("numero_asiento_regreso")
+  detalleVenta       DetalleVenta @relation(fields: [detalleVentaId], references: [id])
+
+  @@map("prod_viajes_terrestres")
 }

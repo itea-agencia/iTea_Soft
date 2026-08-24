@@ -208,6 +208,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
   const migrations = (sale.migrationData || []).filter((m: any) => !m.parentDetalleId);
   const simCards = (sale.simCardData || []).filter((s: any) => !s.parentDetalleId);
   const baggages = (sale.baggageData || []).filter((b: any) => !b.parentDetalleId);
+  const landTravels = (sale.landTravelData || []).filter((l: any) => !l.parentDetalleId);
   const carRentals = (sale.carRentalData || []).filter((c: any) => !c.parentDetalleId);
   const fincas = (sale.fincaData || []).filter((f: any) => !f.parentDetalleId);
   const tours = (sale.tourData || []).filter((t: any) => !t.parentDetalleId);
@@ -227,6 +228,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
       ...(sale.migrationData || []).map(item => ({ ...item, _type: 'migration' })),
       ...(sale.simCardData || []).map(item => ({ ...item, _type: 'simcard' })),
       ...(sale.carRentalData || []).map(item => ({ ...item, _type: 'carRental' })),
+      ...(sale.landTravelData || []).map(item => ({ ...item, _type: 'landTravel' })),
       ...(sale.fincaData || []).map(item => ({ ...item, _type: 'finca' })),
       ...(sale.tourData || []).map(item => ({ ...item, _type: 'tour' })),
       ...(sale.conventionData || []).map(item => ({ ...item, _type: 'convention' })),
@@ -237,7 +239,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
     ].filter((item: any) => item.parentDetalleId === planId);
   };
 
-  const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, baggages, carRentals, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
+  const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, baggages, carRentals, landTravels, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
   const hasAnyProduct = tickets.length > 0 || hasOtherProducts;
 
   return (
@@ -559,6 +561,30 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
         )}
 
         {/* ══ RENTA DE VEHÍCULOS ══════════════════════════════════════ */}
+
+        {landTravels.length > 0 && (
+          <ProductCard emoji="🚌" title="Viajes Terrestres">
+            {landTravels.map((lt, i) => (
+              <React.Fragment key={`lt-${i}`}>
+                {i > 0 && <div className="v-item-divider" />}
+                <div className="v-data-grid">
+                  <DataCell label="Operador" value={lt.transportCompany} highlight />
+                  <DataCell label="Localizador" value={lt.ticketLocator} />
+                  <DataCell label="Origen" value={lt.origin} />
+                  <DataCell label="Destino" value={lt.destination} />
+                  <DataCell label="Salida" value={`${lt.departureDate} ${lt.departureTime || ''}`} />
+                  <DataCell label="Asiento" value={lt.seatNumber} />
+                  {lt.isRoundTrip && (
+                    <>
+                      <DataCell label="Regreso" value={`${lt.returnDate} ${lt.returnTime || ''}`} />
+                      <DataCell label="Asiento Regreso" value={lt.returnSeatNumber} />
+                    </>
+                  )}
+                </div>
+              </React.Fragment>
+            ))}
+          </ProductCard>
+        )}
 
         {carRentals.length > 0 && (
           <ProductCard emoji="🚗" title="Renta de Vehículos">

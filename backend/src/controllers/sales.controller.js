@@ -133,6 +133,7 @@ exports.list = async (req, res, next) => {
           documentacion_migratoria: 'Migración',
           simcard: 'SIM Card',
           renta_vehiculos: 'Renta de Auto',
+          viajes_terrestres: 'Viaje Terrestre',
           renta_fincas: 'Finca',
           tours: 'Tour',
           centros_convencion: 'Evento',
@@ -245,7 +246,8 @@ const PRODUCT_INCLUDES = {
   restaurantes: { prodRestaurantes: true },
   visa: { prodVisas: true },
   pasaporte: { prodPasaportes: true },
-  servicio_mascotas: { prodMascotas: true }
+  servicio_mascotas: { prodMascotas: true },
+  viajes_terrestres: { prodViajesTerrestres: true }
 };
 
 function mapPassengers(detalle) {
@@ -648,6 +650,29 @@ const PRODUCT_TRANSFORMS = {
       taCre: d.taCre || 0,
     });
   },
+  viajes_terrestres(d, passengers, target) {
+    const t = d.prodViajesTerrestres;
+    if (!t) return;
+    target.push({
+      id: t.id,
+      transportCompany: t.empresaTransporte,
+      origin: t.origen,
+      destination: t.destino,
+      departureDate: t.fechaSalida?.toISOString() || null,
+      departureTime: t.horaSalida,
+      seatNumber: t.numeroAsiento,
+      ticketLocator: t.localizadorTicket,
+      isRoundTrip: t.esIdaYVuelta,
+      returnDate: t.fechaRegreso?.toISOString() || null,
+      returnTime: t.horaRegreso,
+      returnSeatNumber: t.numeroAsientoRegreso,
+      supplier: d.proveedor?.nombre || null,
+      supplierCost: d.costoProveedor || 0,
+      ta: d.ta || 0,
+      taCre: d.taCre || 0,
+      passengers: passengers,
+    });
+  },
   equipaje(d, passengers, target) {
     const b = d.prodEquipajes;
     if (!b) return;
@@ -766,6 +791,7 @@ exports.getById = async (req, res, next) => {
           documentacion_migratoria: 'Migración',
           simcard: 'SIM Card',
           renta_vehiculos: 'Renta de Auto',
+          viajes_terrestres: 'Viaje Terrestre',
           renta_fincas: 'Finca',
           tours: 'Tour',
           centros_convencion: 'Evento',
@@ -815,6 +841,7 @@ exports.getById = async (req, res, next) => {
       simCardData: resultMap.simcard || [],
       baggageData: resultMap.equipaje || [],
       carRentalData: resultMap.renta_vehiculos || [],
+      landTravelData: resultMap.viajes_terrestres || [],
       fincaData: resultMap.renta_fincas || [],
       tourData: resultMap.tours || [],
       conventionData: resultMap.centros_convencion || [],
@@ -1103,6 +1130,24 @@ const PRODUCT_HANDLERS = {
         observaciones: d.notes || d.observaciones || null
       };
     }
+  },
+  landTravelData: {
+    category: 'viajes_terrestres', table: 'prodViajesTerrestres',
+    nombreServicio: 'Viajes Terrestres',
+    transform: (d, detalleId) => ({
+      detalleVentaId: detalleId,
+      empresaTransporte: d.transportCompany || null,
+      origen: d.origin || null,
+      destino: d.destination || null,
+      fechaSalida: d.departureDate ? new Date(d.departureDate) : null,
+      horaSalida: d.departureTime || null,
+      numeroAsiento: d.seatNumber || null,
+      localizadorTicket: d.ticketLocator || null,
+      esIdaYVuelta: d.isRoundTrip || false,
+      fechaRegreso: d.returnDate ? new Date(d.returnDate) : null,
+      horaRegreso: d.returnTime || null,
+      numeroAsientoRegreso: d.returnSeatNumber || null
+    })
   }
 };
 
@@ -1388,6 +1433,7 @@ exports.create = async (req, res, next) => {
         console.log(`[CREATE VENTA] ticket[${i}] flightMode=${t.flightMode} legs=${JSON.stringify(t.legs)} returnLeg=${JSON.stringify(t.returnLeg)}`);
       });
     }
+    console.log('[CREATE VENTA] landTravelData received:', JSON.stringify(data.landTravelData, null, 2));
 
     const metodoPagoId = await resolvePaymentMethodId(prisma, data.paymentMethod);
 

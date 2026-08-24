@@ -71,6 +71,7 @@ const isAlreadyFull = (sale: Sale | null): boolean => {
     sale.simCardData !== undefined ||
     sale.baggageData !== undefined ||
     sale.carRentalData !== undefined ||
+    sale.landTravelData !== undefined ||
     sale.fincaData !== undefined ||
     sale.tourData !== undefined ||
     sale.conventionData !== undefined ||
@@ -174,6 +175,7 @@ export default function SaleDetailModal({
     { key: "simCardData", label: "SimCard", summaryType: "simcard" },
     { key: "baggageData", label: "Equipaje", summaryType: "equipaje" },
     { key: "carRentalData", label: "AlquilerAutos", summaryType: "renta_vehiculos" },
+    { key: "landTravelData", label: "ViajeTerrestre", summaryType: "viajes_terrestres" },
     { key: "fincaData", label: "Finca", summaryType: "renta_fincas" },
     { key: "tourData", label: "Tour", summaryType: "tours" },
     { key: "conventionData", label: "Evento", summaryType: "centros_convencion" },

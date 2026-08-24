@@ -19,7 +19,8 @@ import {
   INITIAL_RESTAURANT, 
   INITIAL_VISA, 
   INITIAL_PASSPORT, 
-  INITIAL_PET_SERVICE 
+  INITIAL_PET_SERVICE,
+  INITIAL_LAND_TRAVEL
 } from "../wizardData";
 
 function ProductIcon({ name, size = 20, className = "" }: { name: string; size?: number; className?: string }) {
@@ -64,6 +65,7 @@ export function Step2Products({ form, set, data, errors, toggleProduct, actions 
       case "simcard": targetKey = "simCards"; initialFn = INITIAL_SIMCARD; break;
       case "equipaje": targetKey = "baggages"; initialFn = INITIAL_BAGGAGE; break;
       case "renta_vehiculos": targetKey = "carRentals"; initialFn = INITIAL_CAR_RENTAL; break;
+      case "viajes_terrestres": targetKey = "landTravels"; initialFn = INITIAL_LAND_TRAVEL; break;
       case "renta_fincas": targetKey = "fincas"; initialFn = INITIAL_FINCA; break;
       case "tours": targetKey = "tours"; initialFn = INITIAL_TOUR; break;
       case "centros_convencion": targetKey = "conventions"; initialFn = INITIAL_CONVENTION; break;
@@ -102,6 +104,7 @@ export function Step2Products({ form, set, data, errors, toggleProduct, actions 
         case "documentacion_migratoria": count = form.migrations.length; break;
         case "simcard": count = form.simCards.length; break;
         case "renta_vehiculos": count = form.carRentals.length; break;
+        case "viajes_terrestres": count = form.landTravels.length; break;
         case "renta_fincas": count = form.fincas.length; break;
         case "tours": count = form.tours.length; break;
         case "centros_convencion": count = form.conventions.length; break;
@@ -262,6 +265,7 @@ export function Step2Products({ form, set, data, errors, toggleProduct, actions 
                   case "simcard": itemsList = form.simCards; targetKey = "simCards"; break;
                   case "equipaje": itemsList = form.baggages; targetKey = "baggages"; break;
                   case "renta_vehiculos": itemsList = form.carRentals; targetKey = "carRentals"; break;
+                  case "viajes_terrestres": itemsList = form.landTravels; targetKey = "landTravels"; break;
                   case "renta_fincas": itemsList = form.fincas; targetKey = "fincas"; break;
                   case "tours": itemsList = form.tours; targetKey = "tours"; break;
                   case "centros_convencion": itemsList = form.conventions; targetKey = "conventions"; break;

@@ -14,3 +14,4 @@ export { PassportForm } from "./PassportForm";
 export { PetServiceForm } from "./PetServiceForm";
 export { BaggageForm } from "./BaggageForm";
 export { TicketForm } from "./TicketForm";
+export { LandTravelForm } from "./LandTravelForm";

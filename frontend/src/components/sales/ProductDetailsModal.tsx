@@ -42,7 +42,8 @@ import {
   Music,
   UtensilsCrossed,
   FileText,
-  PawPrint
+  PawPrint,
+  Bus
 } from "lucide-react";
 
 interface ProductDetailsModalProps {
@@ -477,6 +478,35 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
           </div>
         ));
 
+      case "ViajeTerrestre":
+        return product.data.map((lt: any, idx: number) => {
+          const passengers = lt.passengers || (lt.passengerInfo ? [lt.passengerInfo] : []);
+          return (
+          <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
+            <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
+              <Bus size={16} className="text-accent" /> Viaje Terrestre #{idx + 1}
+            </h4>
+            {renderGrid([
+              { label: "Operador", value: lt.transportCompany },
+              { label: "Localizador", value: lt.ticketLocator },
+              { label: "Origen", value: lt.origin },
+              { label: "Destino", value: lt.destination },
+              { label: "Salida", value: `${lt.departureDate} ${lt.departureTime || ""}` },
+              { label: "Asiento Ida", value: lt.seatNumber },
+            ])}
+            {lt.isRoundTrip && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <h5 className="text-xs font-bold text-gray-500 mb-2">Regreso</h5>
+                {renderGrid([
+                  { label: "Regreso", value: `${lt.returnDate} ${lt.returnTime || ""}` },
+                  { label: "Asiento Regreso", value: lt.returnSeatNumber },
+                ])}
+              </div>
+            )}
+            {passengers.length > 0 && renderTicketPassengers(passengers)}
+          </div>
+        );
+      });
       case "AlquilerAutos":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">

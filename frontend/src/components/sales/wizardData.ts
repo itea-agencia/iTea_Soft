@@ -16,6 +16,7 @@ import {
   VisaData,
   PassportData,
   PetServiceData,
+  LandTravelData,
   GuestInfo,
 } from "../../types";
 
@@ -76,6 +77,7 @@ export interface WizardFormData {
   visas: VisaData[];
   passports: PassportData[];
   petServices: PetServiceData[];
+  landTravels: LandTravelData[];
 }
 
 export interface WizardProps {
@@ -284,6 +286,26 @@ export const INITIAL_CAR_RENTAL = (client?: any): CarRentalData => ({
   taCre: 0,
 });
 
+export const INITIAL_LAND_TRAVEL = (client?: any): LandTravelData => ({
+  transportCompany: "",
+  origin: "",
+  destination: "",
+  departureDate: "",
+  departureTime: "",
+  seatNumber: "",
+  ticketLocator: "",
+  isRoundTrip: false,
+  returnDate: "",
+  returnTime: "",
+  returnSeatNumber: "",
+  voucher: undefined,
+  sendVoucher: false,
+  supplierName: "",
+  supplierCost: 0,
+  ta: 0,
+  taCre: 0,
+});
+
 export const INITIAL_FINCA = (client?: any): FincaData => ({
   fincaName: "",
   fincaAddress: "",
@@ -465,4 +487,5 @@ export const INITIAL_FORM: WizardFormData = {
   visas: [],
   passports: [],
   petServices: [],
+  landTravels: [],
 };
