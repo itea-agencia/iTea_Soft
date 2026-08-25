@@ -326,6 +326,7 @@ model PasajerosDetalle {
   personaId      Int          @map("persona_id")
   esTitular      Boolean?     @default(false) @map("es_titular")
   asiento        String?
+  asientoRegreso String?      @map("asiento_regreso")
   nota           String?
   nroReserva     String?      @map("nro_reserva")
   nroTiquete     String?      @map("nro_tiquete")
@@ -896,12 +897,10 @@ model ProdViajesTerrestres {
   destino            String?
   fechaSalida        DateTime?    @map("fecha_salida")
   horaSalida         String?      @map("hora_salida")
-  numeroAsiento      String?      @map("numero_asiento")
   localizadorTicket  String?      @map("localizador_ticket")
   esIdaYVuelta       Boolean?     @default(false) @map("es_ida_y_vuelta")
   fechaRegreso       DateTime?    @map("fecha_regreso")
   horaRegreso        String?      @map("hora_regreso")
-  numeroAsientoRegreso String?    @map("numero_asiento_regreso")
   detalleVenta       DetalleVenta @relation(fields: [detalleVentaId], references: [id])
 
   @@map("prod_viajes_terrestres")

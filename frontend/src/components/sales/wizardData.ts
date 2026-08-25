@@ -292,19 +292,20 @@ export const INITIAL_LAND_TRAVEL = (client?: any): LandTravelData => ({
   destination: "",
   departureDate: "",
   departureTime: "",
-  seatNumber: "",
   ticketLocator: "",
   isRoundTrip: false,
   returnDate: "",
   returnTime: "",
-  returnSeatNumber: "",
-  passengers: client ? [{
-    name: client.name || `${client.firstName || ''} ${client.lastName || ''}`.trim(),
-    docType: client.docType || '',
-    docNumber: client.docNumber || '',
+  // Siempre se siembra el titular (igual que INITIAL_TICKET). Si se dejara vacio,
+  // el formulario mostraria una fila que no existe en el estado y no se guardaria.
+  passengers: [{
+    name: client?.name || `${client?.firstName || ''} ${client?.lastName || ''}`.trim(),
+    docType: client?.docType || '',
+    docNumber: client?.docNumber || '',
     esTitular: true,
-    asiento: ''
-  }] : [],
+    asiento: '',
+    asientoRegreso: ''
+  }],
   voucher: undefined,
   sendVoucher: false,
   supplierName: "",

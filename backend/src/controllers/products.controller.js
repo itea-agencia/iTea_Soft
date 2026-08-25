@@ -10,6 +10,21 @@ const CATEGORIES = {
   landTravel: 'viajes_terrestres'
 };
 
+// Debe mantenerse en sintonia con sales.controller.js: las dos rutas de escritura
+// (POST /sales y POST /sales/:id/products/*) crean pasajeros y no pueden divergir.
+const CATEGORIAS_CON_PASAJERO_IMPLICITO = [
+  'checkin', 'documentacion_migratoria', 'simcard', 'tours',
+  'servicio_mascotas', 'renta_vehiculos', 'viajes_terrestres'
+];
+
+// Un array vacio cuenta como ausencia de pasajeros, no como presencia.
+function getPassengerList(data) {
+  if (Array.isArray(data.passengers) && data.passengers.length > 0) return data.passengers;
+  if (data.passengerInfo) return [data.passengerInfo];
+  if (Array.isArray(data.guests) && data.guests.length > 0) return data.guests;
+  return null;
+}
+
 async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaId) {
   if (!name && !docNumber) {
     return defaultPersonaId || null;
@@ -92,14 +107,15 @@ const productHandler = (category, tableName, transformData) => ({
         });
         const defaultPersonaId = cliente?.personaId;
 
-        if (data.passengers || data.passengerInfo || data.guests) {
-          const passengers = data.passengers ? data.passengers : (data.passengerInfo ? [data.passengerInfo] : (data.guests || []));
-          for (const p of passengers) {
+        const listaPasajeros = getPassengerList(data);
+        if (listaPasajeros) {
+          for (const p of listaPasajeros) {
             const resolvedPid = await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName, p.docType, p.docNumber, defaultPersonaId);
             pasajerosDetalleData.push({
               personaId: resolvedPid,
               esTitular: p.esTitular ?? true,
               asiento: p.asiento || p.seat || null,
+              asientoRegreso: p.asientoRegreso || null,
               nroReserva: p.nroReserva || null,
               nroTiquete: p.nroTiquete || null
             });
@@ -108,13 +124,14 @@ const productHandler = (category, tableName, transformData) => ({
           const passengerName = data.passengerName || data.mainDriver || data.responsibleName || data.ownerName || data.fullName || data.reservationName || data.contactName;
           const docType = data.docType;
           const docNumber = data.docNumber || data.licenseNumber || data.passportNumber || data.idNumber;
-          
-          if (passengerName || docNumber || ['checkin', 'documentacion_migratoria', 'simcard', 'tours', 'servicio_mascotas', 'renta_vehiculos', 'viajes_terrestres'].includes(category)) {
+
+          if (passengerName || docNumber || CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(category)) {
             const resolvedPid = await findOrCreatePersona(tx, passengerName, docType, docNumber, defaultPersonaId);
             pasajerosDetalleData.push({
               personaId: resolvedPid,
               esTitular: true,
               asiento: data.seat || data.seatNumber || null,
+              asientoRegreso: null,
               nroReserva: null,
               nroTiquete: null
             });
@@ -128,6 +145,7 @@ const productHandler = (category, tableName, transformData) => ({
               personaId: passengerData.personaId,
               esTitular: passengerData.esTitular,
               asiento: passengerData.asiento,
+              asientoRegreso: passengerData.asientoRegreso,
               nroReserva: passengerData.nroReserva,
               nroTiquete: passengerData.nroTiquete
             }
@@ -593,12 +611,10 @@ exports.createLandTravel = H(CATEGORIES.landTravel, 'prodViajesTerrestres', (d, 
   destino: d.destination || null,
   fechaSalida: d.departureDate ? new Date(d.departureDate) : null,
   horaSalida: d.departureTime || null,
-  numeroAsiento: d.seatNumber || null,
   localizadorTicket: d.ticketLocator || null,
   esIdaYVuelta: d.isRoundTrip || false,
   fechaRegreso: d.returnDate ? new Date(d.returnDate) : null,
-  horaRegreso: d.returnTime || null,
-  numeroAsientoRegreso: d.returnSeatNumber || null
+  horaRegreso: d.returnTime || null
 })).create;
 
 exports.updateLandTravel = H(CATEGORIES.landTravel, 'prodViajesTerrestres').update;

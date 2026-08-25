@@ -600,17 +600,18 @@ export interface LandTravelData {
   destination: string;
   departureDate: string;
   departureTime?: string;
-  seatNumber?: string;
   isRoundTrip: boolean;
   returnDate?: string;
   returnTime?: string;
-  returnSeatNumber?: string;
+  // El asiento vive en el pasajero, no en el viaje: cada pasajero puede ir en un
+  // asiento distinto, y en uno distinto tambien al regreso.
   passengers: {
     name: string;
     docType: string;
     docNumber: string;
     esTitular: boolean;
     asiento?: string;
+    asientoRegreso?: string;
   }[];
   supplierName?: string;
   supplierCost?: number;

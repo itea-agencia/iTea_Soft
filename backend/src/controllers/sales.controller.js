@@ -251,17 +251,23 @@ const PRODUCT_INCLUDES = {
 };
 
 function mapPassengers(detalle) {
-  return (detalle.pasajerosDetalle || []).map(p => ({
-    id: p.id,
-    personaId: p.personaId,
-    esTitular: p.esTitular,
-    asiento: p.asiento,
-    nombreCompleto: p.persona ? `${p.persona.nombres} ${p.persona.apellidos}` : null,
-    tipoDocumento: p.persona?.tipoDocumento?.abreviatura || String(p.persona?.tipoDocumentoId || ''),
-    nroDocumento: p.persona?.documento,
-    nroReserva: p.nroReserva,
-    nroTiquete: p.nroTiquete
-  }));
+  return (detalle.pasajerosDetalle || [])
+    .map(p => ({
+      id: p.id,
+      personaId: p.personaId,
+      esTitular: p.esTitular,
+      asiento: p.asiento,
+      asientoRegreso: p.asientoRegreso,
+      nombreCompleto: p.persona ? `${p.persona.nombres} ${p.persona.apellidos}` : null,
+      // Solo la abreviatura ('CC', 'CE'...). Antes caia al id numerico del tipo de
+      // documento, que terminaba impreso como un numero suelto en el voucher.
+      tipoDocumento: p.persona?.tipoDocumento?.abreviatura || '',
+      nroDocumento: p.persona?.documento,
+      nroReserva: p.nroReserva,
+      nroTiquete: p.nroTiquete
+    }))
+    // El titular primero: el voucher lo destaca y varios productos leen passengers[0].
+    .sort((a, b) => (b.esTitular === true ? 1 : 0) - (a.esTitular === true ? 1 : 0));
 }
 
 const formatColombiaDate = (date) => {
@@ -660,12 +666,10 @@ const PRODUCT_TRANSFORMS = {
       destination: t.destino,
       departureDate: t.fechaSalida?.toISOString() || null,
       departureTime: t.horaSalida,
-      seatNumber: t.numeroAsiento,
       ticketLocator: t.localizadorTicket,
       isRoundTrip: t.esIdaYVuelta,
       returnDate: t.fechaRegreso?.toISOString() || null,
       returnTime: t.horaRegreso,
-      returnSeatNumber: t.numeroAsientoRegreso,
       supplierName: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
@@ -675,7 +679,8 @@ const PRODUCT_TRANSFORMS = {
         docType: p.tipoDocumento,
         docNumber: p.nroDocumento,
         esTitular: p.esTitular,
-        asiento: p.asiento
+        asiento: p.asiento,
+        asientoRegreso: p.asientoRegreso
       })),
     });
   },
@@ -1147,15 +1152,31 @@ const PRODUCT_HANDLERS = {
       destino: d.destination || null,
       fechaSalida: d.departureDate ? new Date(d.departureDate) : null,
       horaSalida: d.departureTime || null,
-      numeroAsiento: d.seatNumber || null,
       localizadorTicket: d.ticketLocator || null,
       esIdaYVuelta: d.isRoundTrip || false,
       fechaRegreso: d.returnDate ? new Date(d.returnDate) : null,
-      horaRegreso: d.returnTime || null,
-      numeroAsientoRegreso: d.returnSeatNumber || null
+      horaRegreso: d.returnTime || null
     })
   }
 };
+
+// Categorias cuyo detalle siempre debe quedar con al menos un pasajero (el titular
+// de la venta), aunque el formulario no capture datos de pasajero explicitos.
+const CATEGORIAS_CON_PASAJERO_IMPLICITO = [
+  'checkin', 'documentacion_migratoria', 'simcard', 'tours',
+  'servicio_mascotas', 'renta_vehiculos', 'viajes_terrestres'
+];
+
+// Devuelve la lista de pasajeros del item, o null si no trae ninguna.
+// Un array vacio cuenta como ausencia: `item.passengers || ...` lo tomaba como
+// presencia (todo array es truthy) y el detalle terminaba guardado sin pasajeros.
+function getPassengerList(item) {
+  if (Array.isArray(item.passengers) && item.passengers.length > 0) return item.passengers;
+  if (item.passengerInfo) return [item.passengerInfo];
+  if (Array.isArray(item.guests) && item.guests.length > 0) return item.guests;
+  if (Array.isArray(item.members) && item.members.length > 0) return item.members;
+  return null;
+}
 
 async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaId) {
   if (!name && !docNumber) {
@@ -1492,17 +1513,19 @@ exports.create = async (req, res, next) => {
 
            const pasajerosDetalleData = [];
           if (personaId) {
-            const hasPassengerInfo = item.passengers || item.passengerInfo || item.guests || item.members || item.passengerName || item.ownerName ||
-              ['checkin', 'documentacion_migratoria', 'simcard', 'tours', 'servicio_mascotas', 'renta_vehiculos'].includes(handler.category);
-            
+            const listaPasajeros = getPassengerList(item);
+            const hasPassengerInfo = listaPasajeros || item.passengerName || item.ownerName ||
+              CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(handler.category);
+
             if (hasPassengerInfo) {
-              const passengers = item.passengers ? item.passengers : (item.passengerInfo ? [item.passengerInfo] : (item.guests || item.members || [{}]));
+              const passengers = listaPasajeros || [{}];
               for (const p of passengers) {
                 const pid = await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver, p.docType || item.docType, p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber, personaId);
                 pasajerosDetalleData.push({
                   personaId: pid,
                   esTitular: p.esTitular ?? true,
                   asiento: p.asiento || item.seatNumber || item.seat || null,
+                  asientoRegreso: p.asientoRegreso || null,
                   nroReserva: p.nroReserva || item.reservationNumber || null,
                   nroTiquete: p.nroTiquete || item.ticketNumber || null
                 });
@@ -1863,6 +1886,16 @@ exports.update = async (req, res, next) => {
     await prisma.$transaction(async (tx) => {
       await tx.ventas.update({ where: { id }, data: updateData });
 
+      // Persona titular de la venta. Se usa como pasajero por defecto cuando un
+      // producto agregado durante la edicion no trae pasajeros propios.
+      // Faltaba: cualquier producto con pasajeros agregado al editar reventaba
+      // con "personaId is not defined".
+      const clienteVenta = await tx.clientes.findUnique({
+        where: { id: venta.clienteId },
+        select: { personaId: true }
+      });
+      const personaId = clienteVenta?.personaId || null;
+
       if (data.payments) {
         const existingPayments = await tx.pagosVenta.findMany({ where: { ventaId: id } });
         const existingIds = new Set(existingPayments.map(p => String(p.id)));
@@ -1897,10 +1930,19 @@ exports.update = async (req, res, next) => {
         });
       }
 
+      // Debe cubrir todas las claves de PRODUCT_HANDLERS: lo que falte aqui se ignora
+      // en silencio al editar y el endpoint responde success igual.
+      // 'landTravelData' y 'baggageData' faltaban.
       const productFields = ['ticketData', 'hotelData', 'insuranceData', 'planData',
         'checkInData', 'migrationData', 'simCardData', 'carRentalData',
+        'baggageData', 'landTravelData',
         'fincaData', 'tourData', 'conventionData', 'restaurantData',
         'visaData', 'passportData', 'petServiceData'];
+
+      const sinCubrir = Object.keys(PRODUCT_HANDLERS).filter(k => !productFields.includes(k));
+      if (sinCubrir.length > 0) {
+        console.warn('[UPDATE VENTA] Productos sin cubrir en productFields:', sinCubrir.join(', '));
+      }
 
       for (const field of productFields) {
         if (data[field] === undefined) continue;
@@ -1927,7 +1969,7 @@ exports.update = async (req, res, next) => {
               ventaId: id,
               categoria: handler.category,
               nombreServicio: handler.nombreServicio,
-              subtotal: (item.supplierCost || 0) + (item.ta || 0),
+              subtotal: (item.supplierCost || 0) + (item.ta || 0) + (item.taCre || 0),
               costoProveedor: item.supplierCost || 0,
               ta: item.ta || 0,
               proveedorId: resolvedSupplierId,
@@ -1944,26 +1986,32 @@ exports.update = async (req, res, next) => {
 
           const pid = personaId;
           const passengersToCreate = [];
-          if (item.passengerInfo || item.guests || item.passengers || item.members) {
-            const passengers = item.passengers ? item.passengers : (item.passengerInfo ? [item.passengerInfo] : (item.guests || item.members || []));
-            for (const p of passengers) {
+          const listaPasajeros = getPassengerList(item);
+          if (listaPasajeros) {
+            for (const p of listaPasajeros) {
               const resolvedPid = await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName, p.docType, p.docNumber, pid);
               passengersToCreate.push({
                 personaId: resolvedPid,
                 esTitular: p.esTitular ?? true,
-                asiento: p.asiento || item.seatNumber || item.seat || null
+                asiento: p.asiento || item.seatNumber || item.seat || null,
+                asientoRegreso: p.asientoRegreso || null,
+                nroReserva: p.nroReserva || item.reservationNumber || null,
+                nroTiquete: p.nroTiquete || item.ticketNumber || null
               });
             }
           } else {
             const passengerName = item.passengerName || item.mainDriver || item.responsibleName || item.ownerName || item.fullName || item.reservationName || item.contactName;
             const docType = item.docType;
             const docNumber = item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber;
-            if (passengerName || docNumber || ['checkin', 'documentacion_migratoria', 'simcard', 'tours', 'servicio_mascotas', 'renta_vehiculos'].includes(handler.category)) {
+            if (passengerName || docNumber || CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(handler.category)) {
               const resolvedPid = await findOrCreatePersona(tx, passengerName, docType, docNumber, pid);
               passengersToCreate.push({
                 personaId: resolvedPid,
                 esTitular: true,
-                asiento: item.seat || item.seatNumber || null
+                asiento: item.seat || item.seatNumber || null,
+                asientoRegreso: null,
+                nroReserva: item.reservationNumber || null,
+                nroTiquete: item.ticketNumber || null
               });
             }
           }
@@ -1974,7 +2022,10 @@ exports.update = async (req, res, next) => {
                 detalleVentaId: detalle.id,
                 personaId: passengerData.personaId,
                 esTitular: passengerData.esTitular,
-                asiento: passengerData.asiento
+                asiento: passengerData.asiento,
+                asientoRegreso: passengerData.asientoRegreso,
+                nroReserva: passengerData.nroReserva,
+                nroTiquete: passengerData.nroTiquete
               }
             });
           }
@@ -2371,7 +2422,9 @@ exports.sendVoucher = async (req, res, next) => {
       restaurantes: 'Reserva en Restaurante',
       visa: 'Trámite de Visa',
       pasaporte: 'Trámite de Pasaporte',
-      servicio_mascotas: 'Transporte de Mascotas'
+      servicio_mascotas: 'Transporte de Mascotas',
+      viajes_terrestres: 'Viaje Terrestre',
+      equipaje: 'Equipaje'
     };
 
     const serviciosIncluidos = [...new Set(venta.detalleVentas.map(d => serviciosMap[d.categoria] || d.categoria))];

@@ -583,12 +583,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Origen" value={lt.origin} />
                   <DataCell label="Destino" value={lt.destination} />
                   <DataCell label="Salida" value={`${lt.departureDate ? formatDate(lt.departureDate) : "-"} ${lt.departureTime ? formatTimeAMPM(lt.departureTime) : ""}`.trim()} />
-                  <DataCell label="Asiento" value={lt.seatNumber} />
                   {lt.isRoundTrip && (
-                    <>
-                      <DataCell label="Regreso" value={`${lt.returnDate ? formatDate(lt.returnDate) : "-"} ${lt.returnTime ? formatTimeAMPM(lt.returnTime) : ""}`.trim()} />
-                      <DataCell label="Asiento Regreso" value={lt.returnSeatNumber} />
-                    </>
+                    <DataCell label="Regreso" value={`${lt.returnDate ? formatDate(lt.returnDate) : "-"} ${lt.returnTime ? formatTimeAMPM(lt.returnTime) : ""}`.trim()} />
                   )}
                 </div>
 
@@ -603,7 +599,10 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                           <th style={{ textAlign: 'left', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>NOMBRE</th>
                           <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>TIPO DOC.</th>
                           <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° DOCUMENTO</th>
-                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO</th>
+                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>{lt.isRoundTrip ? 'ASIENTO IDA' : 'ASIENTO'}</th>
+                          {lt.isRoundTrip && (
+                            <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO REGRESO</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -618,6 +617,9 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                             <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docType || '—'}</td>
                             <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docNumber || '—'}</td>
                             <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asiento || '—'}</td>
+                            {lt.isRoundTrip && (
+                              <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asientoRegreso || '—'}</td>
+                            )}
                           </tr>
                         ))}
                       </tbody>

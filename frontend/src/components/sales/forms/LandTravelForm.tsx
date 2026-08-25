@@ -1,3 +1,4 @@
+import { useEffect, useId } from "react";
 import { Bus, PlusCircle, User, Trash2 } from "lucide-react";
 import { FormField, Input, Combobox } from "../../ui/Form";
 import { LandTravelData } from "../../../types";
@@ -16,6 +17,33 @@ interface LandTravelFormProps {
 }
 
 export function LandTravelForm({ travel, client, clients = [], documentTypes, suppliers, paymentMethods, onChange, triggerError }: LandTravelFormProps) {
+  // Id estable para agrupar los radios de titular. Antes se usaba
+  // `travel.ticketLocator || Math.random()`, que generaba un grupo distinto en cada
+  // render mientras el localizador estuviera vacio y permitia marcar varios titulares.
+  const titularGroup = useId();
+
+  const passengers = travel.passengers || [];
+
+  // Garantiza un pasajero y exactamente un titular, COMMITEANDO al estado.
+  // Antes esto se calculaba dentro del render, asi que la fila que se veia en
+  // pantalla no existia en el formulario y no llegaba al backend.
+  useEffect(() => {
+    if (passengers.length === 0) {
+      onChange({
+        passengers: [{
+          name: client?.name || `${client?.firstName || ''} ${client?.lastName || ''}`.trim(),
+          docType: client?.docType || '',
+          docNumber: client?.docNumber || '',
+          esTitular: true,
+          asiento: '',
+          asientoRegreso: ''
+        }]
+      });
+    } else if (!passengers.some((p) => p.esTitular)) {
+      onChange({ passengers: passengers.map((p, i) => ({ ...p, esTitular: i === 0 })) });
+    }
+  }, [travel.passengers]);
+
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -79,14 +107,6 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
               fieldName="Salida"
             />
           </FormField>
-
-          <FormField label="Número de Asiento (Ida) - Opcional">
-            <Input
-              value={travel.seatNumber}
-              onChange={(e) => onChange({ seatNumber: e.target.value })}
-              placeholder="Ej: 12A"
-            />
-          </FormField>
         </div>
 
         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-700">
@@ -127,14 +147,6 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                   fieldName="Regreso"
                 />
               </FormField>
-
-              <FormField label="Número de Asiento (Regreso) - Opcional">
-                <Input
-                  value={travel.returnSeatNumber || ''}
-                  onChange={(e) => onChange({ returnSeatNumber: e.target.value })}
-                  placeholder="Ej: 14B"
-                />
-              </FormField>
             </div>
           )}
         </div>
@@ -152,7 +164,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
             className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input hover:bg-accent hover:text-accent-foreground h-9 px-3"
             onClick={() => {
               const currentPax = travel.passengers || [];
-              onChange({ passengers: [...currentPax, { name: '', docType: '', docNumber: '', esTitular: false, asiento: '' }] });
+              onChange({ passengers: [...currentPax, { name: '', docType: '', docNumber: '', esTitular: false, asiento: '', asientoRegreso: '' }] });
             }}
           >
             <PlusCircle size={14} className="mr-2" />
@@ -161,22 +173,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
         </div>
 
         <div className="space-y-4">
-          {(() => {
-            let rawPax = travel.passengers || [];
-            if (rawPax.length === 0) {
-              rawPax = [{
-                name: client?.name || client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : '',
-                docType: client?.docType || '',
-                docNumber: client?.docNumber || '',
-                esTitular: true,
-                asiento: ''
-              }];
-            }
-            // Ensure first is titular if none is
-            if (rawPax.length > 0 && !rawPax.some((p: any) => p.esTitular)) {
-              rawPax[0].esTitular = true;
-            }
-            return rawPax.map((pax: any, idx: number) => {
+          {passengers.map((pax: any, idx: number) => {
               const isNew = !pax.name && !pax.docNumber;
 
               return (
@@ -184,11 +181,11 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                   <div className="absolute -top-2 -left-2 bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-md z-10">
                     {idx + 1}
                   </div>
-                  {!pax.esTitular && rawPax.length > 1 && (
+                  {!pax.esTitular && passengers.length > 1 && (
                     <button
                       type="button"
                       onClick={() => {
-                        const next = [...rawPax];
+                        const next = [...passengers];
                         next.splice(idx, 1);
                         onChange({ passengers: next });
                       }}
@@ -208,7 +205,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                           if (!val) return;
                           const foundClient = clients.find(c => String(c.id) === val);
                           if (foundClient) {
-                            const next = [...rawPax];
+                            const next = [...passengers];
                             next[idx] = {
                               ...next[idx],
                               name: foundClient.name || `${foundClient.firstName} ${foundClient.lastName || ''}`.trim(),
@@ -223,12 +220,12 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                       />
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 mt-2">
+                    <div className={`grid grid-cols-1 sm:grid-cols-2 ${travel.isRoundTrip ? "md:grid-cols-6" : "md:grid-cols-5"} gap-3 mt-2`}>
                       <FormField label="Nombre Completo">
                         <Input
                           value={pax.name || ''}
                           onChange={(e) => {
-                            const next = [...rawPax];
+                            const next = [...passengers];
                             next[idx] = { ...next[idx], name: e.target.value.toUpperCase() };
                             onChange({ passengers: next });
                           }}
@@ -240,7 +237,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                         <select
                           value={pax.docType || ''}
                           onChange={(e) => {
-                            const next = [...rawPax];
+                            const next = [...passengers];
                             next[idx] = { ...next[idx], docType: e.target.value };
                             onChange({ passengers: next });
                           }}
@@ -267,7 +264,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                         <Input
                           value={pax.docNumber || ''}
                           onChange={(e) => {
-                            const next = [...rawPax];
+                            const next = [...passengers];
                             next[idx] = { ...next[idx], docNumber: e.target.value.replace(/[^0-9A-Za-z]/g, '') };
                             onChange({ passengers: next });
                           }}
@@ -275,11 +272,11 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                           className="text-gray-900 dark:text-white"
                         />
                       </FormField>
-                      <FormField label="Asiento">
+                      <FormField label={travel.isRoundTrip ? "Asiento Ida" : "Asiento"}>
                         <Input
                           value={pax.asiento || ''}
                           onChange={(e) => {
-                            const next = [...rawPax];
+                            const next = [...passengers];
                             next[idx] = { ...next[idx], asiento: e.target.value.toUpperCase() };
                             onChange({ passengers: next });
                           }}
@@ -287,15 +284,29 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                           className="text-gray-900 dark:text-white"
                         />
                       </FormField>
+                      {travel.isRoundTrip && (
+                        <FormField label="Asiento Regreso">
+                          <Input
+                            value={pax.asientoRegreso || ''}
+                            onChange={(e) => {
+                              const next = [...passengers];
+                              next[idx] = { ...next[idx], asientoRegreso: e.target.value.toUpperCase() };
+                              onChange({ passengers: next });
+                            }}
+                            placeholder="Ej. 9C"
+                            className="text-gray-900 dark:text-white"
+                          />
+                        </FormField>
+                      )}
                       <div className="flex items-end h-[68px] pb-1">
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <div className="relative flex items-center justify-center w-5 h-5">
                             <input
                               type="radio"
-                              name={`titular-land-${travel.ticketLocator || Math.random()}`}
+                              name={titularGroup}
                               checked={pax.esTitular}
                               onChange={() => {
-                                const next = rawPax.map((p: any, i: number) => ({ ...p, esTitular: i === idx }));
+                                const next = passengers.map((p: any, i: number) => ({ ...p, esTitular: i === idx }));
                                 onChange({ passengers: next });
                               }}
                               className="peer sr-only"
@@ -312,8 +323,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                   )}
                 </div>
               );
-            });
-          })()}
+            })}
         </div>
       </div>
 

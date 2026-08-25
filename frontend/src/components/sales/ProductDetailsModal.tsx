@@ -95,7 +95,8 @@ function renderTicketPassengers(items: any[]) {
             <div className="flex gap-3 mt-1 sm:mt-0 text-[10px] text-gray-600 text-right">
               {p.nroReserva && <div><span className="font-semibold uppercase text-gray-400">Reserva:</span> {p.nroReserva}</div>}
               {p.nroTiquete && <div><span className="font-semibold uppercase text-gray-400">Tiquete:</span> <span className="break-all">{p.nroTiquete}</span></div>}
-              {p.asiento && <div><span className="font-semibold uppercase text-gray-400">Asiento:</span> {p.asiento}</div>}
+              {p.asiento && <div><span className="font-semibold uppercase text-gray-400">{p.asientoRegreso ? "Asiento Ida:" : "Asiento:"}</span> {p.asiento}</div>}
+              {p.asientoRegreso && <div><span className="font-semibold uppercase text-gray-400">Asiento Regreso:</span> {p.asientoRegreso}</div>}
             </div>
           </div>
         ))}
@@ -492,14 +493,12 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
               { label: "Origen", value: lt.origin },
               { label: "Destino", value: lt.destination },
               { label: "Salida", value: `${lt.departureDate ? formatDate(lt.departureDate) : "-"} ${lt.departureTime ? formatTimeAMPM(lt.departureTime) : ""}`.trim() },
-              { label: "Asiento Ida", value: lt.seatNumber },
             ])}
             {lt.isRoundTrip && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <h5 className="text-xs font-bold text-gray-500 mb-2">Regreso</h5>
                 {renderGrid([
                   { label: "Regreso", value: `${lt.returnDate ? formatDate(lt.returnDate) : "-"} ${lt.returnTime ? formatTimeAMPM(lt.returnTime) : ""}`.trim() },
-                  { label: "Asiento Regreso", value: lt.returnSeatNumber },
                 ])}
               </div>
             )}
