@@ -75,35 +75,8 @@ exports.list = async (req, res, next) => {
           cp.email as "clientEmail",
           cp.avatar_url as "clientAvatar",
           up.nombres || ' ' || up.apellidos as "asesorName",
-          comp.nombres || ' ' || comp.apellidos as "commissionAgentName",
+          comp.nombres || ' ' || comp.apellidos as "commissionAgentName"
           
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'id', p.id,
-              'fechaPago', p.fecha_pago,
-              'monto', p.monto,
-              'referencia', p.referencia,
-              'metodoPago', (SELECT json_build_object('nombre', mp.nombre) FROM metodos_pago mp WHERE mp.id = p.metodo_pago_id)
-            ))
-            FROM pagos_venta p WHERE p.venta_id = v.id
-          ), '[]'::json) as "pagosVenta",
-
-          COALESCE((
-            SELECT json_agg(json_build_object(
-              'categoria', dv.categoria,
-              'nombreServicio', dv.nombre_servicio,
-              'origen', dv.origen,
-              'destino', dv.destino,
-              'pasajerosDetalle', COALESCE((
-                SELECT json_agg(json_build_object(
-                  'persona', (SELECT json_build_object('nombres', paxp.nombres, 'apellidos', paxp.apellidos) FROM personas paxp WHERE paxp.id = pd.persona_id)
-                ))
-                FROM pasajeros_detalle pd WHERE pd.detalle_venta_id = dv.id
-              ), '[]'::json)
-            ))
-            FROM detalle_venta dv WHERE dv.venta_id = v.id
-          ), '[]'::json) as "detalleVentas"
-
         FROM ventas v
         JOIN clientes c ON v.cliente_id = c.id
         JOIN personas cp ON c.persona_id = cp.id
@@ -118,56 +91,6 @@ exports.list = async (req, res, next) => {
     ]);
 
     const data = ventasRaw.map(v => {
-      // Build a lightweight services summary from detalleVentas
-      const servicesSummary = (v.detalleVentas || []).map(d => {
-        const tipo = d.categoria;
-        let label = tipo;
-        let detail = null;
-
-        const labelMap = {
-          tiqueteria: 'Tiquetería',
-          hoteleria: 'Hotelería',
-          seguros_viaje: 'Seguro',
-          planes: 'Plan',
-          checkin: 'Check-in',
-          documentacion_migratoria: 'Migración',
-          simcard: 'SIM Card',
-          renta_vehiculos: 'Renta de Auto',
-          viajes_terrestres: 'Viaje Terrestre',
-          renta_fincas: 'Finca',
-          tours: 'Tour',
-          centros_convencion: 'Evento',
-          restaurantes: 'Restaurante',
-          visa: 'Visa',
-          pasaporte: 'Pasaporte',
-          servicio_mascotas: 'Mascota'
-        };
-
-        if (labelMap[tipo]) {
-          label = labelMap[tipo];
-        }
-
-        // Build elegant detail based on generic fields
-        const route = (d.origen && d.destino) ? `${d.origen}→${d.destino}` : null;
-        const paxNames = (d.pasajerosDetalle || [])
-          .map(p => p.persona ? `${p.persona.nombres} ${p.persona.apellidos}` : null)
-          .filter(Boolean);
-
-        if (tipo === 'tiqueteria') {
-          detail = [route, ...paxNames].filter(Boolean).join(' · ');
-        } else {
-          // For other services, use nombreServicio if it's different from the generic label, or route/pax
-          const hasCustomName = d.nombreServicio && d.nombreServicio !== label;
-          detail = [
-            hasCustomName ? d.nombreServicio : null,
-            route,
-            ...paxNames
-          ].filter(Boolean).join(' · ');
-        }
-
-        return { tipo, label, detail: detail || null };
-      });
-
       return {
         id: v.id,
         clientId: v.clienteId,
@@ -192,15 +115,7 @@ exports.list = async (req, res, next) => {
         supplierCost: v.costoProveedorTotal,
         ta: v.taTotal,
         taCre: v.taCreTotal,
-        isSettled: v.comisionLiquidada,
-        payments: (v.pagosVenta || []).map(p => ({
-          id: p.id,
-          date: p.fechaPago,
-          amount: p.monto,
-          reference: p.referencia || null,
-          method: p.metodoPago?.nombre || null
-        })),
-        servicesSummary,
+        isSettled: v.comisionLiquidada
       };
     });
 
@@ -866,6 +781,68 @@ exports.getById = async (req, res, next) => {
   }
 };
 
+exports.getPaginatedDetails = async (req, res, next) => {
+  try {
+    const saleId = parseInt(req.params.id);
+    const tab = req.query.tab; 
+    const { page, perPage, skip } = req.pagination;
+
+    if (!tab) {
+      return res.status(400).json({ error: "El parámetro 'tab' es requerido" });
+    }
+
+    const includeConfig = PRODUCT_INCLUDES[tab] || {};
+    
+    const baseInclude = {
+      proveedor: true,
+      pasajerosDetalle: {
+        include: { persona: { include: { tipoDocumento: true } } }
+      },
+      ...includeConfig
+    };
+
+    const [total, details] = await Promise.all([
+      prisma.detalleVenta.count({
+        where: { ventaId: saleId, categoria: tab }
+      }),
+      prisma.detalleVenta.findMany({
+        where: { ventaId: saleId, categoria: tab },
+        include: baseInclude,
+        skip,
+        take: perPage,
+        orderBy: { id: 'asc' }
+      })
+    ]);
+
+    const transform = PRODUCT_TRANSFORMS[tab];
+    const target = [];
+    
+    if (transform) {
+      for (const d of details) {
+        const passengers = d.pasajerosDetalle.map(pd => ({
+           id: pd.id,
+           personaId: pd.persona.id,
+           nroDocumento: pd.persona.nroDocumento,
+           tipoDocumento: pd.persona.tipoDocumento?.abreviatura || null,
+           nombreCompleto: `${pd.persona.nombres} ${pd.persona.apellidos}`,
+           nombres: pd.persona.nombres,
+           apellidos: pd.persona.apellidos,
+           esTitular: pd.esTitular,
+           asiento: pd.asiento,
+           asientoRegreso: pd.asientoRegreso,
+           nroTiquete: pd.nroTiquete,
+           nroReserva: pd.nroReserva
+        }));
+        transform(d, passengers, target);
+      }
+    }
+
+    success(res, target, buildMeta(total, page, perPage));
+  } catch (err) {
+    next(err);
+  }
+};
+
 const PRODUCT_HANDLERS = {
   ticketData: {
     category: 'tiqueteria', table: 'prodTiqueteria',
@@ -1351,7 +1328,7 @@ async function createProductItems(tx, ventaId, clienteId, data) {
           taCre: item.taCre || 0,
           proveedorId: resolvedSupplierId,
           metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
-          origen: item.legs?.[0]?.origin || item.pickupLocation || null,
+          origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
           destino: item.destination || item.destinationCountry || item.legs?.[0]?.destination || null,
           fechaInicioViaje: item.startDate ? new Date(item.startDate) : item.departureDate ? new Date(item.departureDate) : item.pickupDate ? new Date(item.pickupDate) : null,
           fechaFinViaje: item.endDate ? new Date(item.endDate) : item.arrivalDate ? new Date(item.arrivalDate) : item.returnDate ? new Date(item.returnDate) : null,
@@ -1542,7 +1519,7 @@ exports.create = async (req, res, next) => {
             taCre: item.taCre || 0,
             proveedorId: resolvedSupplierId,
             metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
-            origen: item.legs?.[0]?.origin || item.pickupLocation || null,
+            origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
             destino: item.destination || item.destinationCountry || item.legs?.[0]?.destination || null,
             fechaInicioViaje: item.startDate ? new Date(item.startDate) : item.departureDate ? new Date(item.departureDate) : item.pickupDate ? new Date(item.pickupDate) : null,
             fechaFinViaje: item.endDate ? new Date(item.endDate) : item.arrivalDate ? new Date(item.arrivalDate) : item.returnDate ? new Date(item.returnDate) : null,
@@ -1974,7 +1951,7 @@ exports.update = async (req, res, next) => {
               ta: item.ta || 0,
               proveedorId: resolvedSupplierId,
               metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
-              origen: item.legs?.[0]?.origin || item.pickupLocation || null,
+              origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
               destino: item.destination || item.destinationCountry || item.legs?.[0]?.destination || null,
               fechaInicioViaje: item.startDate ? new Date(item.startDate) : item.departureDate ? new Date(item.departureDate) : item.pickupDate ? new Date(item.pickupDate) : null,
               fechaFinViaje: item.endDate ? new Date(item.endDate) : item.arrivalDate ? new Date(item.arrivalDate) : item.returnDate ? new Date(item.returnDate) : null,

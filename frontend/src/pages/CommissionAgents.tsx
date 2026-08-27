@@ -923,13 +923,8 @@ export default function CommissionAgents() {
         ) : agentDetails ? (
           <div className="space-y-6">
 
-            {/* === HERO: Avatar + Nombre + Badges === */}
+            {/* === HERO: Nombre + Badges === */}
             <div className="bg-[#fcf9f2] dark:bg-slate-800/40 rounded-2xl border border-amber-100/50 dark:border-slate-700 p-6 flex flex-col items-center text-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-amber-100/70 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center mb-3">
-                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
-                  {agentDetails.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2">{agentDetails.name}</h3>
               <div className="flex items-center gap-2">
                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${

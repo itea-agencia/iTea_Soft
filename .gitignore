@@ -101,3 +101,6 @@ frontend/exampleBD.md
 frontend/diagram_bd_ITEA.sql
 frontend/diagram_dbdiagram.dbml
 frontend/pdf_formatobackend/test*.js
+*.py
+backend_logs.txt
+*.ps1

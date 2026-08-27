@@ -1,0 +1,101 @@
+<div class="p-6 max-w-4xl mx-auto font-sans">
+  <div class="mb-6 flex justify-between items-center border-b pb-4">
+    <h2 class="text-2xl font-bold text-gray-800">Rediseño: Detalles de Venta</h2>
+    <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">Mockup Interactivo</span>
+  </div>
+
+  <p class="mb-6 text-gray-600">
+    He preparado dos enfoques (Layouts) para la modal de detalles, enfocados en reducir la sobrecarga de datos y mejorar la experiencia de usuario utilizando paginación y carga bajo demanda. Selecciona el que prefieras:
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    
+    <!-- Opción A -->
+    <div class="border rounded-xl p-5 hover:shadow-lg transition-shadow cursor-pointer border-gray-200 bg-white" onclick="sendEvent('select_option', 'Layout A: Pestañas (Tabs)')">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 rounded bg-blue-500 text-white flex items-center justify-center font-bold">A</div>
+        <h3 class="font-bold text-lg">Layout por Pestañas (Tabs)</h3>
+      </div>
+      
+      <div class="bg-gray-50 border rounded-lg p-4 mb-4">
+        <div class="flex border-b mb-3 gap-4 text-sm">
+          <div class="border-b-2 border-blue-500 pb-1 font-bold text-blue-600">Resumen</div>
+          <div class="pb-1 text-gray-500">Pasajeros (Cargar...)</div>
+          <div class="pb-1 text-gray-500">Pagos (Cargar...)</div>
+        </div>
+        <div class="space-y-2">
+          <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div class="h-4 bg-gray-200 rounded w-1/2"></div>
+          <div class="h-4 bg-gray-200 rounded w-5/6"></div>
+        </div>
+      </div>
+      
+      <ul class="text-sm text-gray-600 space-y-2 list-disc pl-4">
+        <li>El backend solo envía el "Resumen" inicialmente.</li>
+        <li>Los detalles (pasajeros, vuelos, etc.) se piden al backend <strong>solo si el usuario hace clic</strong> en esa pestaña.</li>
+        <li><strong>Ventaja:</strong> Carga hiperrápida, ahorra ancho de banda. Ideal para pantallas pequeñas.</li>
+      </ul>
+      <button class="mt-4 w-full py-2 bg-blue-50 text-blue-600 font-semibold rounded hover:bg-blue-100 transition-colors">
+        Elegir Opción A
+      </button>
+    </div>
+
+    <!-- Opción B -->
+    <div class="border rounded-xl p-5 hover:shadow-lg transition-shadow cursor-pointer border-gray-200 bg-white" onclick="sendEvent('select_option', 'Layout B: Scroll Infinito')">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 rounded bg-emerald-500 text-white flex items-center justify-center font-bold">B</div>
+        <h3 class="font-bold text-lg">Layout de Secciones (Lazy Scroll)</h3>
+      </div>
+      
+      <div class="bg-gray-50 border rounded-lg p-4 mb-4 h-32 overflow-hidden relative">
+        <div class="space-y-4">
+          <div>
+            <div class="font-bold text-xs text-gray-500 uppercase mb-1">Tiquetería</div>
+            <div class="h-3 bg-gray-200 rounded w-full mb-1"></div>
+            <div class="h-3 bg-gray-200 rounded w-2/3"></div>
+          </div>
+          <div>
+            <div class="font-bold text-xs text-gray-500 uppercase mb-1">Viajes Terrestres</div>
+            <div class="h-3 bg-gray-200 rounded w-5/6 mb-1"></div>
+          </div>
+        </div>
+        <div class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-gray-50 to-transparent flex items-end justify-center pb-1">
+          <span class="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 rounded-full border border-emerald-100">Cargando más...</span>
+        </div>
+      </div>
+      
+      <ul class="text-sm text-gray-600 space-y-2 list-disc pl-4">
+        <li>Muestra todos los servicios de arriba hacia abajo (similar al diseño actual).</li>
+        <li>El backend pagina los detalles en grupos de 2 o 3 servicios. A medida que el usuario hace scroll, se cargan los siguientes.</li>
+        <li><strong>Ventaja:</strong> Experiencia de lectura continua, no requiere clics adicionales.</li>
+      </ul>
+      <button class="mt-4 w-full py-2 bg-emerald-50 text-emerald-600 font-semibold rounded hover:bg-emerald-100 transition-colors">
+        Elegir Opción B
+      </button>
+    </div>
+
+  </div>
+</div>
+<script>
+  function sendEvent(type, option) {
+    if (window.Brainstorm) {
+      window.Brainstorm.send({ type, option });
+      
+      // Feedback visual simple
+      document.body.innerHTML = `
+        <div class="flex h-screen items-center justify-center bg-gray-50">
+          <div class="text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">¡Opción Registrada!</h2>
+            <p class="text-gray-500">Has seleccionado: <strong>${option}</strong></p>
+            <p class="text-gray-400 text-sm mt-4">Vuelve al chat de la IA para continuar.</p>
+          </div>
+        </div>
+      `;
+    } else {
+      alert("Seleccionado: " + option);
+    }
+  }
+</script>

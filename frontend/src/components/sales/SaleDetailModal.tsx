@@ -25,24 +25,25 @@ import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
 import { Sale, Client, Responsable } from "../../types";
+import PaginatedProductTab from "./tabs/PaginatedProductTab";
 
 const PRODUCT_ICONS: Record<string, React.ReactNode> = {
-  Tiquetería: <Plane size={16} className="text-primary" />,
-  Hotelería: <Building2 size={16} className="text-primary" />,
-  Seguros: <ShieldCheck size={16} className="text-primary" />,
-  Planes: <Package size={16} className="text-primary" />,
-  CheckIn: <Luggage size={16} className="text-primary" />,
-  Migración: <FileInput size={16} className="text-primary" />,
-  SimCard: <Smartphone size={16} className="text-primary" />,
-  AlquilerAutos: <Car size={16} className="text-primary" />,
-  Finca: <TreePine size={16} className="text-primary" />,
-  Tour: <Compass size={16} className="text-primary" />,
-  Evento: <Music size={16} className="text-primary" />,
-  Restaurante: <UtensilsCrossed size={16} className="text-primary" />,
-  Visa: <FileText size={16} className="text-primary" />,
-  Pasaporte: <FileText size={16} className="text-primary" />,
-  Mascotas: <PawPrint size={16} className="text-primary" />,
-  Equipaje: <Luggage size={16} className="text-primary" />,
+  Tiquetería: <Plane size={16}  />,
+  Hotelería: <Building2 size={16}  />,
+  Seguros: <ShieldCheck size={16}  />,
+  Planes: <Package size={16}  />,
+  CheckIn: <Luggage size={16}  />,
+  Migración: <FileInput size={16}  />,
+  SimCard: <Smartphone size={16}  />,
+  AlquilerAutos: <Car size={16}  />,
+  Finca: <TreePine size={16}  />,
+  Tour: <Compass size={16}  />,
+  Evento: <Music size={16}  />,
+  Restaurante: <UtensilsCrossed size={16}  />,
+  Visa: <FileText size={16}  />,
+  Pasaporte: <FileText size={16}  />,
+  Mascotas: <PawPrint size={16}  />,
+  Equipaje: <Luggage size={16}  />,
 };
 
 function getProductDetails(type: string, data: any[]): { label: string; count: number } {
@@ -90,6 +91,7 @@ export default function SaleDetailModal({
   responsables,
   onViewProductDetails,
 }: SaleDetailModalProps) {
+  const [activeTab, setActiveTab] = useState("summary");
   const [fullSale, setFullSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -231,6 +233,12 @@ export default function SaleDetailModal({
     }
   };
 
+  const activeCategories = productSections.filter(({ key, summaryType }) => {
+    return fullSale 
+      ? ((fullSale as any)[key] && (fullSale as any)[key].length > 0)
+      : (sale.servicesSummary || []).some(s => s.tipo === summaryType);
+  });
+
   return (
     <Modal
       isOpen={isOpen}
@@ -252,7 +260,27 @@ export default function SaleDetailModal({
         </div>
       }
     >
-      {loading ? (
+      <div className="flex border-b border-gray-200 mb-4 overflow-x-auto gap-2 pb-2">
+        <button
+          onClick={() => setActiveTab('summary')}
+          className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors whitespace-nowrap ${activeTab === 'summary' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+        >
+          Resumen
+        </button>
+        {activeCategories.map(cat => (
+          <button
+            key={cat.key}
+            onClick={() => setActiveTab(cat.summaryType)}
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === cat.summaryType ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+          >
+            {PRODUCT_ICONS[cat.label]} {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'summary' ? (
+        <>
+        {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm font-medium text-gray-500 animate-pulse">Cargando detalles completos...</p>
@@ -607,58 +635,6 @@ export default function SaleDetailModal({
           </div>
         )}
 
-        {/* Servicios Vendidos */}
-        <div>
-          <h4 className="text-sm font-bold text-primary border-b border-gray-200 pb-2 mb-3 flex items-center gap-2">
-            <ShoppingBag size={16} className="text-accent" /> Desglose de Servicios
-          </h4>
-          {!hasAnyProduct ? (
-            <p className="text-sm text-gray-400 italic p-4 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-              No hay servicios registrados para esta venta.
-            </p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {productSections.map(({ key, label, summaryType }) => {
-                // If fullSale has loaded, check if this section has products.
-                // Otherwise, check if this category exists in servicesSummary.
-                const hasProduct = fullSale 
-                  ? ((fullSale as any)[key] && (fullSale as any)[key].length > 0)
-                  : (sale.servicesSummary || []).some(s => s.tipo === summaryType);
-
-                if (!hasProduct) return null;
-                
-                const isPending = pendingProductView?.key === key;
-                const itemsCount = fullSale ? ((fullSale as any)[key]?.length || 0) : 1;
-
-                return (
-                  <div key={key} className="bg-gray-50 border border-gray-200 p-3 rounded-lg flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                      {PRODUCT_ICONS[label] || <ShoppingBag size={16} className="text-primary" />}
-                      {label} {fullSale ? `(${itemsCount})` : ""}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() => onViewProductClick(key, label)}
-                      className="text-xs py-1.5 px-3 border-gray-200 text-gray-700 hover:bg-gray-50"
-                    >
-                      {isPending ? (
-                        <span className="flex items-center gap-1">
-                          <Loader2 size={12} className="animate-spin text-accent" />
-                          Cargando...
-                        </span>
-                      ) : (
-                        "Ver Detalles"
-                      )}
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
         {/* Observaciones */}
         {(() => {
           const customObs = getCustomObservations(sale.observations || "");
@@ -701,6 +677,15 @@ export default function SaleDetailModal({
         })()}
       </div>
       )}
+          </>
+        ) : (
+          <PaginatedProductTab
+            saleId={sale.id}
+            tabKey={activeTab}
+            tabLabel={productSections.find(s => s.summaryType === activeTab)?.label || ''}
+            airportMap={{}}
+          />
+        )}
     </Modal>
   );
 }

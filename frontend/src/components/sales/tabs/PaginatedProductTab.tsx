@@ -1,8 +1,9 @@
-import { Modal } from "../ui/Modal";
-import { Button } from "../ui/Button";
-import { Badge } from "../ui/Badge";
-import { formatDate, formatDateTime, formatCurrency } from "../../utils/formatters";
-import { type AirportInfo } from "../../utils/airportInfo";
+import { useState, useEffect } from "react";
+import { Button } from "../../ui/Button";
+import { Badge } from "../../ui/Badge";
+import { formatDate, formatDateTime, formatCurrency } from "../../../utils/formatters";
+import { type AirportInfo } from "../../../utils/airportInfo";
+import { getSalePaginatedDetails } from "../../../api/sales";
 
 // Format time in 12-hour AM/PM
 const formatTimeAMPM = (time24: string) => {
@@ -43,12 +44,16 @@ import {
   UtensilsCrossed,
   FileText,
   PawPrint,
-  Bus
+  Bus,
+  ChevronLeft,
+  ChevronRight,
+  Loader2
 } from "lucide-react";
 
-interface ProductDetailsModalProps {
-  product: { type: string; data: any[] } | null;
-  onClose: () => void;
+interface PaginatedProductTabProps {
+  saleId: number;
+  tabKey: string;
+  tabLabel: string;
   airportMap?: Record<string, AirportInfo>;
 }
 
@@ -118,8 +123,68 @@ function renderGrid(items: { label: string; value: any }[]) {
   );
 }
 
-export default function ProductDetailsModal({ product, onClose, airportMap }: ProductDetailsModalProps) {
-  if (!product) return null;
+export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportMap }: PaginatedProductTabProps) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setError("");
+
+    getSalePaginatedDetails(saleId, tabKey, page, 5)
+      .then(res => {
+        if (isMounted) {
+          setData(res.data || []);
+          setTotalPages(res.meta?.totalPages || 1);
+          setTotalItems(res.meta?.totalItems || 0);
+          setLoading(false);
+        }
+      })
+      .catch(err => {
+        if (isMounted) {
+          console.error(err);
+          setError("Error al cargar los detalles.");
+          setLoading(false);
+        }
+      });
+      
+    return () => { isMounted = false; };
+  }, [saleId, tabKey, page]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-gray-500">
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
+        <p>Cargando detalles de {tabLabel}...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-500 bg-red-50 rounded-lg">
+        <p>{error}</p>
+        <Button variant="outline" onClick={() => setPage(1)} className="mt-4">Reintentar</Button>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="p-8 text-center text-gray-500 bg-gray-50 rounded-lg">
+        <p>No se encontraron registros de {tabLabel} para esta venta.</p>
+      </div>
+    );
+  }
+
+  // Objeto product simulado para reusar el renderContent sin cambiar su estructura interna
+  const product = { type: tabLabel, data };
+
 
   const renderContent = () => {
     switch (product.type) {
@@ -743,24 +808,44 @@ export default function ProductDetailsModal({ product, onClose, airportMap }: Pr
         ));
 
       default:
-        return (
-          <div className="bg-gray-50 p-4 rounded-xl text-center text-gray-500 italic">
-            Visualización detallada para {product.type} no disponible aún.
-            {product.data && product.data.length > 0 && (
-              <pre className="text-left text-xs mt-2 bg-white p-2 rounded border overflow-auto max-h-40">
-                {JSON.stringify(product.data, null, 2)}
-              </pre>
-            )}
-          </div>
-        );
+        return <p className="text-gray-500">Detalles no disponibles para este tipo de producto.</p>;
     }
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={`Detalles de ${product.type}`} size="lg" footer={<Button onClick={onClose}>Cerrar</Button>}>
-      <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+    <div className="space-y-4">
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-sm mb-4">
+          <span className="text-sm font-semibold text-gray-700">
+            Total de registros: {totalItems}
+          </span>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <span className="flex items-center px-2 text-sm text-gray-500">
+              Página {page} de {totalPages}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      <div className="space-y-4">
         {renderContent()}
       </div>
-    </Modal>
+    </div>
   );
 }

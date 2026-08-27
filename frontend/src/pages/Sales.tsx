@@ -28,7 +28,6 @@ import { buildAirportMap } from "../utils/airportInfo";
 import { Sale } from "../types";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 import NewSaleWizard from "../components/sales/NewSaleWizard";
-import ProductDetailsModal from "../components/sales/ProductDetailsModal";
 import SaleDetailModal from "../components/sales/SaleDetailModal";
 import SaleEditModal from "../components/sales/SaleEditModal";
 import SalesTable from "../components/sales/SalesTable";
@@ -668,14 +667,7 @@ export default function Sales() {
         onViewProductDetails={setDetailedProduct}
       />
 
-      {/* Detalle Específico de Producto */}
-      {detailedProduct && (
-        <ProductDetailsModal
-          product={detailedProduct}
-          onClose={() => setDetailedProduct(null)}
-          airportMap={airportMap}
-        />
-      )}
+      
 
       {/* ===== CONFIRMAR ANULACIÓN ===== */}
       <Modal

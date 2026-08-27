@@ -61,15 +61,6 @@ export default function UserDetailModal({ isOpen, onClose, user, userSales }: Us
     >
       <div className="space-y-4">
         <div className="flex flex-col items-center text-center p-4 bg-gradient-to-b from-accent/10 to-transparent rounded-2xl border border-accent/20 mb-2">
-          <div className="w-20 h-20 rounded-full border-4 border-white dark:border-slate-700 shadow-lg mb-3 overflow-hidden bg-accent/10">
-            {user.avatar ? (
-              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-accent">
-                {user.name.charAt(0)}
-              </div>
-            )}
-          </div>
           <h2 className="text-lg font-bold text-gray-900 dark:!text-[#ffffff]">{user.name}</h2>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant="accent" className="bg-accent/10 border-accent/20 text-accent font-semibold">

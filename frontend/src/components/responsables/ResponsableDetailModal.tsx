@@ -27,9 +27,6 @@ export default function ResponsableDetailModal({ isOpen, onClose, responsable, r
     >
       <div className="space-y-4">
         <div className="flex flex-col items-center text-center p-4 bg-gradient-to-b from-accent/5 to-transparent rounded-2xl border border-accent/5 mb-2">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-teal-400 text-2xl font-semibold overflow-hidden border-4 border-white dark:border-slate-700 shadow-sm">
-            {responsable.name.charAt(0)}
-          </div>
           <h2 className="text-lg font-bold text-gray-900 dark:!text-[#ffffff] mt-2">{responsable.name}</h2>
           <Badge variant={responsable.status} className="mt-1">
             {responsable.status === 'active' ? 'CLIENTE ACTIVO' : 'CLIENTE INACTIVO'}

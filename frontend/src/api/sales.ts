@@ -10,6 +10,11 @@ export async function getSale(id: number) {
   return res.data.data;
 }
 
+export async function getSalePaginatedDetails(id: number, tab: string, page = 1, perPage = 10) {
+  const res = await api.get(`/sales/${id}/details`, { params: { tab, page, perPage } });
+  return res.data;
+}
+
 export async function createSale(data: Record<string, unknown>) {
   const res = await api.post('/sales', data);
   return res.data.data;

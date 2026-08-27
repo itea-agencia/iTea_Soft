@@ -11,6 +11,7 @@ router.use(auth);
 
 router.get('/', authorize('sales', 'view'), paginate, salesController.list);
 router.get('/:id', authorize('sales', 'view'), salesController.getById);
+router.get('/:id/details', authorize('sales', 'view'), paginate, salesController.getPaginatedDetails);
 router.post('/', authorize('sales', 'create'), salesController.create);
 router.put('/:id', authorize('sales', 'edit'), salesController.update);
 router.patch('/:id/review-status', authorize('sales', 'edit'), salesController.updateReviewStatus);

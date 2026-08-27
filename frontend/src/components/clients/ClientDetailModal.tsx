@@ -27,15 +27,6 @@ export default function ClientDetailModal({ isOpen, onClose, client, clientSales
     >
       <div className="space-y-4">
         <div className="flex flex-col items-center text-center p-4 bg-gradient-to-b from-accent/5 to-transparent rounded-2xl border border-accent/5 mb-2">
-          <div className="w-20 h-20 rounded-full border-4 border-white dark:border-slate-700 shadow-lg mb-3 overflow-hidden bg-accent/10">
-            {client.avatar ? (
-              <img src={client.avatar} alt={client.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-accent">
-                {client.name.charAt(0)}
-              </div>
-            )}
-          </div>
           <h2 className="text-lg font-bold text-gray-900 dark:!text-[#ffffff]">{client.name}</h2>
           <Badge variant={client.status} className="mt-1">
             {client.status === 'active' ? 'CLIENTE ACTIVO' : 'CLIENTE INACTIVO'}
