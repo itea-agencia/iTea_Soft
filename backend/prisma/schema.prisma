@@ -14,6 +14,7 @@ model TiposDocumento {
   nombre      String
   abreviatura String     @unique
   personas    Personas[]
+  proveedores Proveedores[]
 
   @@map("tipos_documento")
 }
@@ -80,14 +81,21 @@ model Proveedores {
   id               Int                @id @default(autoincrement())
   nombre           String
   tipo             String?
+  // Identificacion tributaria. Siigo referencia al Tercero de una linea de factura por
+  // `identification`, asi que sin esto no se puede facturar el costo del proveedor.
+  // Nullable porque los proveedores ya cargados no lo tienen; es obligatorio en los nuevos.
+  tipoDocumentoId  Int?               @map("tipo_documento_id")
+  documento        String?            @unique
   emailContacto    String?            @map("email_contacto")
   telefono         String?
   web              String?
   status           UserStatus         @default(active)
   observaciones    String?            @map("observaciones")
+  tipoDocumento    TiposDocumento?    @relation(fields: [tipoDocumentoId], references: [id])
   detalleVentas    DetalleVenta[]     @relation("proveedor_detalle")
   paqueteProveedor PaqueteProveedor[]
 
+  @@index([tipoDocumentoId])
   @@map("proveedores")
 }
 
@@ -102,6 +110,9 @@ model Personas {
   birthDate        DateTime?          @map("birth_date")
   nacionalidad     String?
   avatarUrl        String?            @map("avatar_url")
+  // Id del tercero en Siigo. Evita buscar por documento en cada emision.
+  // Ojo: los ids de la sandbox no sirven en produccion; al cambiar de cuenta hay que limpiarlos.
+  siigoCustomerId  String?            @map("siigo_customer_id")
   status           UserStatus         @default(active)
   creadoAt         DateTime           @default(now()) @map("creado_at")
   updatedAt        DateTime?          @map("updated_at")
@@ -239,6 +250,7 @@ model Ventas {
   responsableId               Int?                @map("responsable_id")
   taCreTotal                  Float?              @default(0) @map("ta_cre_total")
   detalleVentas               DetalleVenta[]
+  facturaSiigo                FacturasSiigo?
   liquidacionVentas           LiquidacionVentas[]
   pagosVenta                  PagosVenta[]
   cliente                     Clientes            @relation(fields: [clienteId], references: [id])
@@ -904,4 +916,37 @@ model ProdViajesTerrestres {
   detalleVenta       DetalleVenta @relation(fields: [detalleVentaId], references: [id])
 
   @@map("prod_viajes_terrestres")
+}
+
+
+/// Resultado de la emision de la factura electronica en Siigo para una venta.
+/// Relacion 1:1 opcional: los reintentos actualizan la misma fila.
+model FacturasSiigo {
+  id             String             @id @default(uuid())
+  ventaId        Int                @unique @map("venta_id")
+  siigoId        String?            @map("siigo_id")
+  numero         String?
+  cufe           String?
+  publicUrl      String?            @map("public_url")
+  montoFacturado Float?             @map("monto_facturado")
+  estado         EstadoFacturaSiigo @default(pendiente)
+  intentos       Int                @default(0)
+  ultimoError    String?            @map("ultimo_error")
+  /// Payload exacto enviado a Siigo. Sirve para diagnosticar rechazos sin reproducir el caso.
+  payloadEnviado Json?              @map("payload_enviado")
+  respuesta      Json?
+  emitidaAt      DateTime?          @map("emitida_at")
+  creadoAt       DateTime           @default(now()) @map("creado_at")
+  updatedAt      DateTime?          @updatedAt @map("updated_at")
+  venta          Ventas             @relation(fields: [ventaId], references: [id])
+
+  @@index([estado])
+  @@map("facturas_siigo")
+}
+
+enum EstadoFacturaSiigo {
+  pendiente
+  emitida
+  fallida
+  anulada
 }

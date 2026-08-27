@@ -3,6 +3,26 @@ import * as LuIcons from "react-icons/lu";
 import { FormField, Input, Select, Combobox } from '../ui/Form';
 import { Button } from '../ui/Button';
 
+// Opciones estaticas fuera del componente: dentro del render se recreaban en cada
+// pulsacion de tecla, dandole una prop nueva al Select sin que nada hubiera cambiado.
+const TIPOS_PROVEEDOR = [
+  { value: '', label: 'Seleccione un tipo' },
+  { value: 'Hotel', label: 'Hotel' },
+  { value: 'Operador', label: 'Operador' },
+  { value: 'Operador Internacional', label: 'Operador Internacional' },
+  { value: 'Aerolinea', label: 'Aerolínea' },
+  { value: 'Consolidadores', label: 'Consolidadores' },
+  { value: 'Asistencia de viajes', label: 'Asistencia de Viajes' }
+];
+
+// Respaldo cuando el catalogo de tipos de documento aun no cargo.
+const TIPOS_DOCUMENTO_FALLBACK = [
+  { value: '', label: 'Seleccione un tipo' },
+  { value: 'NIT', label: 'NIT' },
+  { value: 'CC', label: 'CC' },
+  { value: 'CE', label: 'CE' }
+];
+
 export default function ConfigForms({ section, formData, setFormData, errors, setErrors, data }: any) {
   switch (section) {
     case 'cards':
@@ -167,16 +187,43 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                 setFormData({ ...formData, type: e.target.value });
                 if (errors.type) setErrors({ ...errors, type: '' });
               }}
-              options={[
-                { value: '', label: 'Seleccione un tipo' },
-                { value: 'Hotel', label: 'Hotel' }, 
-                { value: 'Operador', label: 'Operador' }, 
-                { value: 'Operador Internacional', label: 'Operador Internacional' },
-                { value: 'Aerolinea', label: 'Aerolínea' },
-                { value: 'Consolidadores', label: 'Consolidadores' },
-                { value: 'Asistencia de viajes', label: 'Asistencia de Viajes' }
-              ]}
+              options={TIPOS_PROVEEDOR}
               error={errors.type}
+            />
+          </FormField>
+          <FormField label="Tipo de Documento" error={errors.docType}>
+            <Select
+              value={formData.docType || ''}
+              onChange={e => {
+                setFormData({ ...formData, docType: e.target.value });
+                if (errors.docType) setErrors({ ...errors, docType: '' });
+              }}
+              options={
+                data?.config?.documentTypes?.length
+                  ? [
+                      { value: '', label: 'Seleccione un tipo' },
+                      ...data.config.documentTypes.map((d: any) => ({
+                        value: d.abreviatura,
+                        label: `${d.abreviatura} — ${d.name}`
+                      }))
+                    ]
+                  : TIPOS_DOCUMENTO_FALLBACK
+              }
+              error={errors.docType}
+            />
+          </FormField>
+          <FormField label="Número de Documento" error={errors.docNumber}>
+            <Input
+              value={formData.docNumber || ''}
+              onChange={e => {
+                // Siigo identifica al Tercero por este valor, asi que se limpia todo lo
+                // que no sea alfanumerico o guion.
+                const val = e.target.value.replace(/[^0-9A-Za-z-]/g, '').toUpperCase();
+                setFormData({ ...formData, docNumber: val });
+                if (errors.docNumber) setErrors({ ...errors, docNumber: '' });
+              }}
+              placeholder="Ej. 900383393"
+              error={errors.docNumber}
             />
           </FormField>
           <FormField label="Email de Contacto (Opcional)" error={errors.email}>

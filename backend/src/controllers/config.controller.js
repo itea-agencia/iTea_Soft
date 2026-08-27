@@ -19,8 +19,19 @@ const SECTION_MAP = {
     transform: (r) => ({ id: r.id, name: r.nombre, code: r.codigoIata, type: r.tipo, website: r.web })
   },
   'suppliers': {
-    model: 'proveedores', idField: 'id',
-    transform: (r) => ({ id: r.id, name: r.nombre, type: r.tipo, email: r.emailContacto, phone: r.telefono, website: r.web, observations: r.observaciones || '' })
+    model: 'proveedores', idField: 'id', include: { tipoDocumento: true },
+    transform: (r) => ({
+      id: r.id,
+      name: r.nombre,
+      type: r.tipo,
+      // docType/docNumber: mismos nombres que expone la API para clientes y pasajeros.
+      docType: r.tipoDocumento?.abreviatura || null,
+      docNumber: r.documento || null,
+      email: r.emailContacto,
+      phone: r.telefono,
+      website: r.web,
+      observations: r.observaciones || ''
+    })
   },
   'airports': {
     model: 'aeropuertos', idField: 'id',
@@ -103,6 +114,62 @@ exports.getSection = async (req, res, next) => {
 };
 
 // Helper asíncrono para des-mapear (untransform) el body del frontend al esquema de base de datos
+// Validacion en servidor. El cliente tambien valida, pero la API no puede confiar en eso:
+// cualquiera puede llamar al endpoint directamente.
+function validarProveedor(body) {
+  const fallas = [];
+
+  if (!body.name || String(body.name).trim().length === 0) {
+    fallas.push({ campo: 'name', mensaje: 'El nombre es obligatorio' });
+  }
+  if (!body.type || String(body.type).trim().length === 0) {
+    fallas.push({ campo: 'type', mensaje: 'El tipo de proveedor es obligatorio' });
+  }
+  if (!body.docType || String(body.docType).trim().length === 0) {
+    fallas.push({ campo: 'docType', mensaje: 'El tipo de documento es obligatorio' });
+  }
+
+  const docNumber = String(body.docNumber || '').trim();
+  if (docNumber.length === 0) {
+    fallas.push({ campo: 'docNumber', mensaje: 'El numero de documento es obligatorio' });
+  } else if (!/^[0-9A-Za-z-]+$/.test(docNumber)) {
+    fallas.push({ campo: 'docNumber', mensaje: 'El documento solo admite letras, numeros y guiones' });
+  }
+
+  if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email).trim())) {
+    fallas.push({ campo: 'email', mensaje: 'El correo electronico no es valido' });
+  }
+
+  if (fallas.length > 0) {
+    throw Object.assign(new Error(fallas.map((f) => f.mensaje).join('. ')), {
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      fallas
+    });
+  }
+}
+
+// Se verifica antes de escribir para poder devolver un 409 que diga con quien choca.
+// La restriccion UNIQUE de la base tambien lo atrapa, pero con un mensaje generico.
+async function verificarDocumentoProveedorLibre(tx, documento, idExcluido) {
+  if (!documento) return;
+
+  const existente = await tx.proveedores.findFirst({
+    where: {
+      documento,
+      ...(idExcluido ? { id: { not: idExcluido } } : {})
+    },
+    select: { id: true, nombre: true }
+  });
+
+  if (existente) {
+    throw Object.assign(
+      new Error(`El documento ${documento} ya esta registrado para el proveedor "${existente.nombre}"`),
+      { statusCode: 409, code: 'DUPLICATE_SUPPLIER_DOCUMENT' }
+    );
+  }
+}
+
 const untransformBody = async (section, body) => {
   const data = {};
   switch (section) {
@@ -139,14 +206,35 @@ const untransformBody = async (section, body) => {
       data.web = body.website || null;
       break;
 
-    case 'suppliers':
+    case 'suppliers': {
       data.nombre = body.name;
       data.tipo = body.type || 'Hotel';
       data.emailContacto = body.email || '';
       data.telefono = body.phone || '';
       data.web = body.website || null;
       data.observaciones = body.observations || null;
+
+      // La identificacion del proveedor es obligatoria: Siigo referencia al Tercero de la
+      // linea de factura por su `identification`.
+      const docNumber = String(body.docNumber || '').trim();
+      data.documento = docNumber || null;
+
+      if (body.docType) {
+        const tipoDoc = await prisma.tiposDocumento.findUnique({
+          where: { abreviatura: String(body.docType) }
+        });
+        if (!tipoDoc) {
+          throw Object.assign(
+            new Error(`El tipo de documento "${body.docType}" no existe`),
+            { statusCode: 400, code: 'INVALID_DOCUMENT_TYPE' }
+          );
+        }
+        data.tipoDocumentoId = tipoDoc.id;
+      } else {
+        data.tipoDocumentoId = null;
+      }
       break;
+    }
 
     case 'airports':
       data.nombre = body.name;
@@ -265,6 +353,8 @@ exports.createItem = async (req, res, next) => {
     const config = SECTION_MAP[section];
     if (!config) return error(res, `Sección "${section}" no válida`, 400);
 
+    if (section === 'suppliers') validarProveedor(req.body);
+
     // Mapear el cuerpo de la petición de entrada al formato de la base de datos
     const dbData = await untransformBody(section, req.body);
 
@@ -285,6 +375,10 @@ exports.createItem = async (req, res, next) => {
           const existingCode = await tx.aerolineas.findFirst({ where: { codigoIata: dbData.codigoIata } });
           if (existingCode) throw Object.assign(new Error(`El código IATA "${dbData.codigoIata}" ya está registrado para la aerolínea "${existingCode.nombre}"`), { statusCode: 409 });
         }
+      }
+
+      if (section === 'suppliers') {
+        await verificarDocumentoProveedorLibre(tx, dbData.documento);
       }
 
       // Crear registro base e incluir sus relaciones en una sola consulta de base de datos
@@ -324,11 +418,17 @@ exports.updateItem = async (req, res, next) => {
 
     const itemId = parseInt(id);
 
+    if (section === 'suppliers') validarProveedor(req.body);
+
     // Mapear el cuerpo de la petición de entrada al formato de la base de datos
     const dbData = await untransformBody(section, req.body);
 
     // Ejecutar actualización transaccional optimizada (Carga Relaciones Eager e Inmediata)
     let updatedResponse = await prisma.$transaction(async (tx) => {
+      if (section === 'suppliers') {
+        await verificarDocumentoProveedorLibre(tx, dbData.documento, itemId);
+      }
+
       // Actualizar registro base e incluir sus relaciones en una sola consulta de base de datos
       const updatedItem = await tx[config.model].update({
         where: { [config.idField]: itemId },

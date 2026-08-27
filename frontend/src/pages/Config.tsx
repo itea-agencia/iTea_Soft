@@ -125,6 +125,7 @@ export default function Config() {
       case 'suppliers':
         return (item.name || '').toLowerCase().includes(term) || 
                (item.type || '').toLowerCase().includes(term) || 
+               (item.docNumber || '').toLowerCase().includes(term) ||
                (item.email || '').toLowerCase().includes(term) ||
                (item.phone || '').toLowerCase().includes(term);
       case 'airports':
@@ -144,7 +145,7 @@ export default function Config() {
       case 'paymentMethods': return ['#', 'Nombre'];
       case 'documentTypes': return ['#', 'Nombre'];
       case 'airlines': return ['#', 'Nombre', 'Código IATA', 'Cobertura', 'Sitio Web'];
-      case 'suppliers': return ['#', 'Nombre', 'Tipo', 'Email', 'Teléfono', 'Sitio Web'];
+      case 'suppliers': return ['#', 'Nombre', 'Tipo', 'Documento', 'Email', 'Teléfono', 'Sitio Web'];
       case 'airports': return ['#', 'Nombre', 'Abreviación', 'Ubicación', 'Cobertura', 'Estado'];
       case 'baggage': return ['#', 'Aerolínea', 'Tarifa', 'Art. Personal', 'Equip. Mano', 'Equip. Bodega'];
       case 'packages': return ['#', 'Nombre', 'Destino', 'Noches', 'Hotel', 'Tarifa Adulto'];
@@ -178,7 +179,14 @@ export default function Config() {
       case 'paymentMethods': return [item.name];
       case 'documentTypes': return [item.name];
       case 'airlines': return [item.name, item.code, item.type || 'Internacional', item.website || 'No especificado'];
-      case 'suppliers': return [item.name, item.type, item.email, item.phone, item.website || 'No especificado'];
+      case 'suppliers': return [
+        item.name,
+        item.type,
+        item.docNumber ? `${item.docType || ''} ${item.docNumber}`.trim() : 'Sin documento',
+        item.email,
+        item.phone,
+        item.website || 'No especificado'
+      ];
       case 'airports': return [item.name, item.abbreviation, item.location, item.type || 'Ambos', item.status || 'Activo'];
       case 'baggage': return [item.airlineName, item.fareType, item.personalItem || 'No incluido', item.carryOn || 'No incluido', item.checkedBag || 'No incluido'];
       case 'packages': return [item.name, item.destination, item.nights?.toString(), item.accommodation?.hotel || '-', formatCurrency(item.rates?.adult || 0)];
@@ -226,6 +234,13 @@ export default function Config() {
         case 'suppliers':
           if (!formData.name || formData.name.trim().length === 0) newErrors.name = 'El nombre es obligatorio.';
           if (!formData.type) newErrors.type = 'Debe seleccionar un tipo de proveedor.';
+          // Obligatorios: Siigo identifica al Tercero de la factura por su documento.
+          if (!formData.docType) newErrors.docType = 'Debe seleccionar un tipo de documento.';
+          if (!formData.docNumber || formData.docNumber.trim().length === 0) {
+            newErrors.docNumber = 'El número de documento es obligatorio.';
+          } else if (!/^[0-9A-Za-z-]+$/.test(formData.docNumber.trim())) {
+            newErrors.docNumber = 'El documento solo admite letras, números y guiones.';
+          }
           if (formData.email && formData.email.trim().length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Debe ingresar un correo electrónico válido.';
           if (formData.phone && formData.phone.trim().length > 0 && formData.phone.trim().length < 7) newErrors.phone = 'Debe ingresar un teléfono válido.';
           if (!formData.website || !formData.website.startsWith('http')) newErrors.website = 'Debe ingresar un enlace de sitio web válido (que inicie con http:// o https://).';

@@ -310,17 +310,33 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-800 dark:text-slate-100 text-xs">{supplier.name}</h3>
-                    <span className="text-[10px] text-gray-400 dark:text-slate-400 font-mono">{isOptimistic ? '⏳ Guardando...' : `Proveedor #${supplier.id}`}</span>
+                    <span className="text-[10px] text-gray-400 dark:text-slate-400 font-mono">
+                      {isOptimistic
+                        ? '⏳ Guardando...'
+                        : supplier.docNumber
+                          ? `${supplier.docType || 'Doc'} ${supplier.docNumber}`
+                          : 'Sin documento'}
+                    </span>
                   </div>
                 </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                  isOptimistic ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' :
-                  supplier.type === 'Hotel' ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20' :
-                  supplier.type === 'Operador' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' :
-                  'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20'
-                }`}>
-                  {isOptimistic ? 'Guardando' : supplier.type}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                    isOptimistic ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' :
+                    supplier.type === 'Hotel' ? 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20' :
+                    supplier.type === 'Operador' ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20' :
+                    'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20'
+                  }`}>
+                    {isOptimistic ? 'Guardando' : supplier.type}
+                  </span>
+                  {!isOptimistic && !supplier.docNumber ? (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
+                      title="Sin documento no se puede facturar el costo de este proveedor en Siigo"
+                    >
+                      Falta documento
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div className="border-t border-gray-100 dark:border-slate-700 pt-3 mt-1 flex justify-between items-center">
                 <div className="flex flex-col gap-1 min-w-0">

@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { useId } from "react";
 import { Bus, PlusCircle, User, Trash2 } from "lucide-react";
 import { FormField, Input, Combobox } from "../../ui/Form";
 import { LandTravelData } from "../../../types";
@@ -22,27 +22,16 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
   // render mientras el localizador estuviera vacio y permitia marcar varios titulares.
   const titularGroup = useId();
 
+  // El estado es la unica fuente: nunca se fabrican filas en el render (era el bug
+  // original, la fila que se veia no existia en el formulario). El invariante de
+  // "al menos un pasajero y exactamente un titular" se mantiene en cada sitio de
+  // escritura: INITIAL_LAND_TRAVEL siembra el titular, "Anadir Pasajero" agrega con
+  // esTitular false, y el boton de eliminar no se muestra sobre el titular.
   const passengers = travel.passengers || [];
 
-  // Garantiza un pasajero y exactamente un titular, COMMITEANDO al estado.
-  // Antes esto se calculaba dentro del render, asi que la fila que se veia en
-  // pantalla no existia en el formulario y no llegaba al backend.
-  useEffect(() => {
-    if (passengers.length === 0) {
-      onChange({
-        passengers: [{
-          name: client?.name || `${client?.firstName || ''} ${client?.lastName || ''}`.trim(),
-          docType: client?.docType || '',
-          docNumber: client?.docNumber || '',
-          esTitular: true,
-          asiento: '',
-          asientoRegreso: ''
-        }]
-      });
-    } else if (!passengers.some((p) => p.esTitular)) {
-      onChange({ passengers: passengers.map((p, i) => ({ ...p, esTitular: i === 0 })) });
-    }
-  }, [travel.passengers]);
+  // Si por datos heredados ninguno quedara marcado como titular, se resalta el
+  // primero. Derivado en render, sin escribir estado.
+  const hayTitular = passengers.some((p) => p.esTitular);
 
   const minDateTime = (() => {
     const now = new Date();
@@ -304,7 +293,7 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                             <input
                               type="radio"
                               name={titularGroup}
-                              checked={pax.esTitular}
+                              checked={pax.esTitular || (!hayTitular && idx === 0)}
                               onChange={() => {
                                 const next = passengers.map((p: any, i: number) => ({ ...p, esTitular: i === idx }));
                                 onChange({ passengers: next });

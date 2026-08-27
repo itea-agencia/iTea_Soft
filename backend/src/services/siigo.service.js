@@ -1,198 +1,205 @@
 const axios = require('axios');
+const env = require('../config/env');
 
-// 🛡️ ESCUDO ANTI-BLOQUEOS: Interceptor global para Siigo
-// Si Siigo nos devuelve 429 (Rate Limit Exceeded), pausamos automáticamente 2 segundos y reintentamos.
-axios.interceptors.response.use(null, async (error) => {
-  if (error.response && error.response.status === 429) {
-    console.log('🐌 Rate limit de Siigo alcanzado! Pausando por 2 segundos antes de reintentar la misma petición...');
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return axios.request(error.config); // Reintenta la misma petición automáticamente
+const cfg = env.siigo;
+
+// Instancia dedicada. El interceptor de reintento vive AQUI y no en la instancia global de
+// axios: antes se registraba con `axios.interceptors.response.use(...)`, asi que cualquier
+// peticion HTTP del backend heredaba la pausa de 2 segundos y el reintento ante un 429.
+const http = axios.create({ baseURL: cfg.baseUrl });
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Siigo responde 429 si se supera ~1 peticion por segundo. Se reintenta una sola vez por
+// peticion para no encadenar reintentos infinitos.
+http.interceptors.response.use(null, async (error) => {
+  const config = error.config || {};
+  if (error.response?.status === 429 && !config.__reintentado) {
+    config.__reintentado = true;
+    console.log('Siigo devolvio 429. Pausa de 2s y un reintento.');
+    await sleep(2000);
+    return http.request(config);
   }
   return Promise.reject(error);
 });
+
 class SiigoService {
   constructor() {
-    this.baseURL = 'https://api.siigo.com';
-    this.token = null; // Aqui se guarda el token de acceso
-    this.tokenExpiresAt = null; // Aqui se guarda la fecha de expiracion del token
+    this.token = null;
+    this.tokenExpiresAt = null;
+    // Se conserva por compatibilidad: siigo.routes.js lo usa para armar URLs.
+    this.baseURL = cfg.baseUrl;
   }
 
-  /**
-   * Obtener el token valido
-   */
+  get dryRun() {
+    return cfg.dryRun;
+  }
+
   async getAuthToken() {
-    // Verificar si el token es valido o si ya expiro
     if (this.token && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
-      console.log("✅ Token valido, no es necesario solicitar uno nuevo");
       return this.token;
     }
 
-    console.log("🔄 Token no valido o expirado, solicitando uno nuevo...");
+    if (!cfg.username || !cfg.accessKey) {
+      throw new Error('Faltan SIIGO_USERNAME o SIIGO_ACCESS_KEY en el entorno');
+    }
+
     try {
-      // Hacer autenticacion con el API de Siigo para obtener un token de acceso
-      const response = await axios.post(`${this.baseURL}/auth`, {
-        username: process.env.SIIGO_USERNAME,
-        access_key: process.env.SIIGO_ACCESS_KEY
+      const { data } = await http.post('/auth', {
+        username: cfg.username,
+        access_key: cfg.accessKey,
       });
 
-      // Extraemos el token y su tiempo de vida de la respuesta
-      const data = response.data;
-      this.token = data.access_token; // Corregido: era access_token, no access_key
-
-      // Siigo nos dice en cuantos segundos expira el token (suelen ser 24 horas)
-      const expiresInSeconds = data.expires_in || 86400; // 24 horas por defecto
+      this.token = data.access_token;
+      const expiresInSeconds = data.expires_in || 86400;
+      // Se resta un margen de 5 minutos para no usar un token al borde de expirar.
       this.tokenExpiresAt = new Date(Date.now() + (expiresInSeconds - 300) * 1000);
 
-      console.log(`✅ Token obtenido, expira en: ${this.tokenExpiresAt}`);
-      
-      // PAUSA ESTRATÉGICA: Siigo Sandbox bloquea si hay > 1 petición por segundo.
-      // Como acabamos de consumir 1 petición pidiendo el token, esperamos 1.5 seg
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await sleep(1500); // Respetar el limite de peticiones por segundo.
       return this.token;
-
     } catch (error) {
-      console.error('❌ Error al obtener el token de autenticación:', error.response?.data || error.message);
-      throw new Error('No se pudo obtener el token de autenticación');
+      console.error('Siigo: fallo la autenticacion:', error.response?.data || error.message);
+      throw new Error('No se pudo obtener el token de autenticacion de Siigo');
     }
   }
 
-  /**
-   * Generar los headers estandarizados.
-   */
   async getHeaders() {
     const token = await this.getAuthToken();
     return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'Partner-Id': 'iTeaSoftApp'
+      Authorization: `Bearer ${token}`,
+      'Partner-Id': cfg.partnerId,
     };
   }
 
   /**
-   * FASE 2: Buscar o crear un cliente en Siigo
-   * Recibe los datos basicos de nuestro sistema y asegura que el cliente exista alla.
+   * Busca el tercero por documento y lo crea si no existe.
+   * Con `soloBuscar` no crea nada: si no existe devuelve un tercero tentativo armado desde
+   * la persona. Es lo que usa el modo dry-run para no escribir en Siigo.
    */
-  async getOrCreateCustomer(clienteData) {
-    // 1. Siempre pedimos los headers (que ya incluyen nuestro token magico)
+  async getOrCreateCustomer(persona, { soloBuscar = false } = {}) {
     const headers = await this.getHeaders();
-    const documento = clienteData.documento;
+    const documento = persona.documento;
 
-    console.log(`🔍 Buscando cliente ${documento} en Siigo...`);
+    if (!documento) {
+      throw new Error(`La persona ${persona.id} no tiene documento; Siigo lo exige`);
+    }
 
     try {
-      // 2. Le preguntamos a Siigo: "Oye, ya tienes a alguien con esta cedula?"
-      const searchRes = await axios.get(`${this.baseURL}/v1/customers?identification=${documento}`, { headers });
-      
-      // Siigo nos devuelve un arreglo 'results'. Si trae algo, el cliente ya existe.
-      if (searchRes.data.results && searchRes.data.results.length > 0) {
-        console.log('✅ El cliente ya existe en Siigo.');
-        return searchRes.data.results[0]; // Retornamos el cliente existente
+      const { data: busqueda } = await http.get(
+        `/v1/customers?identification=${encodeURIComponent(documento)}`,
+        { headers },
+      );
+
+      if (busqueda.results && busqueda.results.length > 0) {
+        return busqueda.results[0];
       }
 
-      console.log('⚠️ El cliente no existe. Creandolo en Siigo...');
+      if (soloBuscar) {
+        // El dry-run no debe escribir nada en Siigo.
+        return { identification: String(documento), noExisteAun: true };
+      }
 
-      // 3. Si no existe, lo creamos. Siigo es MUY estricto con el formato de los datos.
+      // TODO Fase 2: id_type y person_type deben salir de TiposDocumento, y la direccion
+      // de campos reales de Personas. Hoy siguen siendo valores fijos de persona natural.
       const payload = {
-        type: 'Customer',                // Customer (Cliente) o Supplier (Proveedor)
+        type: 'Customer',
         person_type: 'Person',
-        id_type: '13',                 // '13' es Cedula de Ciudadania en la DIAN
-        identification: documento,
-        name: [
-          clienteData.nombres, 
-          clienteData.apellidos || 'Apellidos' // Siigo obliga a mandar apellido si es 'Person'
-        ],
+        id_type: '13',
+        identification: String(documento),
+        name: [persona.nombres, persona.apellidos || 'Apellidos'],
         address: {
-          address: 'Direccion generica', // Si no tenemos la real, mandamos una generica
-          city: {
-            country_code: 'Co',
-            state_code: '11',           // 11 = Bogota
-            city_code: '11001'          // 11001 = Bogota (Siigo exige un codigo DANE real)
-          }
+          address: 'Direccion generica',
+          city: { country_code: 'Co', state_code: '11', city_code: '11001' },
         },
-        phones: [
-          {
-            indicator: '57',
-            number: clienteData.telefono || '3000000000'
-          }
-        ],
+        phones: [{ indicator: '57', number: persona.telefono || '3000000000' }],
         contacts: [
           {
-            first_name: clienteData.nombres,
-            last_name: clienteData.apellidos || 'Apellidos',
-            email: clienteData.email || 'correo@pordefecto.com',
-            phone: {
-              indicator: '57',
-              number: clienteData.telefono || '3000000000'
-            }
-          }
+            first_name: persona.nombres,
+            last_name: persona.apellidos || 'Apellidos',
+            email: persona.email || 'correo@pordefecto.com',
+            phone: { indicator: '57', number: persona.telefono || '3000000000' },
+          },
         ],
-        fiscal_responsibilities: [
-          { code: 'R-99-PN' } // Codigo estandar para persona natural (No responsable de IVA)
-        ]
+        fiscal_responsibilities: [{ code: 'R-99-PN' }],
       };
 
-      // Hacemos el POST para inyectarlo en Siigo
-      const createRes = await axios.post(`${this.baseURL}/v1/customers`, payload, { headers });
-      console.log('✅ Cliente creado exitosamente en Siigo!');
-      
-      return createRes.data;
-
+      const { data: creado } = await http.post('/v1/customers', payload, { headers });
+      return creado;
     } catch (error) {
-      console.error('❌ Error al sincronizar cliente en Siigo:', error.response?.data || error.message);
+      console.error('Siigo: fallo la sincronizacion del cliente:', error.response?.data || error.message);
       throw new Error('Fallo al crear o buscar el cliente en Siigo');
     }
   }
 
   /**
-   * FASE 3: Crear Factura de Venta en Siigo
-   * Mapea nuestra venta interna al formato exigido por Siigo.
+   * Arma el payload de la factura sin enviarlo. Separado de la emision para poder
+   * inspeccionarlo en modo dry-run y persistirlo siempre.
+   *
+   * TODO Fase 2: una linea por cada DetalleVenta (costo de proveedor con Tercero, `ta` con
+   * el codigo IP de la categoria, `ta_cre` con el codigo 004), `cost_center`, `price` como
+   * base gravable y `taxes` explicitos. Hoy emite una sola linea generica sin impuestos.
    */
-  async createInvoice(ventaData, customerSiigo) {
-    const headers = await this.getHeaders();
-    
-    // Asumimos que queremos facturar la "TA TOTAL NETA" que el usuario cobra
-    const montoFacturar = ventaData.taTotalNeta || ventaData.montoTotal;
+  buildInvoicePayload(venta, customerSiigo, opciones = {}) {
+    const monto = venta.montoTotal;
 
-    const payload = {
-      document: {
-        id: 2372 // Volvemos al documento estándar
-      },
-      // Sandbox de Siigo es compartido y tiene muchísimas facturas, 
-      // generamos un número aleatorio grande de 8 dígitos para esquivar colisiones
-      number: Math.floor(Math.random() * 90000000) + 10000000, 
+    return {
+      document: { id: cfg.documentId },
+      // Sin `number`: el documento configurado usa numeracion automatica y la consecutiva de
+      // factura electronica la controla la DIAN.
       date: new Date().toISOString().split('T')[0],
       customer: {
         identification: customerSiigo.identification,
-        branch_office: 0
+        branch_office: 0,
       },
-      seller: 916, // ID real del usuario sandbox@siigoapi.com
+      seller: cfg.sellerId,
+      observations: venta.observaciones || '',
       items: [
         {
-          code: 'SRV-002', // El código que creaste
-          description: `Servicios turísticos (Ref: ${ventaData.id})`,
+          code: opciones.itemCode || cfg.itemCodeDefault,
+          description: `Servicios turisticos (Ref: ${venta.id})`,
           quantity: 1,
-          price: montoFacturar
-        }
+          price: monto,
+        },
       ],
       payments: [
         {
-          id: 8147, // ID Interno del método "Efectivo"
-          value: montoFacturar
-        }
-      ]
+          id: opciones.paymentTypeId || cfg.paymentTypeDefault,
+          value: monto,
+        },
+      ],
     };
+  }
 
-    console.log(`🧾 Emitiendo factura a Siigo por $${montoFacturar}...`);
+  /**
+   * Emite la factura. En modo dry-run devuelve el payload y no llama a Siigo.
+   */
+  async createInvoice(venta, customerSiigo, opciones = {}) {
+    const payload = this.buildInvoicePayload(venta, customerSiigo, opciones);
+
+    if (cfg.dryRun) {
+      if (customerSiigo.noExisteAun) {
+        console.log(`Siigo DRY RUN: el tercero ${customerSiigo.identification} aun no existe en Siigo; se crearia al emitir.`);
+      }
+      console.log(`Siigo DRY RUN: venta ${venta.id} no se envio. Payload construido.`);
+      return { dryRun: true, payload };
+    }
+
+    const headers = await this.getHeaders();
+    await sleep(1500);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Evitar Rate Limit
-      const response = await axios.post(`${this.baseURL}/v1/invoices`, payload, { headers });
-      console.log('✅ Factura creada exitosamente en Siigo:', response.data.name);
-      return response.data; // Retorna los detalles, incluyendo el ID de la factura en Siigo
+      const { data } = await http.post('/v1/invoices', payload, { headers });
+      return { dryRun: false, payload, respuesta: data };
     } catch (error) {
-      console.error('❌ Error al crear factura en Siigo:', JSON.stringify(error.response?.data, null, 2));
-      throw new Error('Fallo al emitir la factura en Siigo');
+      const detalle = error.response?.data;
+      console.error('Siigo: fallo la emision de la factura:', JSON.stringify(detalle, null, 2));
+      const err = new Error(
+        detalle?.Errors?.[0]?.Message || detalle?.message || 'Fallo al emitir la factura en Siigo',
+      );
+      err.siigoDetalle = detalle;
+      err.siigoPayload = payload;
+      throw err;
     }
   }
 }

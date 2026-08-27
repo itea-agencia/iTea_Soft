@@ -143,9 +143,25 @@ VoucherPDF        →  tabla de pasajeros; columna ASIENTO REGRESO solo si isRou
 
 ### Contrato del formulario
 
-El formulario deja de fabricar filas en el render. La normalización (garantizar al menos un
-pasajero, garantizar que exactamente uno sea titular) se hace en un efecto que **sí
-commitea** vía `onChange`, de modo que el estado y lo que se ve coincidan siempre.
+El formulario deja de fabricar filas en el render: el estado es la única fuente, así que lo
+que se ve es siempre lo que se enviará.
+
+El invariante —al menos un pasajero, exactamente uno titular— se mantiene **en cada sitio de
+escritura**, no en un efecto: `INITIAL_LAND_TRAVEL` siembra el titular, "Añadir Pasajero"
+agrega con `esTitular: false`, el botón de eliminar no se renderiza sobre el titular, y el
+radio de titular hace un `map` que deja exactamente uno en `true`.
+
+La primera implementación usaba un `useEffect` que llamaba `onChange` para normalizar. Se
+descartó al revisar contra la skill `vercel-react-best-practices`: viola
+`rerender-derived-state-no-effect` ("do not set state in effects solely in response to prop
+changes") y `rerender-dependencies` (la dependencia era el array `travel.passengers`, no un
+primitivo). Además introducía un riesgo propio: cuando `NewSaleWizard.tsx:1666` cae al
+`|| INITIAL_LAND_TRAVEL(client)`, el array se recrea en cada render y el efecto se disparaba,
+y el `onChange` del wizard (`next[activeIdx] = { ...next[activeIdx], ...updates }`) habría
+escrito un ítem con solo `passengers` y sin operador, origen ni destino.
+
+Lo único que queda derivado en render es cosmético: si por datos heredados ningún pasajero
+tuviera `esTitular`, se resalta el primero (`hayTitular`), sin escribir estado.
 
 Los dos `FormField` de asiento a nivel producto (`LandTravelForm.tsx:83-89` y `:131-137`)
 desaparecen. La tabla de pasajeros gana una columna "Asiento Regreso" que solo se renderiza

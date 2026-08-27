@@ -1,153 +1,110 @@
 ---
 name: api-design-principles
-description: Master REST API design principles specific to Node.js and Express to build scalable, maintainable, and robust backend services. Use when designing new Express routes, establishing API standards, or refactoring Express controllers.
+description: Master REST and GraphQL API design principles to build intuitive, scalable, and maintainable APIs that delight developers. Use when designing new APIs, reviewing API specifications, or establishing API design standards.
 ---
 
-# Express.js API Design Principles
+# API Design Principles
 
-Master REST API design principles for Node.js and Express to build intuitive, scalable, and maintainable backend services that delight developers and stand the test of time.
+Master REST and GraphQL API design principles to build intuitive, scalable, and maintainable APIs that delight developers and stand the test of time.
 
 ## When to Use This Skill
 
-- Designing new Express REST APIs
-- Refactoring existing Express routes and controllers
-- Establishing Express API design standards for your team
-- Reviewing API specifications before implementation in Node.js
-- Creating developer-friendly Express API documentation
-- Implementing middleware architectures for authentication, validation, and error handling
+- Designing new REST or GraphQL APIs
+- Refactoring existing APIs for better usability
+- Establishing API design standards for your team
+- Reviewing API specifications before implementation
+- Migrating between API paradigms (REST to GraphQL, etc.)
+- Creating developer-friendly API documentation
+- Optimizing APIs for specific use cases (mobile, third-party integrations)
 
 ## Core Concepts
 
-### 1. Resource-Oriented Architecture in Express
+### 1. RESTful Design Principles
 
-- **Noun-based Routes**: Resources are nouns (users, orders), not verbs.
-  - Good: `router.get('/users')`
-  - Bad: `router.get('/getUsers')`
-- **HTTP Methods Semantics**: Use Express router methods properly.
-  - `router.get()`: Retrieve resources (idempotent, safe)
-  - `router.post()`: Create new resources
-  - `router.put()`: Replace entire resource (idempotent)
-  - `router.patch()`: Partial resource updates
-  - `router.delete()`: Remove resources (idempotent)
-- **Nested Resources**: Represent hierarchy logically.
-  - `router.get('/users/:userId/orders')`
+**Resource-Oriented Architecture**
 
-### 2. The Express Middleware Pattern
+- Resources are nouns (users, orders, products), not verbs
+- Use HTTP methods for actions (GET, POST, PUT, PATCH, DELETE)
+- URLs represent resource hierarchies
+- Consistent naming conventions
 
-Middleware is the backbone of Express. Use it to cleanly separate cross-cutting concerns:
+**HTTP Methods Semantics:**
 
-- **Global Middleware**: Apply to all routes (CORS, body parsing, helmet).
-- **Route-specific Middleware**: Apply to specific routes (Authentication, Role Authorization, Input Validation).
-- **Error Handling Middleware**: A special 4-argument function `(err, req, res, next)` at the end of the middleware chain.
+- `GET`: Retrieve resources (idempotent, safe)
+- `POST`: Create new resources
+- `PUT`: Replace entire resource (idempotent)
+- `PATCH`: Partial resource updates
+- `DELETE`: Remove resources (idempotent)
+
+### 2. GraphQL Design Principles
+
+**Schema-First Development**
+
+- Types define your domain model
+- Queries for reading data
+- Mutations for modifying data
+- Subscriptions for real-time updates
+
+**Query Structure:**
+
+- Clients request exactly what they need
+- Single endpoint, multiple operations
+- Strongly typed schema
+- Introspection built-in
 
 ### 3. API Versioning Strategies
 
-**URL Versioning (Recommended in Express):**
+**URL Versioning:**
 
-```javascript
-const v1Router = express.Router();
-const v2Router = express.Router();
-
-app.use('/api/v1', v1Router);
-app.use('/api/v2', v2Router);
+```
+/api/v1/users
+/api/v2/users
 ```
 
-## Detailed Patterns and Practices
+**Header Versioning:**
 
-### 1. Controllers and Routing
-
-Keep your routes file clean by extracting logic into controllers.
-
-```javascript
-// routes/users.routes.js
-const express = require('express');
-const router = express.Router();
-const userController = require('../controllers/users.controller');
-const { validateUser } = require('../middlewares/validation');
-
-router.get('/', userController.getUsers);
-router.post('/', validateUser, userController.createUser);
-router.get('/:id', userController.getUserById);
-
-module.exports = router;
+```
+Accept: application/vnd.api+json; version=1
 ```
 
-### 2. Asynchronous Error Handling
+**Query Parameter Versioning:**
 
-Avoid unhandled promise rejections by wrapping async controllers or using `express-async-errors`.
-
-```javascript
-// Using a wrapper
-const asyncHandler = fn => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
-
-router.get('/', asyncHandler(async (req, res) => {
-  const users = await User.find();
-  res.json(users);
-}));
+```
+/api/users?version=1
 ```
 
-### 3. Standardized Responses
+## Detailed patterns and worked examples
 
-Maintain a consistent JSON response structure.
-
-```javascript
-// Success response
-res.status(200).json({
-  success: true,
-  data: result,
-  message: "Operation successful" // optional
-});
-
-// Error response
-res.status(400).json({
-  success: false,
-  error: {
-    code: 'VALIDATION_ERROR',
-    message: 'Invalid email format'
-  }
-});
-```
-
-### 4. Input Validation
-
-Use libraries like Joi, Zod, or express-validator in middleware. Don't validate inside the controller.
-
-```javascript
-const { body, validationResult } = require('express-validator');
-
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ success: false, errors: errors.array() });
-  }
-  next();
-};
-
-router.post('/', [body('email').isEmail(), validate], controller.create);
-```
+Detailed pattern documentation lives in `references/details.md`. Read that file when the navigation tier above is insufficient.
 
 ## Best Practices
 
-1. **Use HTTP Status Codes Correctly**:
-   - `200 OK` for generic success
-   - `201 Created` for successful POST
-   - `204 No Content` for successful DELETE
-   - `400 Bad Request` for validation errors
-   - `401 Unauthorized` for missing/invalid auth
-   - `403 Forbidden` for lack of permissions
-   - `404 Not Found` for resource not found
-   - `500 Internal Server Error` for unhandled exceptions
-2. **Environment Variables**: Never hardcode secrets. Use `dotenv` and `process.env`.
-3. **Pagination**: Always paginate large collections using `req.query.limit` and `req.query.page`.
-4. **Rate Limiting**: Protect your API with `express-rate-limit`.
-5. **Security**: Use `helmet` to set secure HTTP headers, and `cors` for cross-origin configuration.
+### REST APIs
+
+1. **Consistent Naming**: Use plural nouns for collections (`/users`, not `/user`)
+2. **Stateless**: Each request contains all necessary information
+3. **Use HTTP Status Codes Correctly**: 2xx success, 4xx client errors, 5xx server errors
+4. **Version Your API**: Plan for breaking changes from day one
+5. **Pagination**: Always paginate large collections
+6. **Rate Limiting**: Protect your API with rate limits
+7. **Documentation**: Use OpenAPI/Swagger for interactive docs
+
+### GraphQL APIs
+
+1. **Schema First**: Design schema before writing resolvers
+2. **Avoid N+1**: Use DataLoaders for efficient data fetching
+3. **Input Validation**: Validate at schema and resolver levels
+4. **Error Handling**: Return structured errors in mutation payloads
+5. **Pagination**: Use cursor-based pagination (Relay spec)
+6. **Deprecation**: Use `@deprecated` directive for gradual migration
+7. **Monitoring**: Track query complexity and execution time
 
 ## Common Pitfalls
 
-- **Fat Controllers**: Putting too much business logic in controllers. Move logic to a Service layer.
-- **Hanging Requests**: Forgetting to call `res.send()` or `next()` leaving the client hanging.
-- **Leaking Stack Traces**: Sending raw error details in production. Ensure `NODE_ENV=production` hides them.
-- **Ignoring Async Errors**: Uncaught async errors crash Node.js. Always catch them and pass to `next(err)`.
-- **Inconsistent Error Formats**: Catch-all error handlers should ensure every error follows the exact same JSON format.
+- **Over-fetching/Under-fetching (REST)**: Fixed in GraphQL but requires DataLoaders
+- **Breaking Changes**: Version APIs or use deprecation strategies
+- **Inconsistent Error Formats**: Standardize error responses
+- **Missing Rate Limits**: APIs without limits are vulnerable to abuse
+- **Poor Documentation**: Undocumented APIs frustrate developers
+- **Ignoring HTTP Semantics**: POST for idempotent operations breaks expectations
+- **Tight Coupling**: API structure shouldn't mirror database schema

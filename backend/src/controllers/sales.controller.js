@@ -2624,13 +2624,14 @@ exports.sendVoucher = async (req, res, next) => {
 };
 
 exports.generateSiigoInvoice = async (req, res, next) => {
-  try {
-    const { id } = req.params;
+  const id = parseInt(req.params.id);
 
+  try {
     const venta = await prisma.ventas.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: {
-        cliente: { include: { persona: true } }
+        cliente: { include: { persona: true } },
+        facturaSiigo: true
       }
     });
 
@@ -2638,14 +2639,101 @@ exports.generateSiigoInvoice = async (req, res, next) => {
       return error(res, 'Venta no encontrada', 404);
     }
 
-    const customerSiigo = await siigoService.getOrCreateCustomer(venta.cliente.persona);
-    const siigoInvoice = await siigoService.createInvoice(venta, customerSiigo);
+    // Idempotencia: emitir factura electronica no se revierte (anular exige nota credito),
+    // asi que un segundo intento devuelve la factura existente en vez de crear otra.
+    if (venta.facturaSiigo && venta.facturaSiigo.estado === 'emitida') {
+      return success(res, {
+        message: 'La venta ya tiene factura emitida en Siigo',
+        yaEmitida: true,
+        siigoId: venta.facturaSiigo.siigoId,
+        numero: venta.facturaSiigo.numero,
+        publicUrl: venta.facturaSiigo.publicUrl,
+        emitidaAt: venta.facturaSiigo.emitidaAt
+      });
+    }
 
-    success(res, {
-      message: 'Factura generada exitosamente en Siigo',
-      siigoId: siigoInvoice.id,
-      invoiceName: siigoInvoice.name
+    // Se registra el intento antes de llamar a Siigo: si la peticion muere a mitad de camino
+    // queda rastro de que se intento.
+    await prisma.facturasSiigo.upsert({
+      where: { ventaId: id },
+      create: { ventaId: id, estado: 'pendiente', intentos: 1 },
+      update: { estado: 'pendiente', intentos: { increment: 1 }, ultimoError: null }
     });
+
+    try {
+      const persona = venta.cliente.persona;
+      // En dry-run no se crea el tercero: el modo de prueba no debe escribir en Siigo.
+      const customerSiigo = await siigoService.getOrCreateCustomer(persona, {
+        soloBuscar: siigoService.dryRun
+      });
+
+      // Guardar el id del tercero evita volver a buscarlo por documento en cada emision.
+      if (customerSiigo?.id && !customerSiigo.noExisteAun && customerSiigo.id !== persona.siigoCustomerId) {
+        await prisma.personas.update({
+          where: { id: persona.id },
+          data: { siigoCustomerId: String(customerSiigo.id) }
+        });
+      }
+
+      const resultado = await siigoService.createInvoice(venta, customerSiigo);
+
+      if (resultado.dryRun) {
+        await prisma.facturasSiigo.update({
+          where: { ventaId: id },
+          data: {
+            estado: 'pendiente',
+            montoFacturado: venta.montoTotal,
+            payloadEnviado: resultado.payload,
+            ultimoError: null
+          }
+        });
+
+        return success(res, {
+          dryRun: true,
+          message: 'SIIGO_DRY_RUN activo: el payload se construyo y se guardo, pero no se envio a Siigo',
+          payload: resultado.payload
+        });
+      }
+
+      const r = resultado.respuesta;
+
+      await prisma.facturasSiigo.update({
+        where: { ventaId: id },
+        data: {
+          estado: 'emitida',
+          siigoId: r.id || null,
+          numero: r.name || null,
+          cufe: r.stamp?.cufe || null,
+          publicUrl: r.public_url || null,
+          montoFacturado: r.total ?? venta.montoTotal,
+          payloadEnviado: resultado.payload,
+          respuesta: r,
+          emitidaAt: new Date(),
+          ultimoError: null
+        }
+      });
+
+      return success(res, {
+        message: 'Factura generada en Siigo',
+        siigoId: r.id,
+        numero: r.name,
+        publicUrl: r.public_url || null,
+        // "Draft" significa creada pero sin timbrar ante la DIAN. El timbrado es manual.
+        estampilla: r.stamp?.status || null
+      });
+
+    } catch (err) {
+      await prisma.facturasSiigo.update({
+        where: { ventaId: id },
+        data: {
+          estado: 'fallida',
+          ultimoError: String(err.message || err).slice(0, 1000),
+          payloadEnviado: err.siigoPayload ?? undefined,
+          respuesta: err.siigoDetalle ?? undefined
+        }
+      }).catch(() => { /* no tapar el error original si falla el registro */ });
+      throw err;
+    }
 
   } catch (err) {
     next(err);

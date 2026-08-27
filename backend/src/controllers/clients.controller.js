@@ -3,6 +3,27 @@ const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
 
+// Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
+// por documento en cada emision de factura. Se ejecuta en segundo plano: si Siigo esta
+// caido, el cliente ya quedo creado en iTea y `siigo_customer_id` queda nulo, lo que
+// permite detectar los pendientes y reintentar.
+function sincronizarConSiigo(persona, contexto) {
+  if (!persona?.documento) return;
+
+  siigoService.getOrCreateCustomer(persona)
+    .then(async (customerSiigo) => {
+      if (customerSiigo?.id && customerSiigo.id !== persona.siigoCustomerId) {
+        await prisma.personas.update({
+          where: { id: persona.id },
+          data: { siigoCustomerId: String(customerSiigo.id) }
+        });
+      }
+    })
+    .catch((siigoError) => {
+      console.error(`Siigo: fallo la sincronizacion del cliente (${contexto}):`, siigoError.message);
+    });
+}
+
 exports.list = async (req, res, next) => {
   try {
     const { page, perPage, skip } = req.pagination;
@@ -215,13 +236,7 @@ exports.create = async (req, res, next) => {
       });
     }
 
-    // Sincronización en segundo plano con Siigo
-    // Lo ejecutamos sin await para no bloquear la respuesta al frontend
-    if (persona.documento) {
-      siigoService.getOrCreateCustomer(persona).catch(siigoError => {
-        console.error("El cliente se creó en iTea pero falló la sincronización automática con Siigo", siigoError.message);
-      });
-    }
+    sincronizarConSiigo(persona, 'creacion');
 
     success(res, {
       id: cliente.id,
@@ -286,12 +301,7 @@ exports.update = async (req, res, next) => {
       });
     }
 
-    // Sincronización en segundo plano con Siigo
-    if (updatedPersona.documento) {
-      siigoService.getOrCreateCustomer(updatedPersona).catch(err => {
-        console.error("Falló la sincronización con Siigo al actualizar el cliente", err.message);
-      });
-    }
+    sincronizarConSiigo(updatedPersona, 'actualizacion');
 
     success(res, { message: 'Cliente actualizado' });
   } catch (err) {
