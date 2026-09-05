@@ -34,15 +34,15 @@ services:
       # 831 = info@samturtravel.com (SAMTUR TRAVEL AGENCY SAS)
       - key: SIIGO_SELLER_ID
         value: "831"
-      # CRE quedo INACTIVO en Siigo. Se define en la Fase 2, por categoria.
-      - key: SIIGO_ITEM_CODE_DEFAULT
-        value: ""
-      # 12467 = Otros
+      # 12467 = Otros. Respaldo cuando el metodo de pago de la venta no tiene
+      # equivalente en Siigo (PSE, Llaves, Tarjeta Davivienda, CTA CTE 2060...).
       - key: SIIGO_PAYMENT_TYPE_DEFAULT
         value: "12467"
       # 8872 = IVA 19%
       - key: SIIGO_IVA_TAX_ID
         value: "8872"
+      - key: SIIGO_IVA_RATE
+        value: "0.19"
       # Mantener en true hasta que contabilidad valide el mapeo de la Fase 2.
       - key: SIIGO_DRY_RUN
         value: "true"

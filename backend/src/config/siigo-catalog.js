@@ -14,6 +14,8 @@
  * Los códigos 'S100', 'TA', 'TKTS' y 'CRE' quedaron INACTIVOS en Siigo; no usarlos.
  */
 
+const env = require('./env');
+
 // categoría de iTea -> { código IT, código IP, centro de costo }
 const CATEGORIAS = {
   tiqueteria:               { it: '030', ip: '031', costCenter: 10682, nombre: 'Tiquetería' },
@@ -56,9 +58,10 @@ const FORMAS_PAGO = {
   'consignacion': 12466,
 };
 
-// 12467 "Otros". Cubre PSE, Llaves, Tarjeta Davivienda, CTA CTE 2060 y Tarjeta de
-// Bancolombia, que no tienen equivalente propio en la cuenta de Siigo.
-const FORMA_PAGO_OTROS = 12467;
+// Cubre PSE, Llaves, Tarjeta Davivienda, CTA CTE 2060 y Tarjeta de Bancolombia, que no
+// tienen equivalente propio en la cuenta de Siigo. Configurable por SIIGO_PAYMENT_TYPE_DEFAULT;
+// 12467 es "Otros".
+const FORMA_PAGO_OTROS = env.siigo.paymentTypeDefault;
 
 // Códigos DIAN de tipo de identificación, por abreviatura de `tipos_documento`.
 // Confirmado contra los terceros reales de Siigo: CC va como 13 y NIT como 31.

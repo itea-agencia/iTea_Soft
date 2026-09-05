@@ -14,11 +14,9 @@ const siigo = {
   documentId: parseInt(process.env.SIIGO_DOCUMENT_ID, 10) || 30685,
   // Vendedor: 831 = info@samturtravel.com (SAMTUR TRAVEL AGENCY SAS).
   sellerId: parseInt(process.env.SIIGO_SELLER_ID, 10) || 831,
-  // Codigo de producto de respaldo. Sin valor por defecto a proposito: 'CRE' quedo
-  // INACTIVO en Siigo el 2026-09-04, igual que 'TA', 'TKTS' y 'S100'. El codigo correcto
-  // depende de la categoria y se resuelve en la Fase 2.
-  itemCodeDefault: process.env.SIIGO_ITEM_CODE_DEFAULT || '',
-  // Forma de pago de respaldo: 12467 = "Otros".
+  // Forma de pago de respaldo cuando el metodo de la venta no tiene equivalente en Siigo
+  // (PSE, Llaves, Tarjeta Davivienda, CTA CTE 2060, Tarjeta de Bancolombia).
+  // 12467 = "Otros". Lo consume siigo-catalog.js.
   paymentTypeDefault: parseInt(process.env.SIIGO_PAYMENT_TYPE_DEFAULT, 10) || 12467,
   // Id del impuesto IVA 19% en la cuenta real.
   ivaTaxId: parseInt(process.env.SIIGO_IVA_TAX_ID, 10) || 8872,
