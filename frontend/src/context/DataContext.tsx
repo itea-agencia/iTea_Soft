@@ -113,7 +113,7 @@ const emptyData: AppData = {
   config: {
     cards: [], paymentMethods: [], documentTypes: [],
     airlines: [], suppliers: [], airports: [],
-    baggage: [], packages: [],
+    baggage: [], packages: [], cities: [],
     rolePermissions: {
       asesor: DEFAULT_ASESOR_PERMISSIONS,
       freelancer: DEFAULT_FREELANCER_PERMISSIONS,
@@ -248,6 +248,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           airports: configAll.airports || [],
           baggage: configAll.baggage || [],
           packages: configAll.packages || [],
+          cities: configAll.cities || [],
         });
       }
       setData(prev => ({
@@ -261,6 +262,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           airports: configAll?.airports || [],
           baggage: configAll?.baggage || [],
           packages: configAll?.packages || [],
+          cities: configAll?.cities || [],
           rolePermissions: resolvedRolePermissions,
         }
       }));

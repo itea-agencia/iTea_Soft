@@ -109,6 +109,11 @@ model Personas {
   telefono         String?
   birthDate        DateTime?          @map("birth_date")
   nacionalidad     String?
+  // Direccion y ciudad: opcionales en iTea, pero Siigo las exige al crear el tercero.
+  // La ciudad se guarda como codigo DANE de 5 digitos (ver config/ciudades-dane.js);
+  // el departamento son sus dos primeros digitos, asi que no hace falta guardarlo.
+  direccion        String?
+  ciudadCodigoDane String?            @map("ciudad_codigo_dane")
   avatarUrl        String?            @map("avatar_url")
   // Id del tercero en Siigo. Evita buscar por documento en cada emision.
   // Ojo: los ids de la sandbox no sirven en produccion; al cambiar de cuenta hay que limpiarlos.

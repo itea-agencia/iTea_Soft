@@ -66,6 +66,20 @@ async function getSale(saleId) {
   return prisma.ventas.findUnique({ where: { id } });
 }
 
+// El proveedor llega con tres nombres segun el formulario: `supplier` (tiqueteria,
+// hoteleria, planes, seguros), `supplierName` (los trece que usan FinancialSection) o
+// `supplierId`. Puede venir como id numerico o como nombre.
+async function resolverProveedorId(tx, data) {
+  const bruto = data.supplierId ?? data.supplier ?? data.supplierName;
+  if (bruto === undefined || bruto === null || bruto === '') return null;
+
+  const id = parseInt(bruto, 10);
+  if (!Number.isNaN(id)) return id;
+
+  const match = await tx.proveedores.findFirst({ where: { nombre: String(bruto) } });
+  return match?.id || null;
+}
+
 async function createDetalleProducto(tx, ventaId, categoria, data) {
   return tx.detalleVenta.create({
     data: {
@@ -76,7 +90,9 @@ async function createDetalleProducto(tx, ventaId, categoria, data) {
       ta: data.ta || 0,
       taCre: data.taCre || 0,
       costoProveedor: data.supplierCost || 0,
-      proveedorId: data.supplierId ? parseInt(data.supplierId) : null,
+      // Mismo criterio que sales.controller: el proveedor llega como `supplier`,
+      // `supplierName` o `supplierId` segun el formulario.
+      proveedorId: await resolverProveedorId(tx, data),
       metodoPagoProveedorId: data.supplierPaymentMethod ? parseInt(data.supplierPaymentMethod) : null,
       voucherUrl: data.voucherUrl || null,
       fechaInicioViaje: data.startDate ? new Date(data.startDate) : null,

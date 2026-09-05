@@ -5,7 +5,7 @@ import { Card, CardHeader } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { FormField, Input, Select } from '../components/ui/Form';
+import { FormField, Input, Select, Combobox } from '../components/ui/Form';
 import { Table, TableRow, TableCell } from '../components/ui/Table';
 import StatCard from '../components/ui/StatCard';
 import SortIcon from '../components/ui/SortIcon';
@@ -144,10 +144,22 @@ export default function Clients() {
     phone: '',
     email: '',
     birthDate: '',
+    address: '',
+    cityCode: '',
     status: 'active' as 'active' | 'inactive',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // 61 ciudades: se calculan las opciones una sola vez en vez de en cada pulsacion de
+  // tecla del formulario, que es cuando cambia formData.
+  const cityOptions = useMemo(
+    () => (data.config.cities || []).map(c => ({
+      value: c.code,
+      label: `${c.name} — ${c.state}`,
+    })),
+    [data.config.cities],
+  );
 
 
 
@@ -163,6 +175,8 @@ export default function Clients() {
         phone: client.phone,
         email: client.email,
         birthDate: client.birthDate || '',
+        address: client.address || '',
+        cityCode: client.cityCode || '',
         status: client.status,
       });
     } else {
@@ -175,6 +189,8 @@ export default function Clients() {
         phone: '',
         email: '',
         birthDate: '',
+        address: '',
+        cityCode: '',
         status: 'active',
       });
     }
@@ -770,6 +786,22 @@ export default function Clients() {
                   maxLength={40}
                 />
               </FormField>
+              <FormField label="Dirección">
+                <Input
+                  value={formData.address}
+                  onChange={e => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Calle 10 # 43-25, Apto 502"
+                  maxLength={100}
+                />
+              </FormField>
+              <FormField label="Ciudad">
+                <Combobox
+                  value={formData.cityCode}
+                  onChange={val => setFormData({ ...formData, cityCode: val })}
+                  options={cityOptions}
+                  placeholder="Buscar ciudad..."
+                />
+              </FormField>
               <FormField label="Estado">
                 <Select
                   value={formData.status}
@@ -797,4 +829,4 @@ export default function Clients() {
   );
 }
 
-
+

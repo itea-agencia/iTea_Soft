@@ -1,5 +1,7 @@
 const axios = require('axios');
 const env = require('../config/env');
+const catalogo = require('../config/siigo-catalog');
+const ciudadesDane = require('../config/ciudades-dane');
 
 const cfg = env.siigo;
 
@@ -100,18 +102,27 @@ class SiigoService {
         return { identification: String(documento), noExisteAun: true };
       }
 
-      // TODO Fase 2: id_type y person_type deben salir de TiposDocumento, y la direccion
-      // de campos reales de Personas. Hoy siguen siendo valores fijos de persona natural.
+      // El tipo de identificacion sale de TiposDocumento, no fijo: un cliente con NIT es
+      // una empresa y Siigo lo rechaza si se envia como persona natural.
+      const { idType, personType, fiscalResponsibility } = catalogo.resolverIdentificacion(
+        persona.tipoDocumento?.abreviatura,
+      );
+
+      // Direccion y ciudad son opcionales en iTea pero obligatorias para Siigo. Cuando el
+      // cliente no las tiene se cae a Bogota, que es lo que se venia enviando para todos.
+      const ciudad = ciudadesDane.aCiudadSiigo(persona.ciudadCodigoDane)
+        || { country_code: 'Co', state_code: '11', city_code: '11001' };
+      const direccion = persona.direccion || 'No registrada';
+
       const payload = {
         type: 'Customer',
-        person_type: 'Person',
-        id_type: '13',
+        person_type: personType,
+        id_type: idType,
         identification: String(documento),
-        name: [persona.nombres, persona.apellidos || 'Apellidos'],
-        address: {
-          address: 'Direccion generica',
-          city: { country_code: 'Co', state_code: '11', city_code: '11001' },
-        },
+        name: personType === 'Company'
+          ? [`${persona.nombres} ${persona.apellidos || ''}`.trim()]
+          : [persona.nombres, persona.apellidos || 'Apellidos'],
+        address: { address: direccion, city: ciudad },
         phones: [{ indicator: '57', number: persona.telefono || '3000000000' }],
         contacts: [
           {
@@ -121,7 +132,7 @@ class SiigoService {
             phone: { indicator: '57', number: persona.telefono || '3000000000' },
           },
         ],
-        fiscal_responsibilities: [{ code: 'R-99-PN' }],
+        fiscal_responsibilities: [{ code: fiscalResponsibility }],
       };
 
       const { data: creado } = await http.post('/v1/customers', payload, { headers });
@@ -133,64 +144,182 @@ class SiigoService {
   }
 
   /**
+   * Convierte un monto con IVA incluido en la base gravable que espera Siigo.
+   * Los importes de iTea vienen con IVA; Siigo recibe la base y calcula el impuesto.
+   * Seis decimales, como en las facturas que emite el equipo a mano.
+   */
+  static baseGravable(montoConIva) {
+    const base = montoConIva / (1 + cfg.ivaRate);
+    return Math.round(base * 1e6) / 1e6;
+  }
+
+  /**
    * Arma el payload de la factura sin enviarlo. Separado de la emision para poder
    * inspeccionarlo en modo dry-run y persistirlo siempre.
    *
-   * TODO Fase 2: una linea por cada DetalleVenta (costo de proveedor con Tercero, `ta` con
-   * el codigo IP de la categoria, `ta_cre` con el codigo 004), `cost_center`, `price` como
-   * base gravable y `taxes` explicitos. Hoy emite una sola linea generica sin impuestos.
+   * Estructura, tomada de las facturas reales de Samtur: hasta tres lineas por cada
+   * DetalleVenta, y un solo cost_center a nivel documento.
+   *
+   *   costo_proveedor -> codigo IT de la categoria, con el proveedor como Tercero, sin IVA
+   *   ta              -> codigo IP de la categoria, IVA 19%
+   *   ta_cre (TA SAE) -> codigo 004, IVA 19%
    */
-  buildInvoicePayload(venta, customerSiigo, opciones = {}) {
-    const monto = venta.montoTotal;
+  buildInvoicePayload(venta, customerSiigo) {
+    const detalles = venta.detalleVentas || [];
+    const advertencias = [];
 
-    return {
+    if (detalles.length === 0) {
+      throw Object.assign(
+        new Error(`La venta ${venta.id} no tiene servicios que facturar`),
+        { statusCode: 422, code: 'SIIGO_VENTA_SIN_DETALLES' },
+      );
+    }
+
+    const items = [];
+    let sumaLineas = 0;
+
+    for (const detalle of detalles) {
+      const mapeo = catalogo.resolverCategoria(detalle.categoria);
+      // `nombreServicio` suele repetir el nombre de la categoria; se evita la duplicacion.
+      const detalleNombre = detalle.nombreServicio && detalle.nombreServicio !== mapeo.nombre
+        ? `${mapeo.nombre} - ${detalle.nombreServicio}`
+        : mapeo.nombre;
+
+      const costoProveedor = Number(detalle.costoProveedor) || 0;
+      const ta = Number(detalle.ta) || 0;
+      const taCre = Number(detalle.taCre) || 0;
+
+      // Linea IT: lo que se le paga al proveedor. Va sin impuestos y lleva Tercero.
+      if (costoProveedor > 0) {
+        const item = {
+          code: mapeo.it,
+          description: detalleNombre,
+          quantity: 1,
+          price: costoProveedor,
+        };
+
+        // El Tercero es obligatorio en la linea IT: es el ingreso que se le atribuye al
+        // proveedor. Sin el, la factura queda contablemente mal imputada, asi que se corta
+        // aqui en vez de emitirla incompleta.
+        if (!detalle.proveedor) {
+          throw Object.assign(
+            new Error(`El servicio de ${mapeo.nombre} no tiene proveedor asignado y su costo debe facturarse a nombre del Tercero`),
+            { statusCode: 422, code: 'SIIGO_DETALLE_SIN_PROVEEDOR' },
+          );
+        }
+        if (!detalle.proveedor.documento) {
+          throw Object.assign(
+            new Error(`El proveedor "${detalle.proveedor.nombre}" no tiene documento registrado. Cargalo en Configuracion > Proveedores para poder facturar.`),
+            { statusCode: 422, code: 'SIIGO_PROVEEDOR_SIN_DOCUMENTO' },
+          );
+        }
+
+        item.customer = {
+          identification: String(detalle.proveedor.documento),
+          branch_office: 0,
+        };
+
+        items.push(item);
+        sumaLineas += costoProveedor;
+      }
+
+      // Linea IP: la tarifa administrativa de la agencia.
+      if (ta > 0) {
+        items.push({
+          code: mapeo.ip,
+          description: `${mapeo.nombre} - Tarifa Administrativa`,
+          quantity: 1,
+          price: SiigoService.baseGravable(ta),
+          taxes: [{ id: cfg.ivaTaxId }],
+        });
+        sumaLineas += ta;
+      }
+
+      // Linea SAE: el campo que la interfaz llama TA SAE.
+      if (taCre > 0) {
+        items.push({
+          code: catalogo.CODIGO_SAE,
+          description: 'Servicios Administrativos Especializados',
+          quantity: 1,
+          price: SiigoService.baseGravable(taCre),
+          taxes: [{ id: cfg.ivaTaxId }],
+        });
+        sumaLineas += taCre;
+      }
+    }
+
+    if (items.length === 0) {
+      throw Object.assign(
+        new Error(`La venta ${venta.id} no tiene importes que facturar`),
+        { statusCode: 422, code: 'SIIGO_VENTA_SIN_IMPORTES' },
+      );
+    }
+
+    // Si las lineas no suman el total de la venta, algo esta mal contado. Se corta aqui
+    // en vez de emitir una factura por un valor distinto al de la venta.
+    const montoTotal = Number(venta.montoTotal) || 0;
+    if (Math.abs(sumaLineas - montoTotal) > 1) {
+      throw Object.assign(
+        new Error(
+          `Las lineas suman ${sumaLineas.toFixed(2)} pero la venta ${venta.id} vale ${montoTotal.toFixed(2)}`,
+        ),
+        { statusCode: 422, code: 'SIIGO_TOTALES_NO_CUADRAN' },
+      );
+    }
+
+    const observaciones = [venta.observaciones, venta.responsable?.persona
+      ? `RESPONSABLE ${venta.responsable.persona.nombres} ${venta.responsable.persona.apellidos}`.toUpperCase()
+      : null]
+      .filter(Boolean)
+      .join('\n');
+
+    const payload = {
       document: { id: cfg.documentId },
-      // Sin `number`: el documento configurado usa numeracion automatica y la consecutiva de
-      // factura electronica la controla la DIAN.
+      // Sin `number`: el documento configurado usa numeracion automatica y la consecutiva
+      // de factura electronica la controla la DIAN.
       date: new Date().toISOString().split('T')[0],
       customer: {
         identification: customerSiigo.identification,
         branch_office: 0,
       },
+      cost_center: catalogo.resolverCostCenter(detalles.map((d) => d.categoria)),
       seller: cfg.sellerId,
-      observations: venta.observaciones || '',
-      items: [
-        {
-          code: opciones.itemCode || cfg.itemCodeDefault,
-          description: `Servicios turisticos (Ref: ${venta.id})`,
-          quantity: 1,
-          price: monto,
-        },
-      ],
+      observations: observaciones,
+      items,
       payments: [
         {
-          id: opciones.paymentTypeId || cfg.paymentTypeDefault,
-          value: monto,
+          id: catalogo.resolverFormaPago(venta.metodoPagoPrincipal?.nombre),
+          value: montoTotal,
         },
       ],
     };
+
+    return { payload, advertencias };
   }
 
   /**
    * Emite la factura. En modo dry-run devuelve el payload y no llama a Siigo.
    */
-  async createInvoice(venta, customerSiigo, opciones = {}) {
-    const payload = this.buildInvoicePayload(venta, customerSiigo, opciones);
+  async createInvoice(venta, customerSiigo) {
+    const { payload, advertencias } = this.buildInvoicePayload(venta, customerSiigo);
 
     if (cfg.dryRun) {
       if (customerSiigo.noExisteAun) {
-        console.log(`Siigo DRY RUN: el tercero ${customerSiigo.identification} aun no existe en Siigo; se crearia al emitir.`);
+        advertencias.push(`El tercero ${customerSiigo.identification} aun no existe en Siigo; se crearia al emitir`);
       }
       console.log(`Siigo DRY RUN: venta ${venta.id} no se envio. Payload construido.`);
-      return { dryRun: true, payload };
+      return { dryRun: true, payload, advertencias };
     }
 
+    // Sin `stamp.send`, Siigo crea la factura en estado Draft y no la timbra ante la DIAN.
+    // Es lo que hace hoy el equipo a mano, y es deliberado: un borrador se corrige o se
+    // elimina desde Siigo, mientras una factura timbrada solo se anula con nota credito.
     const headers = await this.getHeaders();
     await sleep(1500);
 
     try {
       const { data } = await http.post('/v1/invoices', payload, { headers });
-      return { dryRun: false, payload, respuesta: data };
+      return { dryRun: false, payload, advertencias, respuesta: data };
     } catch (error) {
       const detalle = error.response?.data;
       console.error('Siigo: fallo la emision de la factura:', JSON.stringify(detalle, null, 2));

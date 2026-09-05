@@ -100,6 +100,12 @@ export interface Client {
   phone: string;
   email: string;
   birthDate?: string;
+  /** Opcionales en iTea. Siigo las exige al crear el tercero, y sin ellas cae a Bogotá. */
+  address?: string | null;
+  /** Código DANE de 5 dígitos. */
+  cityCode?: string | null;
+  /** Derivado del catálogo por el backend; no se envía al guardar. */
+  cityName?: string | null;
   status: "active" | "inactive";
   avatar?: string;
   registrationDate: string;
@@ -818,6 +824,8 @@ export interface ConfigData {
     notes: string;
   }[];
   packages: TravelPackage[];
+  /** Catálogo DANE de solo lectura. `code` es el que exige Siigo. */
+  cities: { code: string; name: string; state: string }[];
   rolePermissions: {
     asesor: RolePermissions;
     freelancer: RolePermissions;

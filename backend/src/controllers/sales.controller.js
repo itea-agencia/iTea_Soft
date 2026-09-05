@@ -1221,6 +1221,14 @@ async function resolveAirlineId(prisma, airline) {
   return match?.id || null;
 }
 
+// El proveedor llega con dos nombres distintos segun el formulario: los cuatro que traen
+// su propio campo (tiqueteria, hoteleria, planes, seguros) mandan `supplier`, y los trece
+// que usan FinancialSection mandan `supplierName`. El backend solo leia `supplier`, asi que
+// esos trece guardaban el detalle sin proveedor.
+function nombreProveedorDe(item) {
+  return item.supplier || item.supplierName || item.supplierId || null;
+}
+
 async function resolveSupplierId(prisma, supplier, cache) {
   if (!supplier) return null;
   const id = parseInt(supplier);
@@ -1305,7 +1313,7 @@ async function createProductItems(tx, ventaId, clienteId, data) {
       if (!item || Object.keys(item).length === 0) continue;
 
       try {
-        const resolvedSupplierId = await resolveSupplierId(tx, item.supplier, memCache);
+        const resolvedSupplierId = await resolveSupplierId(tx, nombreProveedorDe(item), memCache);
         const resolvedSupplierPaymentMethodId = await resolvePaymentMethodId(tx, item.supplierPaymentMethod, memCache);
 
         let parentDetalleId = null;
@@ -1481,7 +1489,7 @@ exports.create = async (req, res, next) => {
           if (!item || Object.keys(item).length === 0) continue;
 
           const [resolvedSupplierId, resolvedSupplierPaymentMethodId] = await Promise.all([
-            resolveSupplierId(tx, item.supplier, memCache),
+            resolveSupplierId(tx, nombreProveedorDe(item), memCache),
             resolvePaymentMethodId(tx, item.supplierPaymentMethod, memCache)
           ]);
 
@@ -1938,7 +1946,7 @@ exports.update = async (req, res, next) => {
             const existing = await tx[handler.table].findUnique({ where: { id: item.id } });
             if (existing) continue;
           }
-          const resolvedSupplierId = await resolveSupplierId(tx, item.supplier);
+          const resolvedSupplierId = await resolveSupplierId(tx, nombreProveedorDe(item));
           const resolvedSupplierPaymentMethodId = await resolvePaymentMethodId(tx, item.supplierPaymentMethod);
 
           const detalle = await tx.detalleVenta.create({
@@ -2630,7 +2638,11 @@ exports.generateSiigoInvoice = async (req, res, next) => {
     const venta = await prisma.ventas.findUnique({
       where: { id },
       include: {
-        cliente: { include: { persona: true } },
+        cliente: { include: { persona: { include: { tipoDocumento: true } } } },
+        // Una linea de factura por concepto de cada detalle, con el proveedor como Tercero.
+        detalleVentas: { include: { proveedor: true } },
+        metodoPagoPrincipal: true,
+        responsable: { include: { persona: true } },
         facturaSiigo: true
       }
     });
@@ -2691,6 +2703,7 @@ exports.generateSiigoInvoice = async (req, res, next) => {
         return success(res, {
           dryRun: true,
           message: 'SIIGO_DRY_RUN activo: el payload se construyo y se guardo, pero no se envio a Siigo',
+          advertencias: resultado.advertencias,
           payload: resultado.payload
         });
       }
@@ -2715,6 +2728,7 @@ exports.generateSiigoInvoice = async (req, res, next) => {
 
       return success(res, {
         message: 'Factura generada en Siigo',
+        advertencias: resultado.advertencias,
         siigoId: r.id,
         numero: r.name,
         publicUrl: r.public_url || null,

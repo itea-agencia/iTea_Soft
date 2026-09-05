@@ -43,49 +43,126 @@ para factura electrónica.
 `12464` Cheque · `12465` Transferencia · `12466` Consignación · `12467` Otros ·
 `9316` Clientes Nacionales · `9317` Clientes Extranjero
 
-### Catálogo de servicios, con su IVA
+### Catálogo de servicios
 
-```
-001   IP TAN-Tarifa Administrativa          IVA 19%
-002   IP TAI Tarifa Administrativa          IVA 19%
-003   IP Transporte Terrestre               sin impuestos
-004   Servicios Administrativos Especializados  IVA 19%
-005   IT Tiquetes Aéreos Nacionales         sin impuestos
-006   IT Tiquetes Internacionales           sin impuestos
-007   IP Paquete Turístico Regional         IVA 19%
-008   IP Paquete Turístico Nacional         IVA 19%
-009   IP Paquete Turístico Internacional    IVA 19%
-010   IT Transporte Terrestre               sin impuestos
-011   IT Paquete Turístico Regional         IVA 19%
-012   IT Paquete Turístico Nacional         IVA 19%
-013   IT Paquete Turístico Internacional    IVA 19%
-014   Prestación Comercial Comisión por Ventas  sin impuestos
-015   Comisiones Agencias y Operadores      IVA 19%
-S100  Tiquetes Aéreos Nacionales            IVA 19%
-TA    TARIFA ADMINISTRATIVA                 IVA 19%
-TKTS  TIQUETES AEREOS                       IVA 0%
-CRE   OTROS SERVICIOS                       IVA 19%
-```
+Verificado contra la API el **2026-09-04**. Contabilidad amplió el catálogo: hay 55 productos,
+34 de ellos creados después del análisis inicial.
 
 El prefijo no es decorativo: **IP = Ingresos Propios** (lo que gana la agencia) e
 **IT = Ingresos de Terceros** (lo que se le paga al proveedor). Esa distinción define qué
-línea lleva Tercero y qué línea no.
+línea lleva Tercero y qué línea no. Los IT van sin impuestos; los IP con IVA 19%.
+
+**Catálogo nuevo (`016`–`049`): un par IT/IP por cada categoría de iTea.** Cubre las 17
+categorías, una a una.
+
+```
+016 IT / 017 IP   Hotelería
+018 IT / 019 IP   Restaurantes
+020 IT / 021 IP   Tours
+022 IT / 023 IP   Paquetes
+024 IT / 025 IP   Viajes Terrestres
+026 IT / 027 IP   Centros de Convención
+028 IT / 029 IP   Equipajes
+030 IT / 031 IP   Tiquetería
+032 IT / 033 IP   Seguros de Viaje
+034 IT / 035 IP   Servicios de Mascotas
+036 IT / 037 IP   Pasaporte
+038 IT / 039 IP   Visa
+040 IT / 041 IP   Documentación Migratoria
+042 IT / 043 IP   CHECK-IN
+044 IT / 045 IP   SIM Card
+046 IT / 047 IP   Renta de Vehículos
+048 IT / 049 IP   Renta de Fincas
+```
+
+**Catálogo anterior (`001`–`015`): sigue activo y es el que se usa hoy.** Distingue nacional
+de internacional, distinción que el catálogo nuevo abandona.
+
+```
+001 IP TAN-Tarifa Administrativa      002 IP TAI Tarifa Administrativa
+003 IP Transporte Terrestre           010 IT Transporte Terrestre
+004 Servicios Administrativos Especializados   (la TA SAE; sin par IT)
+005 IT Tiquetes Aéreos Nacionales     006 IT Tiquetes Internacionales
+007/008/009 IP Paquete Regional/Nacional/Internacional
+011/012/013 IT Paquete Regional/Nacional/Internacional
+014 Prestación Comercial Comisión por Ventas   015 Comisiones Agencias y Operadores
+```
+
+**Dados de baja el 2026-09-04:** `S100`, `TA`, `TKTS` y `CRE` están **INACTIVOS**. `CRE` era
+el `SIIGO_ITEM_CODE_DEFAULT` que la Fase 1 dejó configurado; se retiró y el servicio ahora
+falla con `SIIGO_ITEM_CODE_MISSING` en vez de enviar un código muerto.
 
 ### Centros de costo
 
+27 en total, 18 creados junto al catálogo nuevo.
+
 ```
-445  S100-1  S100 Ingresos Propios-Tiquetes Aéreos Nacionales T
-453  S101-1  S101 IP Tiquetes Aéreos Internacionales
-455  S102-1  S102 IP Transporte Terrestre TA
-457  S103-1  S103 Servicios Administrativos Especializados
-459  S104-1  IP Paquete Turístico Regional TA
-463  S106-1  IP Paquete Turístico Internacional TA
-465  S107-1  Comisión Operadores
-475  S108-1  Comisiones Agencias y Operadores
-477  S300-1  Administrativo
+10668  S109-1  IP Hotelería              10688  S119-1  IP Pasaporte
+10670  S110-1  IP Restaurantes           10690  S120-1  IP Visa
+10672  S111-1  IP Tour                   10692  S121-1  IP Documentación Migratoria
+10674  S112-1  IP Paquetes               10694  S122-1  IP CHECK-IN
+10676  S113-1  IP Viajes Terrestres      10696  S123-1  IP SIM Card
+10678  S114-1  IP Centros de Convención  10698  S124-1  IP Renta de Vehículos
+10680  S115-1  IP Equipaje               10700  S125-1  IP Renta de Fincas
+10682  S116-1  IP Tiquetería             10702  S126-1  Varios Servicios
+10684  S117-1  IP Seguros de Viaje
+10686  S118-1  IP Servicios de Mascota
 ```
 
-No hay centro de costo para Paquete Turístico Nacional (faltaría un `S105`).
+Anteriores, todos activos: `445` S100-1 Tiquetes Aéreos Nacionales · `453` S101-1 Tiquetes
+Internacionales · `455` S102-1 Transporte Terrestre · `457` S103-1 Servicios Administrativos
+Especializados · `459` S104-1 Paquete Regional · `463` S106-1 Paquete Internacional ·
+`465` S107-1 Comisión Operadores · `475` S108-1 Comisiones Agencias y Operadores ·
+`477` S300-1 Administrativo.
+
+`10702 Varios Servicios` resuelve el caso de una venta con servicios de distinta naturaleza:
+el `cost_center` es único por factura, y ese es el comodín.
+
+### Decisión: se adopta el catálogo nuevo
+
+Tomada el 2026-09-04. El catálogo nuevo calza 1:1 con las 17 categorías de iTea y trae su
+centro de costo por categoría, así que el mapeo queda determinado sin excepciones ni casos
+sueltos. Los códigos viejos (`001`–`015`) siguen activos en Siigo pero iTea no los usa.
+
+Consecuencia: la distinción nacional / internacional deja de hacer falta. El catálogo nuevo
+no la modela, así que no hay que derivarla de `Aerolineas.tipo` ni de los aeropuertos.
+
+### El catálogo nuevo existe pero todavía no se usa desde Siigo
+
+Las facturas emitidas hasta el 2026-09-04 (FV-2-94 a FV-2-103) siguen usando `005` + `001`
+con `cost_center` 445. Ninguna usa los códigos `016`–`049` ni los centros nuevos.
+
+Es decir: el catálogo nuevo está construido y calza 1:1 con iTea, pero contabilidad no ha
+migrado. **Cuál de los dos usar es la decisión que define todo el mapeo de la Fase 2.**
+
+### Mapeo implementado
+
+Vive en `backend/src/config/siigo-catalog.js`, en un solo módulo para que contabilidad pueda
+revisarlo sin leer el resto del código.
+
+| categoría iTea | costo proveedor (IT) | TA (IP) | centro de costo |
+|---|---|---|---|
+| `tiqueteria` | `030` | `031` | 10682 |
+| `hoteleria` | `016` | `017` | 10668 |
+| `seguros_viaje` | `032` | `033` | 10684 |
+| `planes` | `022` | `023` | 10674 |
+| `checkin` | `042` | `043` | 10694 |
+| `documentacion_migratoria` | `040` | `041` | 10692 |
+| `simcard` | `044` | `045` | 10696 |
+| `equipaje` | `028` | `029` | 10680 |
+| `renta_vehiculos` | `046` | `047` | 10698 |
+| `renta_fincas` | `048` | `049` | 10700 |
+| `tours` | `020` | `021` | 10672 |
+| `centros_convencion` | `026` | `027` | 10678 |
+| `restaurantes` | `018` | `019` | 10670 |
+| `visa` | `038` | `039` | 10690 |
+| `pasaporte` | `036` | `037` | 10688 |
+| `servicio_mascotas` | `034` | `035` | 10686 |
+| `viajes_terrestres` | `024` | `025` | 10676 |
+| *venta con varias categorías* | — | — | 10702 |
+
+La TA SAE (`detalle_venta.ta_cre`) sigue en `004`, que no tiene equivalente en el catálogo
+nuevo.
 
 ## Especificación derivada de una factura real
 
@@ -147,7 +224,12 @@ El total cuadra con la fórmula que ya usa `sales.controller.js` para el `subtot
 nacionales en el ejemplo). Una venta con servicios de distinta naturaleza no puede expresar
 dos centros de costo en una sola factura: hay que decidir cuál manda.
 
-**4. Se crean como borrador.** FV-2-91 y FV-2-90 tienen `stamp.status: "Draft"` y
+**4. Se crean como borrador, y así se queda.** Decisión del 2026-09-05: iTea nunca envía
+`stamp.send`, así que la factura llega a Siigo en estado `Draft` y el timbrado ante la DIAN
+sigue siendo manual, como lo hace hoy el equipo. Un borrador se corrige o se elimina desde
+Siigo; una factura timbrada solo se anula con nota crédito.
+
+**Observación original:** FV-2-91 y FV-2-90 tienen `stamp.status: "Draft"` y
 `mail.status: "not_sent"`; la FV-2-89 está `Accepted`. Es decir, el timbrado ante la DIAN es
 un paso posterior y hoy manual. **Si iTea no envía `stamp.send`, la factura queda en borrador
 y es corregible o eliminable desde Siigo.** Eso reduce drásticamente el riesgo de la puesta
@@ -366,7 +448,7 @@ No emite ninguna factura. Todo verificable con `SIIGO_DRY_RUN` activo.
 *Verificación de fase:* con `SIIGO_DRY_RUN=true`, `POST /sales/:id/invoice` devuelve el
 payload completo, lo persiste y no llama a Siigo.
 
-### Fase 2 — Mapeo de catálogo
+### Fase 2 — Mapeo de catálogo. Hecha el 2026-09-04.
 
 8. Columna `nit` en `Proveedores` (hoy solo tiene `nombre`), y cargar los NITs. Bloquea la
    línea de costo de proveedor.
@@ -405,28 +487,53 @@ payloads generados y aprueba el IVA resultante.
 22. Reintento manual desde la UI leyendo `estado`.
 23. Aviso al equipo cuando una factura queda en `fallida`.
 
+## Dirección y ciudad del cliente
+
+Siigo exige dirección y ciudad al crear el tercero, y la ciudad va con **códigos DANE**:
+
+```json
+"address": { "address": "Calle 10 # 43-25", "city": { "country_code": "Co", "state_code": "05", "city_code": "05001" } }
+```
+
+Siigo no expone catálogo geográfico —`/v1/cities`, `/v1/states` y `/v1/countries` devuelven
+404—, así que los códigos los aporta iTea desde `backend/src/config/ciudades-dane.js`: 61
+municipios, las 32 capitales de departamento más los de mayor población. El código de 5
+dígitos lleva el departamento en los dos primeros, así que `state_code` se deriva y basta
+con guardar uno solo.
+
+`Personas` gana dos columnas, **ambas opcionales**: `direccion` y `ciudad_codigo_dane`. El
+formulario de clientes las pide sin marcarlas obligatorias. Cuando faltan, el tercero se crea
+con `"No registrada"` y Bogotá `11001`, que es lo que se venía enviando para todos los
+clientes.
+
+La API las expone como `address` y `cityCode`, más un `cityName` derivado del catálogo y de
+solo lectura. Un `cityCode` que no esté en el catálogo se rechaza con 400
+`INVALID_CITY_CODE`: Siigo rechaza códigos DANE inválidos con un mensaje que no dice cuál fue
+el problema.
+
 ## Preguntas abiertas para contabilidad
 
-Tres de las cuatro preguntas originales quedaron resueltas al leer la factura FV-2-91: los
-montos de iTea incluyen IVA y `price` va como base; el desglose es costo de proveedor + TA +
-TA SAE; el `seller` es `831` (SAMTUR TRAVEL AGENCY SAS, no un asesor individual). Quedan:
+1. **NIT de los proveedores.** El campo existe (`proveedores.documento`, obligatorio en altas
+   y ediciones) pero está vacío en los proveedores cargados. En Configuración → Proveedores
+   salen marcados con "Falta documento". Sin NIT, la línea de costo del proveedor se emite
+   sin Tercero y el sistema deja una advertencia en la respuesta; no bloquea, pero
+   contablemente queda incompleta.
 
-1. **NIT de los proveedores.** `Proveedores` en iTea solo tiene `nombre`. Siigo identifica el
-   Tercero por `identification` (en FV-2-91, `900383393` para VIAJES COLOMBIA ON LINE S.A.S.).
-   Hay que cargar el NIT de cada proveedor. Sin eso, la línea de costo de proveedor no se puede
-   emitir. Es trabajo de datos, no de código.
+2. **PPT sin verificar.** `siigo-catalog.js` mapea PPT al código DIAN `48`. No hay ningún
+   tercero con ese tipo en la cuenta de Siigo, así que el valor está sin confirmar. Los demás
+   (CC → 13, NIT → 31) sí están verificados contra terceros reales.
 
-2. **Nacional contra internacional.** Determina el código (`005` contra `006`, `001` contra
-   `002`) y el centro de costo (445 contra 453). Para tiquetería se puede derivar de
-   `Aerolineas.tipo` (enum `Cobertura`) o de los aeropuertos de `TramosVuelo`, pero hay que
-   confirmar cuál es la fuente correcta. Para paquetes no hay campo equivalente.
+3. **Cuándo apagar `SIIGO_DRY_RUN`.** El mapeo está listo y reproduce exactamente los
+   importes de FV-2-91. Falta que contabilidad revise los payloads generados sobre ventas
+   reales antes de emitir la primera factura.
 
-3. **Venta con servicios de distinta naturaleza.** El `cost_center` es único por factura. Si
-   una venta tiene tiquetería y transporte terrestre, ¿qué centro de costo manda, o se emiten
-   facturas separadas?
+Resueltas:
 
-4. **Códigos para las categorías sin equivalente claro.** `seguros_viaje` no tiene producto
-   propio en el catálogo; el candidato es `CRE` OTROS SERVICIOS (IVA 19%). Confirmar.
-
-5. **Paquete Turístico Nacional no tiene centro de costo.** Existen `S104-1` (regional) y
-   `S106-1` (internacional) pero falta el nacional. ¿Se crea en Siigo o se usa otro?
+- Catálogo a usar → el nuevo (`016`–`049`).
+- `seguros_viaje` → `032`/`033`, centro 10684.
+- Venta con servicios de distinta naturaleza → centro `10702` Varios Servicios.
+- Paquete Turístico Nacional sin centro de costo → `10674` IP Paquetes.
+- Nacional contra internacional → el catálogo nuevo no lo distingue.
+- `SIIGO_ITEM_CODE_DEFAULT` → ya no se usa; el código sale de la categoría.
+- `fiscal_responsibilities` → `R-99-PN` para personas y empresas por igual, confirmado
+  contra los 60 terceros consultados.

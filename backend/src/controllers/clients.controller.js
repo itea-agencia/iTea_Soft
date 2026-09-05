@@ -2,11 +2,25 @@ const prisma = require('../config/db');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
+const ciudadesDane = require('../config/ciudades-dane');
 
 // Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
 // por documento en cada emision de factura. Se ejecuta en segundo plano: si Siigo esta
 // caido, el cliente ya quedo creado en iTea y `siigo_customer_id` queda nulo, lo que
 // permite detectar los pendientes y reintentar.
+// Opcionales, pero si llega un codigo de ciudad tiene que ser uno real: Siigo rechaza
+// codigos DANE invalidos y su mensaje de error no dice cual fue el problema.
+function validarCiudad(cityCode) {
+  if (cityCode === undefined || cityCode === null || cityCode === '') return null;
+  if (!ciudadesDane.existe(cityCode)) {
+    throw Object.assign(
+      new Error(`La ciudad con código "${cityCode}" no está en el catálogo DANE`),
+      { statusCode: 400, code: 'INVALID_CITY_CODE' },
+    );
+  }
+  return String(cityCode);
+}
+
 function sincronizarConSiigo(persona, contexto) {
   if (!persona?.documento) return;
 
@@ -72,6 +86,8 @@ exports.list = async (req, res, next) => {
           p.telefono as "phone",
           p.email,
           p.birth_date as "birthDate",
+          p.direccion as "address",
+          p.ciudad_codigo_dane as "cityCode",
           p.status,
           p.avatar_url as "avatar",
           td.abreviatura as "docType"
@@ -94,6 +110,9 @@ exports.list = async (req, res, next) => {
       phone: c.phone,
       email: c.email,
       birthDate: c.birthDate,
+      address: c.address || null,
+      cityCode: c.cityCode || null,
+      cityName: ciudadesDane.buscar(c.cityCode)?.nombre || null,
       status: c.status,
       avatar: c.avatar,
       registrationDate: c.fechaRegistro,
@@ -135,6 +154,9 @@ exports.getById = async (req, res, next) => {
       phone: cliente.persona.telefono,
       email: cliente.persona.email,
       birthDate: cliente.persona.birthDate,
+      address: cliente.persona.direccion || null,
+      cityCode: cliente.persona.ciudadCodigoDane || null,
+      cityName: ciudadesDane.buscar(cliente.persona.ciudadCodigoDane)?.nombre || null,
       status: cliente.persona.status,
       avatar: cliente.persona.avatarUrl,
       registrationDate: cliente.fechaRegistro,
@@ -196,6 +218,8 @@ exports.create = async (req, res, next) => {
             telefono: data.phone || existingPersona.telefono,
             avatarUrl: data.avatar || existingPersona.avatarUrl,
             birthDate: data.birthDate ? new Date(data.birthDate) : existingPersona.birthDate,
+            direccion: data.address !== undefined ? (data.address || null) : existingPersona.direccion,
+            ciudadCodigoDane: data.cityCode !== undefined ? validarCiudad(data.cityCode) : existingPersona.ciudadCodigoDane,
             status: 'active',
             deletedAt: null
           }
@@ -214,6 +238,8 @@ exports.create = async (req, res, next) => {
           telefono: data.phone,
           avatarUrl: data.avatar || null,
           birthDate: data.birthDate ? new Date(data.birthDate) : null,
+          direccion: data.address || null,
+          ciudadCodigoDane: validarCiudad(data.cityCode),
           status: 'active'
         }
       });
@@ -291,6 +317,9 @@ exports.update = async (req, res, next) => {
     if (data.phone) personaData.telefono = data.phone;
     if (data.avatar) personaData.avatarUrl = data.avatar;
     if (data.birthDate) personaData.birthDate = new Date(data.birthDate);
+    // Con `!== undefined` en vez de truthy, para poder borrar la direccion enviando ''.
+    if (data.address !== undefined) personaData.direccion = data.address || null;
+    if (data.cityCode !== undefined) personaData.ciudadCodigoDane = validarCiudad(data.cityCode);
 
     let updatedPersona = cliente.persona;
     if (Object.keys(personaData).length > 0) {

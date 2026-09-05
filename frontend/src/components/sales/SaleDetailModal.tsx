@@ -100,6 +100,7 @@ export default function SaleDetailModal({
   // Siigo Integration State
   const [isInvoicing, setIsInvoicing] = useState(false);
   const [invoiceSuccess, setInvoiceSuccess] = useState(false);
+  const [invoiceDryRun, setInvoiceDryRun] = useState(false);
   const [invoiceError, setInvoiceError] = useState("");
 
   useEffect(() => {
@@ -140,9 +141,12 @@ export default function SaleDetailModal({
     setInvoiceSuccess(false);
     
     try {
-      await api.createSiigoInvoice(sale.id);
+      const resultado = await api.createSiigoInvoice(sale.id);
+      // Con SIIGO_DRY_RUN activo el backend arma y guarda el payload pero no emite nada.
+      // Sin distinguirlo, la interfaz diria "factura generada" sobre una factura que no existe.
+      setInvoiceDryRun(Boolean(resultado?.dryRun));
       setInvoiceSuccess(true);
-      setTimeout(() => setInvoiceSuccess(false), 5000);
+      setTimeout(() => setInvoiceSuccess(false), 8000);
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || "Ocurrió un error inesperado al facturar en Siigo.";
       setInvoiceError(msg);
@@ -296,10 +300,21 @@ export default function SaleDetailModal({
 
           {/* Mensajes de Siigo */}
           {invoiceSuccess && (
-            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
-              <ShieldCheck size={18} />
-              <strong>¡Éxito!</strong> La factura electrónica ha sido generada correctamente en Siigo.
-            </div>
+            invoiceDryRun ? (
+              <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
+                <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                <div>
+                  <strong>Modo de prueba.</strong> La factura se armó y se guardó para revisión,
+                  pero <u>no se envió a Siigo</u>. Para emitir de verdad hay que desactivar
+                  <code className="mx-1 px-1 rounded bg-amber-100">SIIGO_DRY_RUN</code>.
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
+                <ShieldCheck size={18} />
+                <strong>¡Éxito!</strong> La factura electrónica ha sido generada correctamente en Siigo.
+              </div>
+            )
           )}
           {invoiceError && (
             <div className="flex items-start gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">

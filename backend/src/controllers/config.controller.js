@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const ciudadesDane = require('../config/ciudades-dane');
 const { success, error } = require('../utils/apiResponse');
 
 const SECTION_MAP = {
@@ -90,6 +91,13 @@ exports.getAll = async (req, res, next) => {
     entries.forEach(([key, config], i) => {
       data[key] = config.transform ? results[i].map(config.transform) : results[i];
     });
+    // Catalogo de referencia, estatico y de solo lectura. Viaja aqui para que el cliente
+    // no necesite una peticion aparte; tambien esta en GET /config/cities.
+    data.cities = ciudadesDane.listar().map((c) => ({
+      code: c.codigo,
+      name: c.nombre,
+      state: c.departamento,
+    }));
     success(res, data);
   } catch (err) {
     next(err);
@@ -99,6 +107,15 @@ exports.getAll = async (req, res, next) => {
 exports.getSection = async (req, res, next) => {
   try {
     const { section } = req.params;
+
+    if (section === 'cities') {
+      return success(res, ciudadesDane.listar().map((c) => ({
+        code: c.codigo,
+        name: c.nombre,
+        state: c.departamento,
+      })));
+    }
+
     const config = SECTION_MAP[section];
     if (!config) return error(res, `Sección "${section}" no válida`, 400);
 

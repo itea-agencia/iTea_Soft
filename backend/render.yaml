@@ -34,8 +34,9 @@ services:
       # 831 = info@samturtravel.com (SAMTUR TRAVEL AGENCY SAS)
       - key: SIIGO_SELLER_ID
         value: "831"
+      # CRE quedo INACTIVO en Siigo. Se define en la Fase 2, por categoria.
       - key: SIIGO_ITEM_CODE_DEFAULT
-        value: CRE
+        value: ""
       # 12467 = Otros
       - key: SIIGO_PAYMENT_TYPE_DEFAULT
         value: "12467"

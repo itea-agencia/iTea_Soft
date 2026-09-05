@@ -558,6 +558,9 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Origen", value: lt.origin },
               { label: "Destino", value: lt.destination },
               { label: "Salida", value: `${lt.departureDate ? formatDate(lt.departureDate) : "-"} ${lt.departureTime ? formatTimeAMPM(lt.departureTime) : ""}`.trim() },
+              // El operador es el nombre que escribe el asesor; el proveedor es el registro
+              // de Configuración, y es el que va como Tercero en la factura de Siigo.
+              { label: "Proveedor", value: lt.supplier || lt.supplierName },
             ])}
             {lt.isRoundTrip && (
               <div className="mt-3 pt-3 border-t border-gray-100">
