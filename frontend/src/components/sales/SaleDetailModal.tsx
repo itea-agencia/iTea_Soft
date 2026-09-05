@@ -100,8 +100,28 @@ export default function SaleDetailModal({
   // Siigo Integration State
   const [isInvoicing, setIsInvoicing] = useState(false);
   const [invoiceSuccess, setInvoiceSuccess] = useState(false);
-  const [invoiceDryRun, setInvoiceDryRun] = useState(false);
+  // Guarda el resultado, no solo que salio bien: el numero de factura y su enlace son
+  // lo que el asesor necesita para verificarla en Siigo.
+  const [invoiceInfo, setInvoiceInfo] = useState<{
+    dryRun?: boolean;
+    yaEmitida?: boolean;
+    numero?: string | null;
+    publicUrl?: string | null;
+    estampilla?: string | null;
+  }>({});
   const [invoiceError, setInvoiceError] = useState("");
+
+  // El mensaje de factura ya no se autooculta: trae numero y enlace y hay que poder
+  // leerlo. Se limpia al cambiar de venta o al cerrar, ajustando el estado durante el
+  // render en vez de con un efecto.
+  const [ventaDelMensaje, setVentaDelMensaje] = useState<number | null>(null);
+  const ventaActualId = isOpen ? selectedSale?.id ?? null : null;
+  if (ventaActualId !== ventaDelMensaje) {
+    setVentaDelMensaje(ventaActualId);
+    if (invoiceSuccess) setInvoiceSuccess(false);
+    if (invoiceError) setInvoiceError("");
+    if (Object.keys(invoiceInfo).length > 0) setInvoiceInfo({});
+  }
 
   useEffect(() => {
     if (isOpen && selectedSale) {
@@ -144,9 +164,14 @@ export default function SaleDetailModal({
       const resultado = await api.createSiigoInvoice(sale.id);
       // Con SIIGO_DRY_RUN activo el backend arma y guarda el payload pero no emite nada.
       // Sin distinguirlo, la interfaz diria "factura generada" sobre una factura que no existe.
-      setInvoiceDryRun(Boolean(resultado?.dryRun));
+      setInvoiceInfo({
+        dryRun: Boolean(resultado?.dryRun),
+        yaEmitida: Boolean(resultado?.yaEmitida),
+        numero: resultado?.numero ?? null,
+        publicUrl: resultado?.publicUrl ?? null,
+        estampilla: resultado?.estampilla ?? null,
+      });
       setInvoiceSuccess(true);
-      setTimeout(() => setInvoiceSuccess(false), 8000);
     } catch (err: any) {
       const msg = err.response?.data?.error?.message || "Ocurrió un error inesperado al facturar en Siigo.";
       setInvoiceError(msg);
@@ -251,12 +276,14 @@ export default function SaleDetailModal({
       size="lg"
       footer={
         <div className="flex items-center justify-between w-full">
-          <Button 
-            className="bg-gray-400 text-white flex items-center gap-2 cursor-not-allowed"
-            disabled={true}
+          <Button
+            variant="primary"
+            className="flex items-center gap-2"
+            onClick={handleGenerateInvoice}
+            disabled={isInvoicing}
           >
             <Receipt size={16} />
-            Generar Factura en Siigo (Mantenimiento)
+            {isInvoicing ? 'Generando factura...' : 'Generar factura en Siigo'}
           </Button>
           <Button variant="outline" onClick={onClose}>
             Cerrar
@@ -300,7 +327,7 @@ export default function SaleDetailModal({
 
           {/* Mensajes de Siigo */}
           {invoiceSuccess && (
-            invoiceDryRun ? (
+            invoiceInfo.dryRun ? (
               <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
                 <AlertCircle size={18} className="mt-0.5 shrink-0" />
                 <div>
@@ -310,9 +337,24 @@ export default function SaleDetailModal({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
-                <ShieldCheck size={18} />
-                <strong>¡Éxito!</strong> La factura electrónica ha sido generada correctamente en Siigo.
+              <div className="flex items-start gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 shadow-sm animate-fade-in">
+                <ShieldCheck size={18} className="mt-0.5 shrink-0" />
+                <div>
+                  {invoiceInfo.yaEmitida
+                    ? <>Esta venta ya tenía factura en Siigo{invoiceInfo.numero ? <> — <strong>{invoiceInfo.numero}</strong></> : null}. No se generó otra.</>
+                    : <>Factura generada en Siigo{invoiceInfo.numero ? <> — <strong>{invoiceInfo.numero}</strong></> : null}.</>}
+                  {invoiceInfo.estampilla === 'Draft' && (
+                    <> Queda en <strong>borrador</strong>: hay que timbrarla ante la DIAN desde Siigo.</>
+                  )}
+                  {invoiceInfo.publicUrl && (
+                    <> <a
+                      href={invoiceInfo.publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-semibold"
+                    >Verla en Siigo</a></>
+                  )}
+                </div>
               </div>
             )
           )}
