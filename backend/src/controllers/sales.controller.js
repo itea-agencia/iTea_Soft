@@ -2640,7 +2640,21 @@ exports.generateSiigoInvoice = async (req, res, next) => {
       include: {
         cliente: { include: { persona: { include: { tipoDocumento: true } } } },
         // Una linea de factura por concepto de cada detalle, con el proveedor como Tercero.
-        detalleVentas: { include: { proveedor: true } },
+        // Los tramos y sus aeropuertos se cargan porque de ahi sale si el vuelo es
+        // nacional o internacional, que define el codigo y el centro de costo.
+        detalleVentas: {
+          include: {
+            proveedor: true,
+            prodTiqueteria: {
+              include: {
+                aerolinea: true,
+                tramosVuelo: {
+                  include: { aeropuertoOrigen: true, aeropuertoDestino: true }
+                }
+              }
+            }
+          }
+        },
         metodoPagoPrincipal: true,
         responsable: { include: { persona: true } },
         facturaSiigo: true

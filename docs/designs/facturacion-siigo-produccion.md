@@ -118,11 +118,22 @@ Especializados · `459` S104-1 Paquete Regional · `463` S106-1 Paquete Internac
 `10702 Varios Servicios` resuelve el caso de una venta con servicios de distinta naturaleza:
 el `cost_center` es único por factura, y ese es el comodín.
 
-### Decisión: se adopta el catálogo nuevo
+### Decisión: catálogo nuevo, salvo tiquetería
 
-Tomada el 2026-09-04. El catálogo nuevo calza 1:1 con las 17 categorías de iTea y trae su
-centro de costo por categoría, así que el mapeo queda determinado sin excepciones ni casos
-sueltos. Los códigos viejos (`001`–`015`) siguen activos en Siigo pero iTea no los usa.
+**Corregida el 2026-09-05.** La decisión original —adoptar el catálogo nuevo para todo— era
+equivocada para tiquetería. Los códigos `030` IT y `031` IP existen en Siigo pero **están
+registrados sin uso**: los operativos son los del catálogo anterior, y son la redundancia que
+contabilidad va a eliminar.
+
+Se detectó en la primera emisión real, FV-2-104: iTea la creó con `030`/`031` y
+`cost_center` 10682, y alguien corrigió los ítems a mano en Siigo dejando `005`/`001`. El
+centro de costo quedó con el valor equivocado, porque la corrección manual no lo tocó.
+
+Tiquetería es además **la única categoría con variante nacional / internacional**, así que la
+distinción que la decisión original había descartado vuelve a hacer falta.
+
+Las otras 16 categorías se quedan con el catálogo nuevo: para 14 de ellas no hay equivalente
+anterior, y para viajes terrestres y paquetes se decidió no migrar.
 
 Consecuencia: la distinción nacional / internacional deja de hacer falta. El catálogo nuevo
 no la modela, así que no hay que derivarla de `Aerolineas.tipo` ni de los aeropuertos.
@@ -142,7 +153,8 @@ revisarlo sin leer el resto del código.
 
 | categoría iTea | costo proveedor (IT) | TA (IP) | centro de costo |
 |---|---|---|---|
-| `tiqueteria` | `030` | `031` | 10682 |
+| `tiqueteria` nacional | `005` | `001` TAN | 445 |
+| `tiqueteria` internacional | `006` | `002` TAI | 453 |
 | `hoteleria` | `016` | `017` | 10668 |
 | `seguros_viaje` | `032` | `033` | 10684 |
 | `planes` | `022` | `023` | 10674 |
@@ -163,6 +175,20 @@ revisarlo sin leer el resto del código.
 
 La TA SAE (`detalle_venta.ta_cre`) sigue en `004`, que no tiene equivalente en el catálogo
 nuevo.
+
+### Cómo se decide si un vuelo es nacional o internacional
+
+Solo aplica a tiquetería. Precedencia:
+
+1. **El país de los aeropuertos de los tramos.** Si todos están en Colombia, nacional; si
+   alguno está fuera, internacional. Es el dato más fiel al vuelo real.
+2. **`Aerolineas.tipo`**, cuando los aeropuertos no tienen país cargado. Menos confiable: su
+   valor por defecto es `Internacional` y admite `Ambos`. Deja advertencia en la respuesta.
+3. **Nacional**, si no se puede determinar. Las 105 facturas ya emitidas son todas
+   nacionales. Deja advertencia.
+
+El `cost_center` es único por factura, así que una venta que mezcla un vuelo nacional con uno
+internacional cae en `10702` Varios Servicios, igual que una que mezcla categorías.
 
 ## Especificación derivada de una factura real
 

@@ -18,7 +18,17 @@ const env = require('./env');
 
 // categoría de iTea -> { código IT, código IP, centro de costo }
 const CATEGORIAS = {
-  tiqueteria:               { it: '030', ip: '031', costCenter: 10682, nombre: 'Tiquetería' },
+  // Tiqueteria usa el catalogo ANTERIOR (001/002 y 005/006) porque es el operativo: los
+  // codigos 030/031 del catalogo nuevo estan registrados pero no se usan, y son la
+  // redundancia que contabilidad va a eliminar. Es la unica categoria con variante
+  // nacional/internacional.
+  tiqueteria: {
+    nombre: 'Tiquetería',
+    porCobertura: {
+      nacional:      { it: '005', ip: '001', costCenter: 445 },
+      internacional: { it: '006', ip: '002', costCenter: 453 },
+    },
+  },
   hoteleria:                { it: '016', ip: '017', costCenter: 10668, nombre: 'Hotelería' },
   seguros_viaje:            { it: '032', ip: '033', costCenter: 10684, nombre: 'Seguros de Viaje' },
   planes:                   { it: '022', ip: '023', costCenter: 10674, nombre: 'Paquetes' },
@@ -88,7 +98,12 @@ const normalizar = (texto) =>
     .trim()
     .toLowerCase();
 
-function resolverCategoria(categoria) {
+/**
+ * Devuelve { it, ip, costCenter, nombre } para una categoría.
+ * `cobertura` solo aplica a las categorías con variante nacional/internacional; para el
+ * resto se ignora. Si falta, se asume nacional: las ventas históricas son todas nacionales.
+ */
+function resolverCategoria(categoria, cobertura = 'nacional') {
   const mapeo = CATEGORIAS[categoria];
   if (!mapeo) {
     throw Object.assign(
@@ -96,17 +111,28 @@ function resolverCategoria(categoria) {
       { statusCode: 422, code: 'SIIGO_CATEGORIA_SIN_MAPEO' },
     );
   }
-  return mapeo;
+
+  if (!mapeo.porCobertura) return mapeo;
+
+  const variante = mapeo.porCobertura[cobertura] || mapeo.porCobertura.nacional;
+  return { ...variante, nombre: mapeo.nombre };
 }
 
+/** true si la categoría distingue nacional de internacional. */
+const distingueCobertura = (categoria) => Boolean(CATEGORIAS[categoria]?.porCobertura);
+
 /**
- * El cost_center va a nivel documento. Si la venta tiene una sola categoría se usa la
- * suya; si mezcla varias, el comodín "Varios Servicios".
+ * El cost_center va a nivel documento. Si todos los servicios de la venta resuelven al
+ * mismo centro se usa ese; si no, el comodín "Varios Servicios".
+ *
+ * Recibe pares { categoria, cobertura } porque una venta con un vuelo nacional y otro
+ * internacional cae en centros distintos (445 y 453) y también necesita el comodín.
  */
-function resolverCostCenter(categorias) {
-  const unicas = [...new Set(categorias)];
-  if (unicas.length === 1) return resolverCategoria(unicas[0]).costCenter;
-  return COST_CENTER_VARIOS;
+function resolverCostCenter(servicios) {
+  const centros = new Set(
+    servicios.map(({ categoria, cobertura }) => resolverCategoria(categoria, cobertura).costCenter),
+  );
+  return centros.size === 1 ? [...centros][0] : COST_CENTER_VARIOS;
 }
 
 function resolverFormaPago(nombreMetodoPago) {
@@ -142,6 +168,7 @@ module.exports = {
   FORMA_PAGO_OTROS,
   RESPONSABILIDAD_FISCAL,
   resolverCategoria,
+  distingueCobertura,
   resolverCostCenter,
   resolverFormaPago,
   resolverIdentificacion,

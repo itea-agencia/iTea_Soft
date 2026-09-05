@@ -154,6 +154,47 @@ class SiigoService {
   }
 
   /**
+   * Decide si un servicio es nacional o internacional.
+   *
+   * Fuente principal: el pais de los aeropuertos de los tramos del vuelo. Si alguno esta
+   * fuera de Colombia, el vuelo es internacional. Es el dato mas fiel al vuelo real.
+   *
+   * Respaldo: `Aerolineas.tipo`, cuando los aeropuertos no tienen pais cargado. Es menos
+   * confiable —su valor por defecto es Internacional y admite 'Ambos'—, asi que solo se
+   * usa si no hay dato geografico, y deja advertencia.
+   *
+   * Si no se puede determinar, nacional: las ventas historicas de Samtur son todas
+   * nacionales, y es lo que usan las 105 facturas ya emitidas.
+   */
+  static resolverCobertura(detalle, advertencias = []) {
+    const tiqueteria = detalle.prodTiqueteria;
+    const tramos = tiqueteria?.tramosVuelo || [];
+
+    const paises = tramos
+      .flatMap((t) => [t.aeropuertoOrigen?.pais, t.aeropuertoDestino?.pais])
+      .filter(Boolean)
+      .map((pais) => pais.trim().toLowerCase());
+
+    if (paises.length > 0) {
+      const esColombia = (pais) => pais === 'colombia' || pais === 'co';
+      return paises.every(esColombia) ? 'nacional' : 'internacional';
+    }
+
+    const tipoAerolinea = tiqueteria?.aerolinea?.tipo;
+    if (tipoAerolinea === 'Nacional') {
+      advertencias.push('Sin país en los aeropuertos: la cobertura se tomó de la aerolínea (Nacional)');
+      return 'nacional';
+    }
+    if (tipoAerolinea === 'Internacional') {
+      advertencias.push('Sin país en los aeropuertos: la cobertura se tomó de la aerolínea (Internacional)');
+      return 'internacional';
+    }
+
+    advertencias.push('No se pudo determinar si el vuelo es nacional o internacional; se asumió nacional');
+    return 'nacional';
+  }
+
+  /**
    * Arma el payload de la factura sin enviarlo. Separado de la emision para poder
    * inspeccionarlo en modo dry-run y persistirlo siempre.
    *
@@ -178,8 +219,18 @@ class SiigoService {
     const items = [];
     let sumaLineas = 0;
 
-    for (const detalle of detalles) {
-      const mapeo = catalogo.resolverCategoria(detalle.categoria);
+    // Se guarda la cobertura de cada detalle: la necesita tanto la linea como el
+    // cost_center del documento.
+    const servicios = detalles.map((detalle) => ({
+      detalle,
+      categoria: detalle.categoria,
+      cobertura: catalogo.distingueCobertura(detalle.categoria)
+        ? SiigoService.resolverCobertura(detalle, advertencias)
+        : undefined,
+    }));
+
+    for (const { detalle, cobertura } of servicios) {
+      const mapeo = catalogo.resolverCategoria(detalle.categoria, cobertura);
       // `nombreServicio` suele repetir el nombre de la categoria; se evita la duplicacion.
       const detalleNombre = detalle.nombreServicio && detalle.nombreServicio !== mapeo.nombre
         ? `${mapeo.nombre} - ${detalle.nombreServicio}`
@@ -282,7 +333,9 @@ class SiigoService {
         identification: customerSiigo.identification,
         branch_office: 0,
       },
-      cost_center: catalogo.resolverCostCenter(detalles.map((d) => d.categoria)),
+      cost_center: catalogo.resolverCostCenter(
+        servicios.map(({ categoria, cobertura }) => ({ categoria, cobertura })),
+      ),
       seller: cfg.sellerId,
       observations: observaciones,
       items,
