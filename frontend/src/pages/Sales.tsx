@@ -15,7 +15,6 @@ import {
   Ban,
   Search,
   X,
-  ExternalLink,
 } from "lucide-react";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
@@ -43,7 +42,6 @@ export default function Sales() {
   const { canCreate, canEdit, permissions } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [isSiigoModalOpen, setIsSiigoModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -398,23 +396,13 @@ export default function Sales() {
       )}
 
       {/* Header de Sección */}
-      <div className="mb-6 animate-fade-in flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-primary flex items-center gap-3">
-            <ShoppingBag className="text-accent w-8 h-8" /> Gestión de Ventas
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Control de ingresos, facturación y estados de pago de tus clientes.
-          </p>
-        </div>
-        <a 
-          href="https://siigonube.siigo.com/#/sales-management/2044" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-blue-200 transition-all shadow-sm shrink-0"
-        >
-          <ExternalLink size={16} /> Ir a Siigo Nube
-        </a>
+      <div className="mb-6 animate-fade-in">
+        <h1 className="text-3xl font-bold text-primary flex items-center gap-3">
+          <ShoppingBag className="text-accent w-8 h-8" /> Gestión de Ventas
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">
+          Control de ingresos, facturación y estados de pago de tus clientes.
+        </p>
       </div>
 
       {/* TABS SELECTOR */}
@@ -598,48 +586,10 @@ export default function Sales() {
             setSuccessMessage(msg);
             setShowSuccess(true);
             setShowConfetti(true);
-            setIsSiigoModalOpen(true);
             setTimeout(() => setShowConfetti(false), 3000);
             setTimeout(() => setShowSuccess(false), 3000);
           }}
         />
-      </Modal>
-
-      {/* ===== MODAL FACTURACIÓN SIIGO ===== */}
-      <Modal
-        isOpen={isSiigoModalOpen}
-        onClose={() => setIsSiigoModalOpen(false)}
-        title="Facturación Electrónica"
-        size="md"
-      >
-        <div className="flex flex-col items-center text-center p-4">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 mb-4 animate-bounce">
-            <CheckCircle2 size={36} />
-          </div>
-          <h3 className="text-xl font-bold text-primary mb-2">¡Venta Registrada Exitosamente!</h3>
-          <p className="text-gray-600 text-sm mb-6 max-w-sm">
-            La venta ha sido guardada en el sistema. Para cumplir con la normativa legal, por favor procede a generar la factura electrónica en Siigo Nube.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
-            <Button
-              onClick={() => setIsSiigoModalOpen(false)}
-              variant="outline"
-              className="flex-1 py-3 text-xs sm:text-sm font-bold border-gray-200 text-gray-500 hover:bg-gray-50"
-            >
-              Cerrar
-            </Button>
-            <a
-              href="https://siigonube.siigo.com/#/sales-management/2044"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setIsSiigoModalOpen(false)}
-              className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-white font-bold text-xs sm:text-sm bg-accent hover:bg-accent/95 shadow-lg shadow-accent/25 transition-all text-center"
-            >
-              Generar Factura en Siigo
-              <ExternalLink size={16} />
-            </a>
-          </div>
-        </div>
       </Modal>
 
       {/* ===== EDIT MODAL (Editar Venta) ===== */}
