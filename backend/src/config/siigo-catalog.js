@@ -16,6 +16,68 @@
 
 const env = require('./env');
 
+/**
+ * Nombre EXACTO de cada producto en Siigo, copiado de GET /v1/products el 2026-09-07.
+ *
+ * La factura envía estos nombres como `description` sin agregarles nada. Antes se armaba
+ * una descripción propia ("Tiquetería - Tarifa Administrativa") y eso renombraba los ítems
+ * en la factura, que no es aceptable: el nombre lo define contabilidad en Siigo.
+ *
+ * Ojo con los que no siguen el patrón: '042' lleva espacios alrededor del guion y '035'
+ * va en singular. Si contabilidad renombra un producto, hay que actualizarlo aquí.
+ */
+const NOMBRES_SIIGO = {
+  '001': 'IP TAN-Tarifa Administrativa',
+  '002': 'IP TAI Tarifa Administrativa',
+  '004': 'Servicios Administrativos Especializados',
+  '005': 'IT Tiquetes Aéreos Nacionales',
+  '006': 'IT Tiquetes Internacionales',
+  '016': 'IT Hotelería',
+  '017': 'IP Hotelería',
+  '018': 'IT Restaurantes',
+  '019': 'IP Restaurantes',
+  '020': 'IT Tours',
+  '021': 'IP Tours',
+  '022': 'IT Paquetes',
+  '023': 'IP Paquetes',
+  '024': 'IT Viajes Terrestres',
+  '025': 'IP Viajes Terrestres',
+  '026': 'IT Centros de Convención',
+  '027': 'IP Centros de Convención',
+  '028': 'IT Equipajes',
+  '029': 'IP Equipajes',
+  '032': 'IT Seguros de Viaje',
+  '033': 'IP Seguros de Viaje',
+  '034': 'IT Servicios de Mascotas',
+  '035': 'IP Servicio de Mascotas',
+  '036': 'IT Pasaporte',
+  '037': 'IP Pasaporte',
+  '038': 'IT Visa',
+  '039': 'IP Visa',
+  '040': 'IT Documentación Migratoria',
+  '041': 'IP Documentación Migratoria',
+  '042': 'IT CHECK - IN',
+  '043': 'IP CHECK-IN',
+  '044': 'IT SIM Card',
+  '045': 'IP SIM Card',
+  '046': 'IT Renta de Vehículos',
+  '047': 'IP Renta de Vehículos',
+  '048': 'IT Renta de Fincas',
+  '049': 'IP Renta de Fincas',
+};
+
+/** Nombre del producto tal como está en Siigo. Falla si el código no está registrado. */
+function nombreProducto(codigo) {
+  const nombre = NOMBRES_SIIGO[codigo];
+  if (!nombre) {
+    throw Object.assign(
+      new Error(`El código de producto "${codigo}" no tiene nombre registrado en el catálogo`),
+      { statusCode: 500, code: 'SIIGO_PRODUCTO_SIN_NOMBRE' },
+    );
+  }
+  return nombre;
+}
+
 // categoría de iTea -> { código IT, código IP, centro de costo }
 const CATEGORIAS = {
   // Tiqueteria usa el catalogo ANTERIOR (001/002 y 005/006) porque es el operativo: los
@@ -168,6 +230,7 @@ module.exports = {
   FORMA_PAGO_OTROS,
   RESPONSABILIDAD_FISCAL,
   resolverCategoria,
+  nombreProducto,
   distingueCobertura,
   resolverCostCenter,
   resolverFormaPago,

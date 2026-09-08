@@ -231,11 +231,6 @@ class SiigoService {
 
     for (const { detalle, cobertura } of servicios) {
       const mapeo = catalogo.resolverCategoria(detalle.categoria, cobertura);
-      // `nombreServicio` suele repetir el nombre de la categoria; se evita la duplicacion.
-      const detalleNombre = detalle.nombreServicio && detalle.nombreServicio !== mapeo.nombre
-        ? `${mapeo.nombre} - ${detalle.nombreServicio}`
-        : mapeo.nombre;
-
       const costoProveedor = Number(detalle.costoProveedor) || 0;
       const ta = Number(detalle.ta) || 0;
       const taCre = Number(detalle.taCre) || 0;
@@ -243,8 +238,9 @@ class SiigoService {
       // Linea IT: lo que se le paga al proveedor. Va sin impuestos y lleva Tercero.
       if (costoProveedor > 0) {
         const item = {
+          // El nombre lo define contabilidad en Siigo; aqui no se le agrega nada.
           code: mapeo.it,
-          description: detalleNombre,
+          description: catalogo.nombreProducto(mapeo.it),
           quantity: 1,
           price: costoProveedor,
         };
@@ -278,7 +274,7 @@ class SiigoService {
       if (ta > 0) {
         items.push({
           code: mapeo.ip,
-          description: `${mapeo.nombre} - Tarifa Administrativa`,
+          description: catalogo.nombreProducto(mapeo.ip),
           quantity: 1,
           price: SiigoService.baseGravable(ta),
           taxes: [{ id: cfg.ivaTaxId }],
@@ -290,7 +286,7 @@ class SiigoService {
       if (taCre > 0) {
         items.push({
           code: catalogo.CODIGO_SAE,
-          description: 'Servicios Administrativos Especializados',
+          description: catalogo.nombreProducto(catalogo.CODIGO_SAE),
           quantity: 1,
           price: SiigoService.baseGravable(taCre),
           taxes: [{ id: cfg.ivaTaxId }],
