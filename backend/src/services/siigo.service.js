@@ -81,7 +81,7 @@ class SiigoService {
    */
   async getOrCreateCustomer(persona, { soloBuscar = false } = {}) {
     const headers = await this.getHeaders();
-    const documento = persona.documento;
+    const documento = catalogo.normalizarIdentificacion(persona.documento);
 
     if (!documento) {
       throw new Error(`La persona ${persona.id} no tiene documento; Siigo lo exige`);
@@ -262,7 +262,7 @@ class SiigoService {
         }
 
         item.customer = {
-          identification: String(detalle.proveedor.documento),
+          identification: catalogo.normalizarIdentificacion(detalle.proveedor.documento),
           branch_office: 0,
         };
 
@@ -326,7 +326,7 @@ class SiigoService {
       // de factura electronica la controla la DIAN.
       date: new Date().toISOString().split('T')[0],
       customer: {
-        identification: customerSiigo.identification,
+        identification: catalogo.normalizarIdentificacion(customerSiigo.identification),
         branch_office: 0,
       },
       cost_center: catalogo.resolverCostCenter(
@@ -372,9 +372,14 @@ class SiigoService {
     } catch (error) {
       const detalle = error.response?.data;
       console.error('Siigo: fallo la emision de la factura:', JSON.stringify(detalle, null, 2));
+      // Con `statusCode` el errorHandler devuelve el motivo real de Siigo. Sin el caia al
+      // 500 generico, que en produccion enmascara el mensaje: el asesor veia "Error interno"
+      // mientras Siigo estaba diciendo exactamente que faltaba.
       const err = new Error(
         detalle?.Errors?.[0]?.Message || detalle?.message || 'Fallo al emitir la factura en Siigo',
       );
+      err.statusCode = 422;
+      err.code = 'SIIGO_RECHAZO';
       err.siigoDetalle = detalle;
       err.siigoPayload = payload;
       throw err;

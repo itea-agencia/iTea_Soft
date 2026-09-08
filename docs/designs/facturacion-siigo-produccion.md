@@ -537,6 +537,38 @@ solo lectura. Un `cityCode` que no esté en el catálogo se rechaza con 400
 `INVALID_CITY_CODE`: Siigo rechaza códigos DANE inválidos con un mensaje que no dice cuál fue
 el problema.
 
+## El NIT va sin dígito de verificación
+
+Siigo identifica al tercero por un NIT **sin** dígito de verificación: `890100577`, no
+`890100577-6`. Enviarlo con el DV hace que Siigo responda `The customer doesn't exist` y la
+factura falle, aunque el tercero exista.
+
+Verificado el 2026-09-07 contra `GET /v1/customers?identification=`:
+
+```
+890100577-6   NO EXISTE          890100577   AVIANCA DIRECTA
+9003833937    NO EXISTE          900383393   VIAJES COLOMBIA ON LINE S.A.S.
+899999143     SATENA
+```
+
+Reglas implementadas:
+
+- Al enviar a Siigo se recorta todo lo que venga después de un guion
+  (`normalizarIdentificacion`). Ningún documento colombiano usa guion salvo el NIT.
+- Al guardar un proveedor con tipo NIT se exige `\d{5,9}` con DV opcional tras guion, y se
+  almacena la forma sin DV. Un NIT de 10 dígitos se rechaza: casi siempre es el de 9 con el
+  DV pegado, y por la cadena no hay forma de distinguirlo.
+
+### El 500 que ocultaba todo esto
+
+Cuando Siigo rechazaba la factura, el servicio lanzaba un `Error` sin `statusCode`, así que
+el `errorHandler` caía al 500 genérico y en producción enmascaraba el mensaje. El asesor veía
+"Error interno del servidor" mientras Siigo decía exactamente qué faltaba. El motivo real sí
+quedaba guardado en `facturas_siigo.ultimo_error`, que es de donde se diagnosticó.
+
+Ahora el rechazo sale como 422 `SIIGO_RECHAZO` con el mensaje de Siigo, y la interfaz lo
+muestra en la caja roja.
+
 ## Preguntas abiertas para contabilidad
 
 1. **NIT de los proveedores.** El campo existe (`proveedores.documento`, obligatorio en altas

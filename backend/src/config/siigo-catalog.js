@@ -66,6 +66,20 @@ const NOMBRES_SIIGO = {
   '049': 'IP Renta de Fincas',
 };
 
+/**
+ * Identificación como la espera Siigo.
+ *
+ * Siigo registra el NIT SIN dígito de verificación: `890100577`, no `890100577-6`. Enviarlo
+ * con el DV hace que Siigo responda "The customer doesn't exist" y la factura falle, aunque
+ * el tercero exista.
+ *
+ * Se recorta todo lo que venga después de un guion. Ningún tipo de documento colombiano
+ * usa guion salvo el NIT, así que la regla es segura para todos.
+ */
+function normalizarIdentificacion(documento) {
+  return String(documento || '').trim().split('-')[0].trim();
+}
+
 /** Nombre del producto tal como está en Siigo. Falla si el código no está registrado. */
 function nombreProducto(codigo) {
   const nombre = NOMBRES_SIIGO[codigo];
@@ -231,6 +245,7 @@ module.exports = {
   RESPONSABILIDAD_FISCAL,
   resolverCategoria,
   nombreProducto,
+  normalizarIdentificacion,
   distingueCobertura,
   resolverCostCenter,
   resolverFormaPago,

@@ -1,5 +1,6 @@
 const prisma = require('../config/db');
 const ciudadesDane = require('../config/ciudades-dane');
+const catalogoSiigo = require('../config/siigo-catalog');
 const { success, error } = require('../utils/apiResponse');
 
 const SECTION_MAP = {
@@ -151,6 +152,17 @@ function validarProveedor(body) {
     fallas.push({ campo: 'docNumber', mensaje: 'El numero de documento es obligatorio' });
   } else if (!/^[0-9A-Za-z-]+$/.test(docNumber)) {
     fallas.push({ campo: 'docNumber', mensaje: 'El documento solo admite letras, numeros y guiones' });
+  } else if (String(body.docType).toUpperCase() === 'NIT') {
+    // Siigo registra el NIT sin digito de verificacion. Un NIT de 10 digitos casi siempre
+    // es el de 9 con el DV pegado, y no hay forma de distinguirlo por la cadena: se rechaza
+    // aqui para que no entre mal. Con guion si se puede recortar, y se recorta al guardar.
+    if (!/^\d{5,9}(-\d)?$/.test(docNumber)) {
+      fallas.push({
+        campo: 'docNumber',
+        mensaje: 'El NIT debe tener entre 5 y 9 digitos, sin digito de verificacion. '
+          + 'Si lo tiene, escribilo separado con guion (890100577-6) o quitalo.',
+      });
+    }
   }
 
   if (body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email).trim())) {
@@ -233,7 +245,9 @@ const untransformBody = async (section, body) => {
 
       // La identificacion del proveedor es obligatoria: Siigo referencia al Tercero de la
       // linea de factura por su `identification`.
-      const docNumber = String(body.docNumber || '').trim();
+      // Se guarda sin digito de verificacion: es la forma en que Siigo identifica al
+      // tercero, y guardar las dos notaciones fue lo que rompio la facturacion.
+      const docNumber = catalogoSiigo.normalizarIdentificacion(body.docNumber);
       data.documento = docNumber || null;
 
       if (body.docType) {
