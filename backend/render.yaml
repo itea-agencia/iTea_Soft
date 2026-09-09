@@ -38,6 +38,9 @@ services:
       # equivalente en Siigo (PSE, Llaves, Tarjeta Davivienda, CTA CTE 2060...).
       - key: SIIGO_PAYMENT_TYPE_DEFAULT
         value: "12467"
+      # 3800 = Credito. Las ventas a credito se facturan con esta y con due_date.
+      - key: SIIGO_PAYMENT_TYPE_CREDITO
+        value: "3800"
       # 8872 = IVA 19%
       - key: SIIGO_IVA_TAX_ID
         value: "8872"

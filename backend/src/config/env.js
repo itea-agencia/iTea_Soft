@@ -18,6 +18,9 @@ const siigo = {
   // (PSE, Llaves, Tarjeta Davivienda, CTA CTE 2060, Tarjeta de Bancolombia).
   // 12467 = "Otros". Lo consume siigo-catalog.js.
   paymentTypeDefault: parseInt(process.env.SIIGO_PAYMENT_TYPE_DEFAULT, 10) || 12467,
+  // Forma de pago de las ventas a credito. 3800 = "Credito". Va con `due_date`, y deja la
+  // factura con balance igual al total en vez de saldada.
+  paymentTypeCredito: parseInt(process.env.SIIGO_PAYMENT_TYPE_CREDITO, 10) || 3800,
   // Id del impuesto IVA 19% en la cuenta real.
   ivaTaxId: parseInt(process.env.SIIGO_IVA_TAX_ID, 10) || 8872,
   ivaRate: parseFloat(process.env.SIIGO_IVA_RATE) || 0.19,

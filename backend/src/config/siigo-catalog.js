@@ -149,6 +149,10 @@ const FORMAS_PAGO = {
 // 12467 es "Otros".
 const FORMA_PAGO_OTROS = env.siigo.paymentTypeDefault;
 
+// Las ventas a credito no llevan metodo de pago en iTea (`metodo_pago_principal_id` queda
+// nulo), asi que el mapeo por nombre no aplica: se usa esta y va con `due_date`.
+const FORMA_PAGO_CREDITO = env.siigo.paymentTypeCredito;
+
 // Códigos DIAN de tipo de identificación, por abreviatura de `tipos_documento`.
 // Confirmado contra los terceros reales de Siigo: CC va como 13 y NIT como 31.
 // PPT (Permiso por Protección Temporal) usa 48 según la DIAN, pero no hay ningún
@@ -242,6 +246,7 @@ module.exports = {
   CODIGO_SAE,
   COST_CENTER_VARIOS,
   FORMA_PAGO_OTROS,
+  FORMA_PAGO_CREDITO,
   RESPONSABILIDAD_FISCAL,
   resolverCategoria,
   nombreProducto,

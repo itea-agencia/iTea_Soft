@@ -569,6 +569,38 @@ quedaba guardado en `facturas_siigo.ultimo_error`, que es de donde se diagnostic
 Ahora el rechazo sale como 422 `SIIGO_RECHAZO` con el mensaje de Siigo, y la interfaz lo
 muestra en la caja roja.
 
+## Ventas a crédito
+
+iTea guarda bien el crédito: `ventas.es_credito`, `status = 'credito'` y
+`fecha_vence_credito`. El problema estaba en el envío a Siigo.
+
+**Una venta a crédito no lleva método de pago en iTea**: `metodo_pago_principal_id` queda
+nulo. El mapeo por nombre caía entonces al respaldo `12467` "Otros", así que la factura
+salía saldada y sin fecha de vencimiento.
+
+Forma correcta, tomada de FV-2-110 (creada a mano el 2026-09-08):
+
+```json
+"payments": [ { "id": 3800, "name": "Crédito", "value": 699400, "due_date": "2026-09-15" } ]
+```
+
+Con esa forma de pago Siigo deja la factura con `balance` igual al total, pendiente de
+cobro; las de contado quedan en `balance: 0`.
+
+Reglas implementadas en `buildPayment`:
+
+- `es_credito` manda sobre el método de pago: la fecha de vencimiento es el dato que define
+  la condición comercial.
+- La forma de pago sale de `SIIGO_PAYMENT_TYPE_CREDITO` (3800 en producción).
+- `due_date` se arma desde `fecha_vence_credito` como `YYYY-MM-DD`. La fecha se guarda a
+  medianoche UTC, así que recortar el ISO da el día correcto sin corrimiento de zona.
+- Una venta a crédito sin fecha de vencimiento falla con
+  `SIIGO_CREDITO_SIN_VENCIMIENTO` antes de llamar a Siigo, en vez de recibir un rechazo
+  opaco.
+- Los abonos parciales no se reparten en varias líneas de `payments`: la factura se emite
+  por el total a crédito, y los cobros posteriores se registran en Siigo aparte. Es lo que
+  hace hoy el equipo a mano.
+
 ## Preguntas abiertas para contabilidad
 
 1. **NIT de los proveedores.** El campo existe (`proveedores.documento`, obligatorio en altas

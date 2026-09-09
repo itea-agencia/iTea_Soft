@@ -335,15 +335,46 @@ class SiigoService {
       seller: cfg.sellerId,
       observations: observaciones,
       items,
-      payments: [
-        {
-          id: catalogo.resolverFormaPago(venta.metodoPagoPrincipal?.nombre),
-          value: montoTotal,
-        },
-      ],
+      payments: [this.buildPayment(venta, montoTotal)],
     };
 
     return { payload, advertencias };
+  }
+
+  /**
+   * Bloque `payments` de la factura.
+   *
+   * Una venta a credito se factura con la forma de pago "Credito" y su fecha de
+   * vencimiento; asi Siigo la deja con balance igual al total, pendiente de cobro. Antes se
+   * resolvia siempre por el nombre del metodo de pago, y como una venta a credito no lleva
+   * metodo en iTea (`metodo_pago_principal_id` queda nulo), caia al respaldo "Otros" y la
+   * factura salia saldada y sin vencimiento.
+   *
+   * `esCredito` manda sobre el metodo de pago: la fecha de vencimiento es el dato que
+   * define la condicion comercial.
+   */
+  buildPayment(venta, montoTotal) {
+    if (!venta.esCredito) {
+      return {
+        id: catalogo.resolverFormaPago(venta.metodoPagoPrincipal?.nombre),
+        value: montoTotal,
+      };
+    }
+
+    if (!venta.fechaVenceCredito) {
+      throw Object.assign(
+        new Error(`La venta ${venta.id} es a crédito pero no tiene fecha de vencimiento, y Siigo la exige`),
+        { statusCode: 422, code: 'SIIGO_CREDITO_SIN_VENCIMIENTO' },
+      );
+    }
+
+    return {
+      id: catalogo.FORMA_PAGO_CREDITO,
+      value: montoTotal,
+      // Siigo la espera como YYYY-MM-DD. La fecha se guarda a medianoche UTC, asi que
+      // recortar el ISO da el dia correcto sin corrimiento de zona.
+      due_date: new Date(venta.fechaVenceCredito).toISOString().slice(0, 10),
+    };
   }
 
   /**
