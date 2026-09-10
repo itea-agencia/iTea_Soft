@@ -4,6 +4,7 @@ import { FormField, Input, Combobox, Select , CurrencyInput} from "../../ui/Form
 import { Button } from "../../ui/Button";
 import { PlanData, PlanGuestInfo } from "../../../types";
 import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
+import { PRODUCTOS, PAGOS_FRECUENTES_DE_PAQUETE } from "../wizardData";
 import { DateTimePicker } from "./TicketForm";
 import { VoucherField } from "./VoucherField";
 
@@ -30,9 +31,17 @@ interface PlanFormProps {
    * IT distinta en la factura de Siigo.
    */
   linkedServices?: ServicioVinculado[];
+  /**
+   * Agrega un pago a proveedor a este paquete y abre su formulario.
+   *
+   * La accion tiene que vivir aca. Antes solo se podia vincular desde el servicio suelto:
+   * habia que salir del paquete, agregar la categoria por su lado y acordarse de volver a
+   * elegir el paquete en un select. Al reves de como se piensa el problema.
+   */
+  onAddLinkedService?: (category: string) => void;
 }
 
-export function PlanForm({ plan, onChange, data, triggerError, mainClient, linkedServices = [] }: PlanFormProps) {
+export function PlanForm({ plan, onChange, data, triggerError, mainClient, linkedServices = [], onAddLinkedService }: PlanFormProps) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -75,6 +84,20 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
   // Un paquete sin vinculados los conserva editables, que es el caso del paquete comprado
   // armado a un operador.
   const costoEnVinculados = linkedServices.length > 0;
+
+  // Las lineas de la lista de pagos: el paquete y sus servicios. Solo entran las que
+  // tienen importe, porque una fila sin dinero no es un pago. Misma regla que el servidor.
+  const lineasDePago = [
+    { label: "Paquete", supplier: plan.supplier, paymentMethod: plan.supplierPaymentMethod, ...propio },
+    ...linkedServices.map((sv) => ({
+      label: sv.label,
+      supplier: sv.supplier,
+      paymentMethod: sv.paymentMethod,
+      supplierCost: Number(sv.supplierCost) || 0,
+      ta: Number(sv.ta) || 0,
+      taCre: Number(sv.taCre) || 0,
+    })),
+  ].filter((l) => l.supplierCost > 0 || l.ta > 0 || l.taCre > 0);
 
   const addGuest = () => {
     onChange({
@@ -670,47 +693,75 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
 
         {/* Desglose por proveedor. A cada uno se le paga aparte y con su propio metodo,
             asi que lo que hay que conciliar es esta lista, no un unico numero. */}
-        {linkedServices.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-dashed border-emerald-200 dark:border-emerald-500/30">
-            <p className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-400/70 uppercase tracking-widest mb-2">
-              Servicios que componen el paquete
+        {/* Pagos a proveedores del paquete.
+            Cada servicio se le compra a un proveedor distinto y se le paga aparte, asi
+            que lo que hay que conciliar es esta lista, no un unico numero. Y la accion de
+            agregar uno vive aca, no en el servicio suelto. */}
+        <div className="mt-4 pt-3 border-t border-dashed border-emerald-200 dark:border-emerald-500/30">
+          <p className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-400/70 uppercase tracking-widest mb-2">
+            Pagos a proveedores del paquete
+          </p>
+
+          {lineasDePago.length === 0 ? (
+            <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+              Todavía no hay pagos registrados. Agregá el hotel, los tiquetes o el seguro:
+              cada uno lleva su proveedor, su costo y su método de pago.
             </p>
-            <div className="space-y-1.5">
-              {[
-                { label: "Paquete", supplier: plan.supplier, paymentMethod: plan.supplierPaymentMethod, ...propio },
-                ...linkedServices.map((sv) => ({
-                  label: sv.label,
-                  supplier: sv.supplier,
-                  paymentMethod: sv.paymentMethod,
-                  supplierCost: Number(sv.supplierCost) || 0,
-                  ta: Number(sv.ta) || 0,
-                  taCre: Number(sv.taCre) || 0,
-                })),
-              ]
-                // Una fila sin importe no es un pago; misma regla que en el servidor.
-                .filter((l) => l.supplierCost > 0 || l.ta > 0 || l.taCre > 0)
-                .map((l, i) => (
-                  <div key={i} className="flex items-baseline justify-between gap-3 text-xs">
-                    <div className="min-w-0">
-                      <span className="font-bold text-gray-700 dark:text-slate-200">{l.label}</span>
-                      <span className="text-gray-500 dark:text-slate-400">
-                        {l.supplier ? ` · ${l.supplier}` : " · sin proveedor"}
-                        {l.paymentMethod ? ` · ${l.paymentMethod}` : ""}
-                      </span>
-                    </div>
-                    <span className="font-mono text-gray-800 dark:text-slate-200 shrink-0">
-                      ${l.supplierCost.toLocaleString("es-CO")}
-                      {l.ta + l.taCre > 0 && (
-                        <span className="text-gray-500 dark:text-slate-400">
-                          {" "}+ TA ${(l.ta + l.taCre).toLocaleString("es-CO")}
-                        </span>
-                      )}
+          ) : (
+            <div className="space-y-1.5 mb-3">
+              {lineasDePago.map((l, i) => (
+                <div key={i} className="flex items-baseline justify-between gap-3 text-xs">
+                  <div className="min-w-0">
+                    <span className="font-bold text-gray-700 dark:text-slate-200">{l.label}</span>
+                    <span className="text-gray-500 dark:text-slate-400">
+                      {l.supplier ? ` · ${l.supplier}` : " · sin proveedor"}
+                      {l.paymentMethod ? ` · ${l.paymentMethod}` : ""}
                     </span>
                   </div>
-                ))}
+                  <span className="text-gray-800 dark:text-slate-200 shrink-0">
+                    ${l.supplierCost.toLocaleString("es-CO")}
+                    {l.ta + l.taCre > 0 && (
+                      <span className="text-gray-500 dark:text-slate-400">
+                        {" "}+ TA ${(l.ta + l.taCre).toLocaleString("es-CO")}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {onAddLinkedService && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+                Agregar
+              </span>
+              {PAGOS_FRECUENTES_DE_PAQUETE.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => onAddLinkedService(cat)}
+                  className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 transition-colors flex items-center gap-1"
+                >
+                  <PlusCircle size={13} /> {PRODUCTOS[cat].label}
+                </button>
+              ))}
+              {/* El resto detras de un select, para no poner diecisiete botones. */}
+              <select
+                value=""
+                onChange={(e) => { if (e.target.value) onAddLinkedService(e.target.value); }}
+                className="text-xs px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300"
+              >
+                <option value="">Otro servicio…</option>
+                {Object.entries(PRODUCTOS)
+                  .filter(([cat]) => cat !== "planes" && !PAGOS_FRECUENTES_DE_PAQUETE.includes(cat as any))
+                  .map(([cat, p]) => (
+                    <option key={cat} value={cat}>{p.label}</option>
+                  ))}
+              </select>
+            </div>
+          )}
+        </div>
 
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
           <div className="flex flex-col">

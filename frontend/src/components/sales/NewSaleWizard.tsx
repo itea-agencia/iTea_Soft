@@ -61,6 +61,7 @@ import {
   INITIAL_VISA,
   INITIAL_PASSPORT,
   INITIAL_PET_SERVICE,
+  PRODUCTOS, vinculosReindexados,
 } from "./wizardData";
 import { Step1Client } from "./steps/Step1Client";
 import { Step2Products } from "./steps/Step2Products";
@@ -396,6 +397,33 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       }
     }
     return out;
+  };
+
+  /**
+   * Agrega un pago a proveedor al paquete abierto y abre el formulario del servicio.
+   *
+   * Deja el vinculo puesto de entrada, asi que no hay que acordarse de elegir el paquete
+   * en el select del servicio. Tambien registra la categoria en `selectedProducts`, que es
+   * lo que hace que el servicio aparezca en el paso de productos.
+   */
+  const agregarPagoAProveedor = (categoria: string) => {
+    if (activeIdx === null) return;
+    const prod = PRODUCTOS[categoria];
+    if (!prod) return;
+
+    const cliente = data.clients.find((c: any) => c.name === form.clientId);
+    const nuevoIdx = ((form as any)[prod.key] || []).length;
+
+    setForm((prev: any) => ({
+      ...prev,
+      [prod.key]: [...(prev[prod.key] || []), { ...prod.initial(cliente), linkedToPlanIndex: activeIdx }],
+      selectedProducts: prev.selectedProducts.includes(categoria)
+        ? prev.selectedProducts
+        : [...prev.selectedProducts, categoria],
+    }));
+
+    setActiveForm(categoria as any);
+    setActiveIdx(nuevoIdx);
   };
 
   /* ---- helpers --------------------------------------------------- */
@@ -1327,9 +1355,15 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
           nextItems.splice(activeIdx, 1);
           
           setForm(prev => {
-            const updatedForm = { ...prev, [targetKey!]: nextItems };
+            // Borrar un paquete desplaza a los que venian despues, y los servicios
+            // vinculados apuntan por posicion: sin esto quedarian en el paquete de al lado.
+            const updatedForm: any = {
+              ...prev,
+              [targetKey!]: nextItems,
+              ...(targetKey === 'plans' ? vinculosReindexados({ ...prev, plans: nextItems }, activeIdx) : {}),
+            };
             if (nextItems.length === 0) {
-              updatedForm.selectedProducts = prev.selectedProducts.filter(p => p !== activeForm);
+              updatedForm.selectedProducts = prev.selectedProducts.filter((p: any) => p !== activeForm);
             }
             return updatedForm;
           });
@@ -1656,6 +1690,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   data={data}
                   triggerError={triggerError}
                   linkedServices={serviciosVinculadosDe(activeIdx)}
+                  onAddLinkedService={agregarPagoAProveedor}
                 />
               );
             case "checkin":
