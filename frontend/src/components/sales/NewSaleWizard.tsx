@@ -82,7 +82,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   const { data, addSale, fetchClients, fetchUsers, fetchCommissionAgents, fetchResponsables } = useData();
   const { user } = useAuth();
 
-  const draftKey = `itea_new_sale_draft_${user?.id || 'unknown'}`;
+  const draftKey = `itea_new_sale_draft_v2_${user?.id || 'unknown'}`;
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardFormData>(() => {
@@ -587,9 +587,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 if (plan.hotelName && (plan.hotelName.trim().length < 2 || plan.hotelName.trim().length > 50)) {
                   errors.push("Nombre del Hotel (2-50 chars)");
                 }
-                if (plan.reservationNumber && (plan.reservationNumber.trim().length === 0 || plan.reservationNumber.trim().length > 20)) {
-                  errors.push("Número de Reservación (máx 20 chars)");
-                }
                 if (plan.adultsCount !== undefined && plan.adultsCount !== null && (plan.adultsCount < 0 || plan.adultsCount > 999)) {
                   errors.push("Adultos (0-999)");
                 }
@@ -603,19 +600,11 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                     errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
                   }
                 }
-                if (plan.ticketNumber && plan.transportType !== 'Terrestre') {
-                  if (plan.ticketNumber.length < 13 || plan.ticketNumber.length > 20) {
-                    errors.push("Número de Tiquete (mínimo 13 y máximo 20 dígitos)");
-                  } else if (!/^\d+$/.test(plan.ticketNumber)) {
-                    errors.push("Número de Tiquete (debe ser estrictamente numérico)");
-                  }
-                }
-                if (plan.confirmationNumber && plan.transportType !== 'Terrestre') {
-                  if (plan.confirmationNumber.length !== 6) {
-                    errors.push("Confirmación (debe tener exactamente 6 caracteres)");
-                  } else if (!/^[A-Z0-9-]+$/.test(plan.confirmationNumber)) {
-                    errors.push("Confirmación (debe ser alfanumérico en mayúsculas)");
-                  }
+                // La referencia es del hotel, asi que no depende del tipo de transporte.
+                // La regla vieja exigia exactamente 6 alfanumericos y rechazaba el valor
+                // real que entrega el hotel (PH_3510R-1).
+                if (plan.hotelReference && !/^[A-Z0-9_-]{3,20}$/.test(plan.hotelReference)) {
+                  errors.push("Ref. Hotel (3-20 caracteres: letras, números, guion o guion bajo)");
                 }
 
                 const now = new Date();
@@ -663,7 +652,18 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                       errors.push(`Integrante #${gIdx + 1}: Número de Documento debe ser alfanumérico`);
                     }
                   }
+                  // Booking y tiquete son opcionales: llegan dias despues de vender. Solo
+                  // se valida el formato si el campo viene lleno.
+                  if (g.nroReserva && !/^[A-Z0-9_-]{1,20}$/.test(g.nroReserva)) {
+                    errors.push(`Integrante #${gIdx + 1}: Booking (máx 20, alfanumérico)`);
+                  }
+                  if (g.nroTiquete && !/^[A-Z0-9]{8,20}$/.test(g.nroTiquete)) {
+                    errors.push(`Integrante #${gIdx + 1}: N° Tiquete (8-20 alfanumérico)`);
+                  }
                 });
+                if (plan.guests.filter((g) => g.esTitular).length > 1) {
+                  errors.push("Solo puede haber un titular entre los integrantes");
+                }
               }
             }
 
@@ -1311,7 +1311,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (!plan.planName || plan.planName.trim().length > 50) errors.push("Nombre del Plan (máx 50 chars)");
               if (plan.packageType !== "supplier") {
                 if (!plan.hotelName || plan.hotelName.trim().length < 2 || plan.hotelName.trim().length > 50) errors.push("Nombre del Hotel (2-50 chars)");
-                if (!plan.reservationNumber || plan.reservationNumber.trim().length === 0 || plan.reservationNumber.trim().length > 20) errors.push("Número de Reservación (1-20 chars)");
                 if (plan.adultsCount === undefined || plan.adultsCount < 0 || plan.adultsCount > 999) errors.push("Adultos (0-999)");
                 if (plan.childrenCount === undefined || plan.childrenCount < 0 || plan.childrenCount > 999) errors.push("Menores (0-999)");
                 
@@ -1325,24 +1324,11 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   }
                 }
                 
-                if (plan.transportType !== 'Terrestre') {
-                  if (!plan.ticketNumber || plan.ticketNumber.trim().length === 0) {
-                    errors.push("Número de Tiquete (requerido)");
-                  } else if (plan.ticketNumber.length < 13 || plan.ticketNumber.length > 20) {
-                    errors.push("Número de Tiquete (mínimo 13 y máximo 20 dígitos)");
-                  } else if (!/^\d+$/.test(plan.ticketNumber)) {
-                    errors.push("Número de Tiquete (debe ser estrictamente numérico)");
-                  }
-                }
-                
-                if (!plan.confirmationNumber || plan.confirmationNumber.trim().length === 0) {
-                  errors.push("Confirmación (requerido)");
-                } else if (plan.transportType !== 'Terrestre') {
-                  if (plan.confirmationNumber.length !== 6) {
-                    errors.push("Confirmación (debe tener exactamente 6 caracteres)");
-                  } else if (!/^[A-Z0-9-]+$/.test(plan.confirmationNumber)) {
-                    errors.push("Confirmación (debe ser alfanumérico en mayúsculas)");
-                  }
+                // El booking y el tiquete son de cada integrante y son opcionales: llegan
+                // dias despues de vender. La Ref. Hotel tambien, y su formato ya no exige
+                // 6 caracteres, que rechazaba el valor real del hotel (PH_3510R-1).
+                if (plan.hotelReference && !/^[A-Z0-9_-]{3,20}$/.test(plan.hotelReference)) {
+                  errors.push("Ref. Hotel (3-20 caracteres: letras, números, guion o guion bajo)");
                 }
                 
                 if (!plan.flightDepartureDate) errors.push("Fecha Ida (requerido)");
@@ -1395,7 +1381,17 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   } else if (/[^a-zA-Z0-9]/.test(g.docNumber)) {
                     errors.push(`Integrante #${gIdx + 1}: Número de Documento debe ser alfanumérico`);
                   }
+                  // Opcionales, pero si vienen tienen que tener forma valida.
+                  if (g.nroReserva && !/^[A-Z0-9_-]{1,20}$/.test(g.nroReserva)) {
+                    errors.push(`Integrante #${gIdx + 1}: Booking (máx 20, alfanumérico)`);
+                  }
+                  if (g.nroTiquete && !/^[A-Z0-9]{8,20}$/.test(g.nroTiquete)) {
+                    errors.push(`Integrante #${gIdx + 1}: N° Tiquete (8-20 alfanumérico)`);
+                  }
                 });
+                if (plan.guests.filter((g) => g.esTitular).length > 1) {
+                  errors.push("Solo puede haber un titular entre los integrantes");
+                }
               } else {
                 errors.push("Debes registrar al menos un integrante en el plan");
               }

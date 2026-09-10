@@ -383,15 +383,13 @@ exports.createPlan = H(CATEGORIES.plan, 'prodPlanes', (d, detalleId) => ({
   paqueteId: d.packageId ? parseInt(d.packageId) : null,
   nombrePlan: d.planName || null,
   aerolineaId: d.airline ? parseInt(d.airline) : null,
-  nroReserva: d.reservationNumber || null,
-  nroTiquete: d.ticketNumber || null,
   fechaViajeInicio: d.startDate ? new Date(d.startDate) : null,
   fechaViajeFin: d.endDate ? new Date(d.endDate) : null,
   fechaSalidaVuelo: d.flightDepartureDate ? new Date(d.flightDepartureDate) : null,
   fechaRegresoVuelo: d.flightReturnDate ? new Date(d.flightReturnDate) : null,
   adultosCount: d.adultsCount || 0,
   menoresCount: d.childrenCount || 0,
-  numeroConfirmacion: d.confirmationNumber || null,
+  referenciaHotel: d.hotelReference || d.confirmationNumber || null,
   observaciones: d.observations || null
 })).create;
 

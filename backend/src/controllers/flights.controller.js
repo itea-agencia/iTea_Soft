@@ -201,14 +201,18 @@ exports.list = async (req, res, next) => {
            idSuffix: `p-${pas.id}`,
            name: pas.persona ? `${pas.persona.nombres || ''} ${pas.persona.apellidos || ''}`.trim() : 'Desconocido',
            pasajeroId: pas.id,
-           email: pas.persona?.email || null
+           email: pas.persona?.email || null,
+           // El codigo de reserva es de cada integrante. Antes se leia del paquete
+           // (`p.nroReserva`), columna que ya no existe.
+           nroReserva: pas.nroReserva || ''
         }));
       } else {
         passengersToMap = [{
            idSuffix: 'main',
            name: passengerName,
            pasajeroId: null,
-           email: venta.cliente?.persona?.email || null
+           email: venta.cliente?.persona?.email || null,
+           nroReserva: ''
         }];
       }
 
@@ -234,7 +238,7 @@ exports.list = async (req, res, next) => {
               checkin: p.checkinStatusIda || 'pendiente',
               flightNumber: p.nroVuelo || '',
               seat: null,
-              reservationNumber: p.nroReserva || '',
+              reservationNumber: pas.nroReserva || '',
               source: 'plan'
             });
           }
@@ -262,7 +266,7 @@ exports.list = async (req, res, next) => {
               checkin: p.checkinStatusRegreso || 'pendiente',
               flightNumber: p.nroVuelo || '',
               seat: null,
-              reservationNumber: p.nroReserva || '',
+              reservationNumber: pas.nroReserva || '',
               source: 'plan'
             });
           }

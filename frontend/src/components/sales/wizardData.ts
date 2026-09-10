@@ -169,11 +169,9 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   ta: 0,
   taCre: 0,
   supplierPaymentMethod: "",
-  reservationNumber: "",
-  confirmationNumber: "",
+  hotelReference: "",
   observations: "",
   flightNumber: "",
-  ticketNumber: "",
   adultsCount: 2,
   childrenCount: 0,
   startDate: "",
@@ -182,14 +180,17 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   flightDepartureArrivalDate: "",
   flightReturnDate: "",
   flightReturnArrivalDate: "",
-  hotelCheckIn: "",
-  hotelCheckOut: "",
   airline: "",
+  // Siempre se siembra el titular (igual que INITIAL_TICKET). Si se dejara vacio, el
+  // formulario mostraria una fila que no existe en el estado y no se guardaria.
   guests: [
     {
       name: client?.name || "",
       docType: client?.docType || "",
       docNumber: client?.docNumber || "",
+      esTitular: true,
+      nroReserva: "",
+      nroTiquete: "",
     },
   ],
   packageType: "own",

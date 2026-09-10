@@ -239,6 +239,21 @@ export interface GuestInfo {
   docNumber: string;
 }
 
+/**
+ * Un integrante de paquete es un huésped con sus propios códigos: el booking que entrega
+ * el hotel por persona y el tiquete aéreo. La referencia del hotel es una sola por
+ * paquete y vive en `PlanData.hotelReference`.
+ *
+ * No se amplía `GuestInfo` porque lo comparten hotelería, seguros y tours, y ninguno de
+ * esos modela titular ni códigos: el tipo mentiría y el compilador dejaría pasar lecturas
+ * que en runtime son siempre undefined.
+ */
+export interface PlanGuestInfo extends GuestInfo {
+  esTitular: boolean;
+  nroReserva?: string;
+  nroTiquete?: string;
+}
+
 export interface HotelData {
   linkedToPlanIndex?: number | null;
   hotelName: string;
@@ -265,13 +280,12 @@ export interface PlanData {
   supplierCost: number;
   ta: number;
   taCre?: number;
-  reservationNumber: string;
   flightNumber: string;
-  ticketNumber: string;
   packageId?: number | string;
   packageName?: string;
   packageRateId?: number | string;
-  confirmationNumber?: string;
+  /** Referencia que entrega el hotel, una por paquete. Ej. PH_3510R-1 */
+  hotelReference?: string;
   observations?: string;
   adultsCount?: number;
   childrenCount?: number;
@@ -281,12 +295,10 @@ export interface PlanData {
   flightDepartureArrivalDate?: string;
   flightReturnDate?: string;
   flightReturnArrivalDate?: string;
-  hotelCheckIn?: string;
-  hotelCheckOut?: string;
   supplierPaymentMethod: string;
   supplier: string;
   airline: string;
-  guests: GuestInfo[];
+  guests: PlanGuestInfo[];
   packageType?: 'own' | 'supplier';
   transportType?: 'Aéreo' | 'Terrestre';
   voucher?: { name: string; base64: string };

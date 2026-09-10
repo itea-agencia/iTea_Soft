@@ -1,7 +1,9 @@
-import { Package, Plane, Users, Briefcase, Trash2, PlusCircle } from "lucide-react";
+import { useId } from "react";
+import { Package, Plane, Bus, Building2, Users, Briefcase, Trash2, PlusCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { FormField, Input, Combobox, Select , CurrencyInput} from "../../ui/Form";
 import { Button } from "../../ui/Button";
-import { PlanData, GuestInfo } from "../../../types";
+import { PlanData, PlanGuestInfo } from "../../../types";
+import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
 import { DateTimePicker } from "./TicketForm";
 import { VoucherField } from "./VoucherField";
 
@@ -20,16 +22,26 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
     return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
   })();
 
+  // Id estable para agrupar los radios de titular. TicketForm usa `titular-${idx}`, que
+  // crea un grupo por fila y permite marcar varios titulares a la vez.
+  const titularGroup = useId();
+
+  const guests = plan.guests || [];
+  // Derivado en render: si datos heredados no traen titular, se resalta el primero.
+  const conTitular = hayTitular(guests);
+
   const addGuest = () => {
-    onChange({ guests: [...plan.guests, { name: "", docType: "CC", docNumber: "" }] });
+    onChange({
+      guests: [...guests, { name: "", docType: "", docNumber: "", esTitular: false, nroReserva: "", nroTiquete: "" }],
+    });
   };
 
   const removeGuest = (gIdx: number) => {
-    onChange({ guests: plan.guests.filter((_, i) => i !== gIdx) });
+    onChange({ guests: guests.filter((_, i) => i !== gIdx) });
   };
 
-  const updateGuest = (gIdx: number, gUpdates: Partial<GuestInfo>) => {
-    const nextGuests = [...plan.guests];
+  const updateGuest = (gIdx: number, gUpdates: Partial<PlanGuestInfo>) => {
+    const nextGuests = [...guests];
     nextGuests[gIdx] = { ...nextGuests[gIdx], ...gUpdates };
     onChange({ guests: nextGuests });
   };
@@ -145,15 +157,6 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           </FormField>
           {plan.packageType !== "supplier" && (
             <>
-              <FormField label="Nombre del Hotel">
-                <Input
-                  value={plan.hotelName}
-                  onChange={(e) => onChange({ hotelName: e.target.value })}
-                  placeholder="Ej: Riu Palace (Máx 50)"
-                  maxLength={50}
-                />
-              </FormField>
-
               <FormField label="Tipo de Transporte">
                 <Select
                   value={plan.transportType || "Aéreo"}
@@ -208,94 +211,35 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         </div>
       </div>
 
+      {/* ── Reserva de Hotel ──────────────────────────────────
+          Separado del transporte a proposito: antes un solo bloque mezclaba el codigo de
+          reserva, el de tiquete, la confirmacion y las fechas de vuelo y de hotel, y no se
+          sabia que dato pertenecia a que servicio. */}
       {plan.packageType !== "supplier" && (
-        <div className="bg-blue-50/20 dark:bg-blue-500/10 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20">
-          <h4 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-            <Plane size={14} />
-            Reservación y Transporte
+        <div className="bg-amber-50/20 dark:bg-amber-500/10 p-4 rounded-xl border border-amber-100 dark:border-amber-500/20">
+          <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <Building2 size={14} />
+            Reserva de Hotel
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label={plan.reservationNumber ? "Número de Reservación" : "Número de Reservación (Opcional)"}>
+            <FormField label="Nombre del Hotel">
               <Input
-                value={plan.reservationNumber}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase();
-                  onChange({ reservationNumber: cleaned });
-                }}
-                placeholder="Código (Máx 20)"
+                value={plan.hotelName}
+                onChange={(e) => onChange({ hotelName: e.target.value })}
+                placeholder="Ej: Sol Caribe Campo"
+                maxLength={50}
+              />
+            </FormField>
+            <FormField label="Ref. Hotel">
+              <Input
+                value={plan.hotelReference || ""}
+                onChange={(e) => onChange({ hotelReference: sanearCodigo(e.target.value) })}
+                placeholder="Ej: PH_3510R-1"
                 maxLength={20}
               />
             </FormField>
-            <FormField label={plan.transportType === 'Terrestre' ? 'Placa / Vehículo' : 'Número de Vuelo'}>
-              <Input
-                value={plan.flightNumber}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase().slice(0, 12);
-                  onChange({ flightNumber: cleaned });
-                }}
-                placeholder={plan.transportType === 'Terrestre' ? 'Ej: SRG123' : 'Ej: AV9301'}
-                maxLength={12}
-              />
-            </FormField>
-            <FormField label={plan.transportType === 'Terrestre' ? 'Tiquete / Puesto' : 'Número de Tiquete'}>
-              <Input
-                value={plan.ticketNumber}
-                onChange={(e) => {
-                  const cleaned = plan.transportType === 'Terrestre' ? e.target.value : e.target.value.replace(/\D/g, "").slice(0, 15);
-                  onChange({ ticketNumber: cleaned });
-                }}
-                placeholder={plan.transportType === 'Terrestre' ? 'Opcional (Ej: Asiento 12)' : '13 a 14 dígitos numéricos'}
-                maxLength={20}
-              />
-            </FormField>
-             <FormField label="Confirmación">
-               <Input
-                 value={plan.confirmationNumber || ""}
-                 onChange={(e) => {
-                   const cleaned = e.target.value.replace(/[^a-zA-Z0-9-]/g, "").toUpperCase().slice(0, 10);
-                   onChange({ confirmationNumber: cleaned });
-                 }}
-                 placeholder={plan.transportType === 'Terrestre' ? 'Ej: CONF123' : '6 caracteres (Ej: AB1234)'}
-                 maxLength={10}
-               />
-             </FormField>
-            <FormField label={plan.transportType === 'Terrestre' ? 'Salida (Origen)' : 'Fecha Ida (Vuelo)'}>
-              <DateTimePicker
-                value={plan.flightDepartureDate || ""}
-                onChange={(val) => onChange({ flightDepartureDate: val })}
-                min={minDateTime}
-                triggerError={triggerError}
-                fieldName="Salida de ida del plan"
-              />
-            </FormField>
-            <FormField label={plan.transportType === 'Terrestre' ? 'Llegada (Destino)' : 'Llegada Ida (Vuelo)'}>
-              <DateTimePicker
-                value={plan.flightDepartureArrivalDate || ""}
-                onChange={(val) => onChange({ flightDepartureArrivalDate: val })}
-                min={minDateTime}
-                triggerError={triggerError}
-                fieldName="Llegada de ida del plan"
-              />
-            </FormField>
-            <FormField label={plan.transportType === 'Terrestre' ? 'Regreso (Destino)' : 'Fecha Vuelta (Vuelo)'}>
-              <DateTimePicker
-                value={plan.flightReturnDate || ""}
-                onChange={(val) => onChange({ flightReturnDate: val })}
-                min={minDateTime}
-                triggerError={triggerError}
-                fieldName="Salida de vuelta del plan"
-              />
-            </FormField>
-            <FormField label={plan.transportType === 'Terrestre' ? 'Llegada Regreso (Origen)' : 'Llegada Vuelta (Vuelo)'}>
-              <DateTimePicker
-                value={plan.flightReturnArrivalDate || ""}
-                onChange={(val) => onChange({ flightReturnArrivalDate: val })}
-                min={minDateTime}
-                triggerError={triggerError}
-                fieldName="Llegada de vuelta del plan"
-              />
-            </FormField>
-            <FormField label="Ingreso Hotel">
+            <div className="hidden md:block" />
+            <FormField label="Ingreso">
               <DateTimePicker
                 value={plan.startDate || ""}
                 onChange={(val) => onChange({ startDate: val })}
@@ -304,7 +248,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 fieldName="Ingreso al hotel del plan"
               />
             </FormField>
-            <FormField label="Salida Hotel">
+            <FormField label="Salida">
               <DateTimePicker
                 value={plan.endDate || ""}
                 onChange={(val) => onChange({ endDate: val })}
@@ -314,6 +258,85 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               />
             </FormField>
           </div>
+          <p className="text-[10px] text-amber-700/70 dark:text-amber-400/60 mt-3">
+            El booking de cada huésped se registra abajo, en Integrantes.
+          </p>
+        </div>
+      )}
+
+      {/* ── Transporte ─────────────────────────────────────── */}
+      {plan.packageType !== "supplier" && (
+        <div className="bg-blue-50/20 dark:bg-blue-500/10 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20">
+          <h4 className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            {plan.transportType === 'Terrestre' ? <Bus size={14} /> : <Plane size={14} />}
+            {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField label={plan.transportType === 'Terrestre' ? 'Placa / Vehículo' : 'Número de Vuelo'}>
+              <Input
+                value={plan.flightNumber}
+                onChange={(e) => onChange({ flightNumber: sanearCodigo(e.target.value, 12) })}
+                placeholder={plan.transportType === 'Terrestre' ? 'Ej: SRG123' : 'Ej: AV9301'}
+                maxLength={12}
+              />
+            </FormField>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-dashed border-blue-100 dark:border-blue-500/20">
+            <p className="text-[10px] font-bold text-blue-700/80 dark:text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <ArrowRight size={11} /> Ida
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label={plan.transportType === 'Terrestre' ? 'Salida (Origen)' : 'Salida'}>
+                <DateTimePicker
+                  value={plan.flightDepartureDate || ""}
+                  onChange={(val) => onChange({ flightDepartureDate: val })}
+                  min={minDateTime}
+                  triggerError={triggerError}
+                  fieldName="Salida de ida del plan"
+                />
+              </FormField>
+              <FormField label={plan.transportType === 'Terrestre' ? 'Llegada (Destino)' : 'Llegada'}>
+                <DateTimePicker
+                  value={plan.flightDepartureArrivalDate || ""}
+                  onChange={(val) => onChange({ flightDepartureArrivalDate: val })}
+                  min={plan.flightDepartureDate || minDateTime}
+                  triggerError={triggerError}
+                  fieldName="Llegada de ida del plan"
+                />
+              </FormField>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-dashed border-blue-100 dark:border-blue-500/20">
+            <p className="text-[10px] font-bold text-blue-700/80 dark:text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1">
+              <ArrowLeft size={11} /> Regreso
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label={plan.transportType === 'Terrestre' ? 'Regreso (Destino)' : 'Salida'}>
+                <DateTimePicker
+                  value={plan.flightReturnDate || ""}
+                  onChange={(val) => onChange({ flightReturnDate: val })}
+                  min={plan.flightDepartureDate || minDateTime}
+                  triggerError={triggerError}
+                  fieldName="Salida de regreso del plan"
+                />
+              </FormField>
+              <FormField label={plan.transportType === 'Terrestre' ? 'Llegada Regreso (Origen)' : 'Llegada'}>
+                <DateTimePicker
+                  value={plan.flightReturnArrivalDate || ""}
+                  onChange={(val) => onChange({ flightReturnArrivalDate: val })}
+                  min={plan.flightReturnDate || minDateTime}
+                  triggerError={triggerError}
+                  fieldName="Llegada de regreso del plan"
+                />
+              </FormField>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-blue-700/70 dark:text-blue-400/60 mt-3">
+            El {plan.transportType === 'Terrestre' ? 'tiquete o puesto' : 'tiquete'} de cada pasajero se registra abajo, en Integrantes.
+          </p>
         </div>
       )}
 
@@ -375,63 +398,143 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             Agregar
           </Button>
         </div>
-        <div className="space-y-3">
-          {plan.guests.map((guest, gIdx) => (
-            <div key={gIdx} className="flex gap-2 items-start">
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
-                <Combobox
-                  value={guest.name}
-                  onChange={(val) => {
-                    const cleaned = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
-                    const client = (data?.clients || []).find(
-                      (c: any) =>
-                        (c.name === cleaned || `${c.firstName} ${c.lastName || ""}`.trim() === cleaned) &&
-                        c.status === "active"
-                    );
-                    if (client) {
-                      updateGuest(gIdx, {
-                        name: client.name || `${client.firstName} ${client.lastName || ""}`.trim(),
-                        docType: client.docType || guest.docType,
-                        docNumber: client.docNumber || guest.docNumber,
-                      });
-                    } else {
-                      updateGuest(gIdx, { name: cleaned });
-                    }
-                  }}
-                  options={(data?.clients || [])
-                    .filter((c: any) => c.status === "active" && String(c.id) !== String(mainClient?.id))
-                    .map((c: any) => ({
-                      value: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
-                      label: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
-                    }))}
-                  placeholder="Nombre completo"
-                  preventNumbers={true}
-                />
-                <Select
-                  value={guest.docType}
-                  onChange={(e) => updateGuest(gIdx, { docType: e.target.value })}
-                  options={data.config.documentTypes.map((d: any) => ({
-                    value: d.abreviatura,
-                    label: d.abreviatura,
-                  }))}
-                />
-                <Input
-                  value={guest.docNumber}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-                    updateGuest(gIdx, { docNumber: cleaned });
-                  }}
-                  placeholder="Número de documento"
-                  maxLength={20}
-                />
+        <div className="space-y-4">
+          {guests.map((guest, gIdx) => {
+            const esTitular = guest.esTitular || (!conTitular && gIdx === 0);
+            const esTerrestre = plan.transportType === 'Terrestre';
+
+            return (
+              <div
+                key={gIdx}
+                className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 relative group"
+              >
+                {/* El titular no se puede borrar: asi el invariante "al menos un
+                    integrante" se sostiene sin depender de guests.length. */}
+                {!esTitular && (
+                  <button
+                    type="button"
+                    onClick={() => removeGuest(gIdx)}
+                    className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    title="Eliminar integrante"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+
+                <div className="flex items-center justify-between mb-3 pr-8">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold text-gray-700 dark:text-slate-200 truncate">
+                      {gIdx + 1}. {guest.name || "Sin Nombre"}
+                    </span>
+                    {esTitular && (
+                      <span className="text-[9px] bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0">
+                        Titular
+                      </span>
+                    )}
+                  </div>
+                  <label className="flex items-center gap-1 cursor-pointer shrink-0">
+                    <input
+                      type="radio"
+                      name={titularGroup}
+                      checked={esTitular}
+                      onChange={() => onChange({ guests: setTitular(guests, gIdx) })}
+                      className="w-3 h-3 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase">
+                      Es Titular
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                  <FormField label="Nombre Completo">
+                    <Combobox
+                      value={guest.name}
+                      onChange={(val) => {
+                        const cleaned = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
+                        const client = (data?.clients || []).find(
+                          (c: any) =>
+                            (c.name === cleaned || `${c.firstName} ${c.lastName || ""}`.trim() === cleaned) &&
+                            c.status === "active"
+                        );
+                        if (client) {
+                          updateGuest(gIdx, {
+                            name: client.name || `${client.firstName} ${client.lastName || ""}`.trim(),
+                            docType: client.docType || guest.docType,
+                            docNumber: client.docNumber || guest.docNumber,
+                          });
+                        } else {
+                          updateGuest(gIdx, { name: cleaned });
+                        }
+                      }}
+                      options={(data?.clients || [])
+                        .filter((c: any) => c.status === "active" && String(c.id) !== String(mainClient?.id))
+                        .map((c: any) => ({
+                          value: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
+                          label: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
+                        }))}
+                      placeholder="Nombre completo"
+                      preventNumbers={true}
+                    />
+                  </FormField>
+                  <FormField label="Tipo de Doc.">
+                    <Select
+                      value={guest.docType}
+                      onChange={(e) => updateGuest(gIdx, { docType: e.target.value })}
+                      options={[
+                        { value: "", label: "Sel..." },
+                        ...data.config.documentTypes.map((d: any) => ({
+                          value: d.abreviatura,
+                          label: d.abreviatura,
+                        })),
+                      ]}
+                    />
+                  </FormField>
+                  <FormField label="N° Documento">
+                    <Input
+                      value={guest.docNumber}
+                      onChange={(e) =>
+                        updateGuest(gIdx, {
+                          docNumber: e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase(),
+                        })
+                      }
+                      placeholder="Número de documento"
+                      maxLength={20}
+                    />
+                  </FormField>
+                </div>
+
+                {/* Los codigos son de cada integrante, no del paquete: el hotel entrega un
+                    booking por persona y la aerolinea un tiquete por persona. Antes vivian
+                    a nivel paquete y el backend los copiaba a todos por igual. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField label="Booking (Opcional)">
+                    <Input
+                      value={guest.nroReserva || ""}
+                      onChange={(e) => updateGuest(gIdx, { nroReserva: sanearCodigo(e.target.value) })}
+                      placeholder="Código que da el hotel"
+                      maxLength={20}
+                      className="text-xs"
+                    />
+                  </FormField>
+                  <FormField label={esTerrestre ? "Tiquete / Puesto (Opcional)" : "N° Tiquete (Opcional)"}>
+                    <Input
+                      value={guest.nroTiquete || ""}
+                      onChange={(e) => updateGuest(gIdx, { nroTiquete: sanearCodigo(e.target.value) })}
+                      placeholder={esTerrestre ? "Ej: Asiento 12" : "Ej: 0000000127297"}
+                      maxLength={20}
+                      className="text-xs"
+                    />
+                    {!esTerrestre && guest.nroTiquete && guest.nroTiquete.length > 0 && guest.nroTiquete.length < 8 && (
+                      <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">
+                        Mínimo 8 caracteres.
+                      </p>
+                    )}
+                  </FormField>
+                </div>
               </div>
-              {plan.guests.length > 1 && (
-                <Button type="button" variant="outline" size="sm" onClick={() => removeGuest(gIdx)}>
-                  <Trash2 size={14} className="text-red-500" />
-                </Button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div className="mt-4">
           <FormField label="Observaciones">

@@ -303,8 +303,6 @@ const PRODUCT_TRANSFORMS = {
       airline: String(p.aerolineaId || ''),
       airlineName: p.aerolinea?.nombre || null,
       flightNumber: p.nroVuelo || null,
-      reservationNumber: p.nroReserva,
-      ticketNumber: p.nroTiquete,
       startDate: p.fechaViajeInicio?.toISOString() || null,
       endDate: p.fechaViajeFin?.toISOString() || null,
       flightDepartureDate: p.fechaSalidaVuelo?.toISOString() || null,
@@ -313,9 +311,18 @@ const PRODUCT_TRANSFORMS = {
       flightReturnArrivalDate: p.fechaLlegadaRegresoVuelo?.toISOString() || null,
       adultsCount: p.adultosCount,
       childrenCount: p.menoresCount,
-      confirmationNumber: p.numeroConfirmacion,
+      hotelReference: p.referenciaHotel,
       observations: p.observaciones,
-      guests: passengers.map(p => ({ name: p.nombreCompleto, docType: String(p.tipoDocumento || ''), docNumber: p.nroDocumento || '' })),
+      // El booking y el tiquete son de cada integrante, no del paquete. `mapPassengers` ya
+      // los provee; antes este map los descartaba y por eso el detalle no los mostraba.
+      guests: passengers.map(g => ({
+        name: g.nombreCompleto,
+        docType: String(g.tipoDocumento || ''),
+        docNumber: g.nroDocumento || '',
+        esTitular: g.esTitular === true,
+        nroReserva: g.nroReserva || '',
+        nroTiquete: g.nroTiquete || '',
+      })),
       packageType: p.tipoPaquete || 'own',
       transportType: p.tipoTransporte || 'Aéreo',
       supplier: d.proveedor?.nombre || null,
@@ -817,20 +824,10 @@ exports.getPaginatedDetails = async (req, res, next) => {
     
     if (transform) {
       for (const d of details) {
-        const passengers = d.pasajerosDetalle.map(pd => ({
-           id: pd.id,
-           personaId: pd.persona.id,
-           nroDocumento: pd.persona.nroDocumento,
-           tipoDocumento: pd.persona.tipoDocumento?.abreviatura || null,
-           nombreCompleto: `${pd.persona.nombres} ${pd.persona.apellidos}`,
-           nombres: pd.persona.nombres,
-           apellidos: pd.persona.apellidos,
-           esTitular: pd.esTitular,
-           asiento: pd.asiento,
-           asientoRegreso: pd.asientoRegreso,
-           nroTiquete: pd.nroTiquete,
-           nroReserva: pd.nroReserva
-        }));
+        // Antes armaba su propio array y leia `pd.persona.nroDocumento`, campo que no
+        // existe (en Personas es `documento`), asi que el documento llegaba vacio a la
+        // pestana de detalle. Reusar mapPassengers arregla eso y ordena titular primero.
+        const passengers = mapPassengers(d);
         transform(d, passengers, target);
       }
     }
@@ -902,8 +899,6 @@ const PRODUCT_HANDLERS = {
         nombreHotel: d.hotelName || null,
         aerolineaId,
         nroVuelo: d.flightNumber || null,
-        nroReserva: d.reservationNumber || null,
-        nroTiquete: d.ticketNumber || null,
         fechaViajeInicio: d.startDate ? new Date(d.startDate) : null,
         fechaViajeFin: d.endDate ? new Date(d.endDate) : null,
         fechaSalidaVuelo: d.flightDepartureDate ? new Date(d.flightDepartureDate) : null,
@@ -912,7 +907,9 @@ const PRODUCT_HANDLERS = {
         fechaLlegadaRegresoVuelo: d.flightReturnArrivalDate ? new Date(d.flightReturnArrivalDate) : null,
         adultosCount: parseInt(d.adultsCount) || 0,
         menoresCount: parseInt(d.childrenCount) || 0,
-        numeroConfirmacion: d.confirmationNumber || null,
+        // `confirmationNumber` se acepta como respaldo por si un bundle viejo en cache
+        // todavia lo manda; asi el dato no se pierde en silencio durante el despliegue.
+        referenciaHotel: String(d.hotelReference || d.confirmationNumber || '').trim().slice(0, 20) || null,
         observaciones: d.observations || null,
         tipoPaquete: d.packageType || 'own',
         tipoTransporte: d.transportType || 'Aéreo'

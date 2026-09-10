@@ -368,11 +368,38 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                       <DataCell label="Nombre del Plan / Paquete" value={plan.planName || plan.packageName} highlight />
                       <DataCell label="Proveedor / Operador" value={plan.supplier} />
                       <DataCell label="Tipo de Paquete" value="Por Proveedor" />
-                      <DataCell
-                        label="Lista de Pasajeros / Huéspedes"
-                        value={(plan.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || '—'}
-                        fullWidth={true}
-                      />
+                      {(plan.guests || []).length > 0 && (
+                        <div style={{ gridColumn: '1 / -1', marginTop: '12px' }}>
+                          <div style={{ color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold' }}>
+                            INTEGRANTES DEL PAQUETE:
+                          </div>
+                          <table className="v-flight-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                            <thead>
+                              <tr>
+                                {['NOMBRE', 'TIPO DOC.', 'N° DOCUMENTO', 'BOOKING', 'N° TIQUETE'].map((h, hi) => (
+                                  <th key={hi} style={{ textAlign: hi === 0 ? 'left' : 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(plan.guests || []).map((g: any, gi: number) => (
+                                <tr key={gi} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '12px', fontWeight: 'bold', color: '#000000' }}>
+                                    {g.name}
+                                    {g.esTitular && (
+                                      <span style={{ marginLeft: '8px', padding: '2px 8px', color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>TITULAR</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.docType || '—'}</td>
+                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.docNumber || '—'}</td>
+                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.nroReserva || '—'}</td>
+                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.nroTiquete || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                       {plan.observations && (
                         <DataCell
                           label="Observaciones"
@@ -393,11 +420,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
                       <DataCell label={plan.transportType === 'Terrestre' ? "Empresa de Transporte" : "Aerolínea"} value={(plan as any).airlineName || plan.airline} />
                       <DataCell label={plan.transportType === 'Terrestre' ? "Placa / Vehículo" : "N° Vuelo"} value={plan.flightNumber} />
-                      <DataCell label="Localizador / N° Reserva" value={plan.reservationNumber} />
-
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Tiquete / Puesto" : "N° Tiquete"} value={plan.ticketNumber} />
-                      <DataCell label="N° Confirmación" value={plan.confirmationNumber} />
-                      <DataCell label="" value={<span />} />
+                      <DataCell label="Ref. Hotel" value={plan.hotelReference} />
 
                       <DataCell label={plan.transportType === 'Terrestre' ? "Fecha Salida (Ida)" : "Fecha Salida Vuelo (Ida)"} value={plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : null} />
                       <DataCell label={plan.transportType === 'Terrestre' ? "Llegada Destino (Ida)" : "Llegada Vuelo Ida"} value={plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : null} />

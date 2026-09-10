@@ -547,15 +547,17 @@ model ProdPlanes {
   paqueteTarifaId          Int?            @map("paquete_tarifa_id")
   nombrePlan               String?         @map("nombre_plan")
   aerolineaId              Int?
-  nroReserva               String?         @map("nro_reserva")
-  nroTiquete               String?         @map("nro_tiquete")
   fechaViajeInicio         DateTime?       @map("fecha_viaje_inicio")
   fechaViajeFin            DateTime?       @map("fecha_viaje_fin")
   fechaSalidaVuelo         DateTime?       @map("fecha_salida_vuelo")
   fechaRegresoVuelo        DateTime?       @map("fecha_regreso_vuelo")
   adultosCount             Int?            @map("adultos_count")
   menoresCount             Int?            @map("menores_count")
-  numeroConfirmacion       String?         @map("numero_confirmacion")
+  // La referencia que entrega el hotel, una por paquete (ej. PH_3510R-1). Antes se llamaba
+  // `numeroConfirmacion`, nombre que no describia el dato y arrastraba una validacion de
+  // 6 caracteres alfanumericos que rechazaba el valor real.
+  // El booking y el tiquete son POR INTEGRANTE y viven en PasajerosDetalle.
+  referenciaHotel          String?         @map("referencia_hotel")
   observaciones            String?
   fechaLlegadaRegresoVuelo DateTime?       @map("fecha_llegada_regreso_vuelo")
   fechaLlegadaVuelo        DateTime?       @map("fecha_llegada_vuelo")

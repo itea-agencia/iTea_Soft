@@ -480,7 +480,9 @@ export default function SaleDetailModal({
                           name: name.trim(),
                           esTitular: typeof pax === 'object' ? (pax.esTitular || false) : false,
                           docType: typeof pax === 'object' ? (pax.docType || pax.tipoDocumento || pax.documentType || '') : '',
-                          docNumber: typeof pax === 'object' ? (pax.docNumber || pax.nroDocumento || pax.nroTiquete || pax.documentNumber || '') : ''
+                          // Sin `|| pax.nroTiquete`: ahora los integrantes de un paquete traen tiquete, y un
+                          // integrante sin documento mostraria su numero de tiquete como si fuera la cedula.
+                          docNumber: typeof pax === 'object' ? (pax.docNumber || pax.nroDocumento || pax.documentNumber || '') : ''
                         });
                       }
                     });

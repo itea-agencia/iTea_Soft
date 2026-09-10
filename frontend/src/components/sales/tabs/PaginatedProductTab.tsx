@@ -80,11 +80,15 @@ function renderPassengers(items: any[]) {
   );
 }
 
-function renderTicketPassengers(items: any[]) {
+function renderTicketPassengers(
+  items: any[],
+  opts: { title?: string; reservaLabel?: string } = {},
+) {
+  const { title = 'Pasajeros', reservaLabel = 'Reserva:' } = opts;
   if (!items || items.length === 0) return null;
   return (
     <div className="bg-gray-50 rounded-lg p-3 mt-3 border border-gray-100">
-      <p className="text-xs font-bold text-gray-600 mb-2 uppercase">Pasajeros ({items.length})</p>
+      <p className="text-xs font-bold text-gray-600 mb-2 uppercase">{title} ({items.length})</p>
       <div className="space-y-2">
         {items.map((p: any, i: number) => (
           <div key={i} className="text-xs flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 last:border-0 pb-2 last:pb-0">
@@ -98,7 +102,7 @@ function renderTicketPassengers(items: any[]) {
               </div>
             </div>
             <div className="flex gap-3 mt-1 sm:mt-0 text-[10px] text-gray-600 text-right">
-              {p.nroReserva && <div><span className="font-semibold uppercase text-gray-400">Reserva:</span> {p.nroReserva}</div>}
+              {p.nroReserva && <div><span className="font-semibold uppercase text-gray-400">{reservaLabel}</span> {p.nroReserva}</div>}
               {p.nroTiquete && <div><span className="font-semibold uppercase text-gray-400">Tiquete:</span> <span className="break-all">{p.nroTiquete}</span></div>}
               {p.asiento && <div><span className="font-semibold uppercase text-gray-400">{p.asientoRegreso ? "Asiento Ida:" : "Asiento:"}</span> {p.asiento}</div>}
               {p.asientoRegreso && <div><span className="font-semibold uppercase text-gray-400">Asiento Regreso:</span> {p.asientoRegreso}</div>}
@@ -454,27 +458,58 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                   ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
                 ])
               ) : (
-                renderGrid([
-                  ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
-                  { label: "Hotel", value: plan.hotelName },
-                  { label: plan.transportType === 'Terrestre' ? "Transportadora" : "Aerolínea", value: plan.airlineName || plan.airline },
-                  { label: "Reserva", value: plan.reservationNumber },
-                  { label: "Proveedor", value: plan.supplier || plan.supplierName },
-                  { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
-                  { label: plan.transportType === 'Terrestre' ? "Puesto/Tiquete" : "Nro Tiquete", value: plan.ticketNumber },
-                  { label: "Confirmación", value: plan.confirmationNumber },
-                  { label: "Check-in Hotel", value: plan.startDate ? formatDateTime(plan.startDate) : "-" },
-                  { label: "Check-out Hotel", value: plan.endDate ? formatDateTime(plan.endDate) : "-" },
-                  { label: plan.transportType === 'Terrestre' ? "Placa/Vehículo" : "Nro Vuelo", value: plan.flightNumber },
-                  { label: "Salida Ida", value: plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : "-" },
-                  { label: "Llegada Ida", value: plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : "-" },
-                  { label: "Salida Regreso", value: plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : "-" },
-                  { label: "Llegada Regreso", value: plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : "-" },
-                  { label: "Adultos", value: plan.adultsCount },
-                  { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
-                ])
+                <>
+                  {/* Cabecera: identidad y dinero. Los datos de hotel y de transporte van
+                      en bloques propios, porque antes una sola rejilla de 16 celdas los
+                      mezclaba y no se sabia que codigo pertenecia a que servicio. */}
+                  {renderGrid([
+                    ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
+                    { label: "Tipo de Transporte", value: plan.transportType || "Aéreo" },
+                    { label: "Proveedor", value: plan.supplier || plan.supplierName },
+                    { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
+                    { label: "Adultos", value: plan.adultsCount },
+                    { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
+                  ])}
+
+                  <div className="bg-amber-50/40 rounded-lg p-3 mt-3 border border-amber-100/60">
+                    <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-100">
+                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest flex items-center gap-1">
+                        <Building2 size={11} /> Hotel
+                      </p>
+                      {plan.hotelName && (
+                        <span className="text-[10px] font-bold text-amber-800">{plan.hotelName}</span>
+                      )}
+                    </div>
+                    {renderGrid([
+                      { label: "Ref. Hotel", value: plan.hotelReference },
+                      { label: "Ingreso", value: plan.startDate ? formatDateTime(plan.startDate) : "-" },
+                      { label: "Salida", value: plan.endDate ? formatDateTime(plan.endDate) : "-" },
+                    ])}
+                  </div>
+
+                  {(plan.flightNumber || plan.flightDepartureDate || plan.flightReturnDate) && (
+                    <div className="bg-blue-50/40 rounded-lg p-3 mt-2.5 border border-blue-100/60">
+                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100">
+                        <p className="text-[10px] font-bold text-blue-700 uppercase tracking-widest flex items-center gap-1">
+                          {plan.transportType === 'Terrestre' ? <Bus size={11} /> : <Plane size={11} />}
+                          {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
+                        </p>
+                        <span className="text-[10px] font-bold text-blue-800">
+                          {plan.airlineName || plan.airline}
+                          {plan.flightNumber ? ` · ${plan.flightNumber}` : ''}
+                        </span>
+                      </div>
+                      {renderGrid([
+                        { label: "Salida Ida", value: plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : "-" },
+                        { label: "Llegada Ida", value: plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : "-" },
+                        { label: "Salida Regreso", value: plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : "-" },
+                        { label: "Llegada Regreso", value: plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : "-" },
+                      ])}
+                    </div>
+                  )}
+                </>
               )}
-              {renderPassengers(plan.guests || plan.passengers || plan.members)}
+              {renderTicketPassengers(plan.guests || plan.passengers || plan.members, { title: 'Integrantes', reservaLabel: 'Booking:' })}
               {plan.observations && (
                 <p className="text-xs text-gray-500 mt-2 italic">{plan.observations}</p>
               )}
