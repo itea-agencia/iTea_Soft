@@ -525,6 +525,44 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                   )}
                 </>
               )}
+              {/* Desglose por proveedor: el servidor lo deriva del paquete mas sus
+                  servicios vinculados. A cada proveedor se le paga aparte y con su propio
+                  metodo, asi que lo que hay que conciliar es esta lista, no un solo numero. */}
+              {plan.totals && plan.totals.bySupplier.length > 1 && (
+                <div className="bg-emerald-50/40 dark:bg-emerald-900/10 rounded-lg p-3 mt-2.5 border border-emerald-100/60 dark:border-emerald-800/30">
+                  <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-2 pb-1 border-b border-emerald-100 dark:border-emerald-800/40">
+                    Pagos a proveedores
+                  </p>
+                  <div className="space-y-1.5">
+                    {plan.totals.bySupplier.map((l: any) => (
+                      <div key={l.detalleVentaId} className="flex items-baseline justify-between gap-3 text-xs">
+                        <div className="min-w-0">
+                          <span className="font-bold text-gray-700 dark:text-slate-200">{l.serviceName || l.category}</span>
+                          <span className="text-gray-500 dark:text-slate-400">
+                            {l.supplier ? ` · ${l.supplier}` : ' · sin proveedor'}
+                            {l.paymentMethod ? ` · ${l.paymentMethod}` : ''}
+                          </span>
+                        </div>
+                        <span className="text-gray-800 dark:text-slate-200 shrink-0">
+                          {formatCurrency(l.supplierCost)}
+                          {l.ta + l.taCre > 0 && (
+                            <span className="text-gray-500 dark:text-slate-400"> + TA {formatCurrency(l.ta + l.taCre)}</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-emerald-100 dark:border-emerald-800/40 flex items-baseline justify-between text-xs">
+                    <span className="font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-widest text-[10px]">
+                      Total del paquete
+                    </span>
+                    <span className="font-bold text-emerald-900 dark:text-emerald-300">
+                      {formatCurrency(plan.totals.total)}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {renderTicketPassengers(plan.guests || plan.passengers || plan.members, { title: 'Integrantes', reservaLabel: 'Booking:' })}
               {plan.observations && (
                 <p className="text-xs text-gray-500 mt-2 italic">{plan.observations}</p>

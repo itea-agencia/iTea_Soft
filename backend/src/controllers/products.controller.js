@@ -104,6 +104,37 @@ async function createDetalleProducto(tx, ventaId, categoria, data) {
   });
 }
 
+/**
+ * Recalcula los totales de la venta desde sus filas.
+ *
+ * Agregar, editar o borrar un producto por estos endpoints creaba, cambiaba o quitaba un
+ * `detalle_venta` pero no tocaba `ventas.monto_total`, asi que el total de la venta se
+ * desfasaba en silencio. La venta 133 en local llego a decir $60.000 con filas que sumaban
+ * $11.990.000. Y Siigo factura contra `monto_total`.
+ *
+ * Se derivan de las filas y no del payload: un request que agrega un solo producto no
+ * puede saber el total de la venta.
+ */
+async function recalcularTotalesVenta(tx, ventaId) {
+  const filas = await tx.detalleVenta.findMany({
+    where: { ventaId },
+    select: { costoProveedor: true, ta: true, taCre: true },
+  });
+  const suma = (campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
+  const costoProveedorTotal = suma('costoProveedor');
+  const taTotal = suma('ta');
+  const taCreTotal = suma('taCre');
+  await tx.ventas.update({
+    where: { id: ventaId },
+    data: {
+      costoProveedorTotal,
+      taTotal,
+      taCreTotal,
+      montoTotal: costoProveedorTotal + taTotal + taCreTotal,
+    },
+  });
+}
+
 const productHandler = (category, tableName, transformData) => ({
   create: async (req, res, next) => {
     try {
@@ -236,6 +267,7 @@ const productHandler = (category, tableName, transformData) => ({
           }
         }
 
+        await recalcularTotalesVenta(tx, venta.id);
         return { detalle, product };
       });
 
@@ -277,6 +309,9 @@ const productHandler = (category, tableName, transformData) => ({
               personaId: resolvedPid,
               esTitular: p.esTitular ?? true,
               asiento: p.asiento || p.seat || null,
+              // Faltaba: este handler borra los pasajeros y los vuelve a crear, asi que
+              // sin esta linea una edicion por aca perdia el asiento de regreso.
+              asientoRegreso: p.asientoRegreso || null,
               nroReserva: p.nroReserva || null,
               nroTiquete: p.nroTiquete || null
             });
@@ -289,13 +324,15 @@ const productHandler = (category, tableName, transformData) => ({
                 personaId: passengerData.personaId,
                 esTitular: passengerData.esTitular,
                 asiento: passengerData.asiento,
+                asientoRegreso: passengerData.asientoRegreso,
                 nroReserva: passengerData.nroReserva,
                 nroTiquete: passengerData.nroTiquete
               }
             });
           }
         }
-        
+
+        await recalcularTotalesVenta(tx, venta.id);
         return prod;
       });
 
@@ -313,6 +350,7 @@ const productHandler = (category, tableName, transformData) => ({
       await prisma.$transaction(async (tx) => {
         await tx[tableName].delete({ where: { id } });
         await tx.detalleVenta.delete({ where: { id: product.detalleVentaId } });
+        await recalcularTotalesVenta(tx, parseInt(req.params.saleId));
       });
 
       success(res, { message: 'Producto eliminado' });
@@ -362,14 +400,18 @@ exports.deleteHotel = H(CATEGORIES.hotel, 'prodHoteleria').delete;
 // =========================================================
 // Seguros
 // =========================================================
+// `contactoEmergencia`, `telefonoEmergencia` y `direccionAsegurado` no existen en
+// ProdSeguros, asi que este endpoint reventaba con "Unknown argument" en todo intento:
+// nunca sirvio para crear un seguro suelto. Los nombres reales son los que ya usa el
+// transform de sales.controller.
 exports.createInsurance = H(CATEGORIES.insurance, 'prodSeguros', (d, detalleId) => ({
   detalleVentaId: detalleId,
   tipoSeguro: d.insuranceType || 'basico',
-  coberturaUsd: d.coverageAmount || 0,
-  diasCobertura: d.coverageDays || 0,
-  contactoEmergencia: d.contactName || null,
-  telefonoEmergencia: d.contactNumber || null,
-  direccionAsegurado: d.address || null
+  coberturaUsd: Number(d.coverageAmount) || 0,
+  diasCobertura: Number(d.coverageDays) || 0,
+  fechaInicioVigencia: d.startDate ? new Date(d.startDate) : null,
+  fechaFinVigencia: d.endDate ? new Date(d.endDate) : null,
+  telefonoContacto: d.phone || null
 })).create;
 
 exports.updateInsurance = H(CATEGORIES.insurance, 'prodSeguros').update;

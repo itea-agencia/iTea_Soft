@@ -364,6 +364,40 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     form.conventions, form.restaurants, form.visas, form.passports, form.petServices
   ]);
 
+  /**
+   * Los servicios que cuelgan de un paquete, con su proveedor y lo que se le paga.
+   *
+   * El vinculo se declara en el servicio (`linkedToPlanIndex`), no en el paquete, asi que
+   * hay que recorrer los productos y filtrar. Al guardar, ese indice se convierte en
+   * `parentDetalleId` y el servidor deriva el total del paquete de las mismas filas.
+   */
+  const serviciosVinculadosDe = (planIdx: number) => {
+    const grupos: Array<[string, string]> = [
+      ['tickets', 'Tiquetería'], ['hotels', 'Hotelería'], ['insurances', 'Seguro de Viaje'],
+      ['checkIns', 'Check-in'], ['migrations', 'Migración'], ['simCards', 'SIM Card'],
+      ['baggages', 'Equipaje'], ['carRentals', 'Renta de Vehículo'],
+      ['landTravels', 'Viaje Terrestre'], ['fincas', 'Finca'], ['tours', 'Tour'],
+      ['conventions', 'Centro de Convención'], ['restaurants', 'Restaurante'],
+      ['visas', 'Visa'], ['passports', 'Pasaporte'], ['petServices', 'Servicio de Mascota'],
+    ];
+    const out: any[] = [];
+    for (const [clave, label] of grupos) {
+      for (const item of ((form as any)[clave] || []) as any[]) {
+        if (item?.linkedToPlanIndex !== planIdx) continue;
+        out.push({
+          category: clave,
+          label,
+          supplier: item.supplier || item.supplierName || item.transportCompany,
+          paymentMethod: item.supplierPaymentMethod,
+          supplierCost: item.supplierCost,
+          ta: item.ta,
+          taCre: item.taCre,
+        });
+      }
+    }
+    return out;
+  };
+
   /* ---- helpers --------------------------------------------------- */
   const set = <K extends keyof WizardFormData>(
     key: K,
@@ -1621,6 +1655,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   }}
                   data={data}
                   triggerError={triggerError}
+                  linkedServices={serviciosVinculadosDe(activeIdx)}
                 />
               );
             case "checkin":

@@ -282,8 +282,40 @@ export interface HotelData {
   guests: HotelGuestInfo[];
 }
 
+/**
+ * Una linea del desglose de proveedores de un paquete: un servicio, su proveedor y lo
+ * que se le paga. A cada proveedor se le paga aparte y con su propio metodo, y de cada
+ * uno sale una linea IT distinta en la factura de Siigo.
+ */
+export interface SupplierLine {
+  detalleVentaId: string;
+  category: string;
+  serviceName: string | null;
+  supplier: string | null;
+  paymentMethod: string | null;
+  supplierCost: number;
+  ta: number;
+  taCre: number;
+}
+
+/**
+ * Total pagado a proveedores de un paquete: su propia fila mas los servicios vinculados.
+ *
+ * Lo calcula el servidor a partir de las filas y NO se guarda en ninguna columna: un
+ * agregado almacenado se desincroniza de sus partes. Es de solo lectura para el cliente.
+ */
+export interface PackageTotals {
+  supplierCost: number;
+  ta: number;
+  taCre: number;
+  total: number;
+  bySupplier: SupplierLine[];
+}
+
 export interface PlanData {
   detalleVentaId?: string;
+  /** Derivado por el servidor. Solo viene en las lecturas; no se envia al guardar. */
+  totals?: PackageTotals;
   parentDetalleId?: string;
   linkedToPlanIndex?: number | null;
   planName: string;

@@ -7,15 +7,32 @@ import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
 import { DateTimePicker } from "./TicketForm";
 import { VoucherField } from "./VoucherField";
 
+/** Un servicio vinculado a este paquete, con su proveedor y lo que se le paga. */
+export interface ServicioVinculado {
+  category: string;
+  label: string;
+  supplier?: string;
+  paymentMethod?: string;
+  supplierCost?: number;
+  ta?: number;
+  taCre?: number;
+}
+
 interface PlanFormProps {
   plan: PlanData;
   onChange: (updates: Partial<PlanData>) => void;
   data: any;
   triggerError?: (msg: string) => void;
   mainClient?: any;
+  /**
+   * Los servicios que cuelgan de este paquete. El costo de un paquete vive en ellos, uno
+   * por proveedor, porque a cada proveedor se le paga aparte y de cada uno sale una linea
+   * IT distinta en la factura de Siigo.
+   */
+  linkedServices?: ServicioVinculado[];
 }
 
-export function PlanForm({ plan, onChange, data, triggerError, mainClient }: PlanFormProps) {
+export function PlanForm({ plan, onChange, data, triggerError, mainClient, linkedServices = [] }: PlanFormProps) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -35,6 +52,29 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
   // vuelta. Guardar una bandera aparte, como hace viajes terrestres, permite que la
   // bandera y las fechas se contradigan.
   const hayRegreso = Boolean(plan.flightReturnDate);
+
+  // Total pagado a proveedores del paquete: lo propio mas cada servicio vinculado.
+  // Derivado en el render; el servidor calcula el que se persiste.
+  const propio = {
+    supplierCost: Number(plan.supplierCost) || 0,
+    ta: Number(plan.ta) || 0,
+    taCre: Number(plan.taCre) || 0,
+  };
+  const agregado = linkedServices.reduce(
+    (acc, s) => ({
+      supplierCost: acc.supplierCost + (Number(s.supplierCost) || 0),
+      ta: acc.ta + (Number(s.ta) || 0),
+      taCre: acc.taCre + (Number(s.taCre) || 0),
+    }),
+    propio,
+  );
+  const totalPaquete = agregado.supplierCost + agregado.ta + agregado.taCre;
+
+  // Cuando el costo vive en los servicios vinculados, los campos del paquete quedan de
+  // solo lectura: si se pudieran editar tambien, el mismo hotel se contaria dos veces.
+  // Un paquete sin vinculados los conserva editables, que es el caso del paquete comprado
+  // armado a un operador.
+  const costoEnVinculados = linkedServices.length > 0;
 
   const addGuest = () => {
     onChange({
@@ -577,9 +617,13 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               placeholder="Seleccionar proveedor..."
             />
           </FormField>
+          {/* Cuando el costo vive en los servicios vinculados, estos campos quedan de
+              solo lectura: si se pudieran editar tambien, el mismo hotel se contaria dos
+              veces y nada lo detectaria. */}
           <FormField label="Costo Proveedor">
             <CurrencyInput
               value={plan.supplierCost ?? ""}
+              disabled={costoEnVinculados}
               onChange={(val) =>
                 onChange({
                   supplierCost: val === "" ? undefined : Number(val),
@@ -590,9 +634,23 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           <FormField label="Valor TA">
             <CurrencyInput
               value={plan.ta ?? ""}
+              disabled={costoEnVinculados}
               onChange={(val) =>
                 onChange({
                   ta: val === "" ? undefined : Number(val),
+                })
+              }
+            />
+          </FormField>
+          {/* Faltaba: el paquete no tenia donde ingresar la TA CRE, aunque el total de la
+              venta ya la sumaba y el resto de los productos si la capturan. */}
+          <FormField label="Valor TA CRE">
+            <CurrencyInput
+              value={plan.taCre ?? ""}
+              disabled={costoEnVinculados}
+              onChange={(val) =>
+                onChange({
+                  taCre: val === "" ? undefined : Number(val),
                 })
               }
             />
@@ -608,6 +666,65 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               placeholder="Seleccionar método..."
             />
           </FormField>
+        </div>
+
+        {/* Desglose por proveedor. A cada uno se le paga aparte y con su propio metodo,
+            asi que lo que hay que conciliar es esta lista, no un unico numero. */}
+        {linkedServices.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-dashed border-emerald-200 dark:border-emerald-500/30">
+            <p className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-400/70 uppercase tracking-widest mb-2">
+              Servicios que componen el paquete
+            </p>
+            <div className="space-y-1.5">
+              {[
+                { label: "Paquete", supplier: plan.supplier, paymentMethod: plan.supplierPaymentMethod, ...propio },
+                ...linkedServices.map((sv) => ({
+                  label: sv.label,
+                  supplier: sv.supplier,
+                  paymentMethod: sv.paymentMethod,
+                  supplierCost: Number(sv.supplierCost) || 0,
+                  ta: Number(sv.ta) || 0,
+                  taCre: Number(sv.taCre) || 0,
+                })),
+              ]
+                // Una fila sin importe no es un pago; misma regla que en el servidor.
+                .filter((l) => l.supplierCost > 0 || l.ta > 0 || l.taCre > 0)
+                .map((l, i) => (
+                  <div key={i} className="flex items-baseline justify-between gap-3 text-xs">
+                    <div className="min-w-0">
+                      <span className="font-bold text-gray-700 dark:text-slate-200">{l.label}</span>
+                      <span className="text-gray-500 dark:text-slate-400">
+                        {l.supplier ? ` · ${l.supplier}` : " · sin proveedor"}
+                        {l.paymentMethod ? ` · ${l.paymentMethod}` : ""}
+                      </span>
+                    </div>
+                    <span className="font-mono text-gray-800 dark:text-slate-200 shrink-0">
+                      ${l.supplierCost.toLocaleString("es-CO")}
+                      {l.ta + l.taCre > 0 && (
+                        <span className="text-gray-500 dark:text-slate-400">
+                          {" "}+ TA ${(l.ta + l.taCre).toLocaleString("es-CO")}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">
+              Total del Paquete
+            </span>
+            <span className="text-[9px] text-gray-500 dark:text-slate-400 font-medium">
+              Pagado a proveedores ${agregado.supplierCost.toLocaleString("es-CO")} + TA y TA CRE $
+              {(agregado.ta + agregado.taCre).toLocaleString("es-CO")}
+            </span>
+          </div>
+          <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
+            ${totalPaquete.toLocaleString("es-CO")}
+          </span>
         </div>
       </div>
 

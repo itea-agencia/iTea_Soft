@@ -163,6 +163,92 @@ const PRODUCT_INCLUDES = {
   viajes_terrestres: { prodViajesTerrestres: true }
 };
 
+/** Nombre de cada categoria como lo entiende el usuario, no como se llama la tabla. */
+const NOMBRE_CATEGORIA = {
+  tiqueteria: 'Tiquetería',
+  hoteleria: 'Hotelería',
+  seguros_viaje: 'Seguro de Viaje',
+  planes: 'Paquete',
+  checkin: 'Check-in',
+  documentacion_migratoria: 'Documentación Migratoria',
+  simcard: 'SIM Card',
+  equipaje: 'Equipaje',
+  renta_vehiculos: 'Renta de Vehículo',
+  viajes_terrestres: 'Viaje Terrestre',
+  renta_fincas: 'Renta de Finca',
+  tours: 'Tour',
+  centros_convencion: 'Centro de Convención',
+  restaurantes: 'Restaurante',
+  visa: 'Visa',
+  pasaporte: 'Pasaporte',
+  servicio_mascotas: 'Servicio de Mascotas',
+};
+
+/**
+ * Total pagado a proveedores de cada servicio con hijos, tipicamente un paquete: su
+ * propia fila mas todos los servicios vinculados por `parentDetalleId`.
+ *
+ * Se DERIVA de las filas y no se guarda en ninguna columna. Un agregado almacenado se
+ * desincroniza de sus partes, que es el mismo patron que produjo el asiento copiado a
+ * todos los pasajeros y los totales calculados en el navegador.
+ *
+ * `bySupplier` lista una entrada por servicio con su proveedor y su metodo de pago,
+ * porque eso es lo que hay que conciliar: a cada proveedor se le paga aparte, y de ahi
+ * sale una linea IT distinta en la factura de Siigo.
+ */
+function agregarPorPadre(filas) {
+  const hijosDe = new Map();
+  for (const f of filas) {
+    if (!f.parentDetalleId) continue;
+    if (!hijosDe.has(f.parentDetalleId)) hijosDe.set(f.parentDetalleId, []);
+    hijosDe.get(f.parentDetalleId).push(f);
+  }
+
+  const linea = (f) => ({
+    detalleVentaId: f.id,
+    category: f.categoria,
+    serviceName: f.nombreServicio || NOMBRE_CATEGORIA[f.categoria] || f.categoria,
+    supplier: f.proveedor?.nombre || null,
+    paymentMethod: f.metodoPagoProveedor?.nombre || null,
+    supplierCost: Number(f.costoProveedor) || 0,
+    ta: Number(f.ta) || 0,
+    taCre: Number(f.taCre) || 0,
+  });
+
+  const totales = new Map();
+  for (const padre of filas) {
+    const hijos = hijosDe.get(padre.id) || [];
+    // Solo el propio padre no es un agregado: sin hijos no hay nada que sumar.
+    if (hijos.length === 0) continue;
+
+    // El paquete no lleva costo propio: todo peso vive en un servicio vinculado con su
+    // proveedor. Su fila se incluye de todos modos por si arrastra un costo historico.
+    //
+    // Solo entran las lineas con dinero: una fila sin importe no es un pago, y en una
+    // lista titulada "pagos a proveedores" solo estorbaria.
+    const bySupplier = [padre, ...hijos].map(linea).filter(l =>
+      l.supplierCost > 0 || l.ta > 0 || l.taCre > 0);
+
+    const suma = (campo) => bySupplier.reduce((t, l) => t + l[campo], 0);
+    const supplierCost = suma('supplierCost');
+    const ta = suma('ta');
+    const taCre = suma('taCre');
+    totales.set(padre.id, {
+      supplierCost, ta, taCre,
+      total: supplierCost + ta + taCre,
+      bySupplier,
+    });
+  }
+  return totales;
+}
+
+const SELECT_AGREGADO = {
+  id: true, parentDetalleId: true, categoria: true, nombreServicio: true,
+  costoProveedor: true, ta: true, taCre: true,
+  proveedor: { select: { nombre: true } },
+  metodoPagoProveedor: { select: { nombre: true } },
+};
+
 function mapPassengers(detalle) {
   return (detalle.pasajerosDetalle || [])
     .map(p => ({
@@ -673,7 +759,10 @@ exports.getById = async (req, res, next) => {
         where: { ventaId: id },
         include: {
           pasajerosDetalle: { include: { persona: { include: { tipoDocumento: true } } } },
-          proveedor: true
+          proveedor: true,
+          // A cada proveedor se le paga aparte y con su propio metodo. Faltaba en el
+          // include, asi que el metodo de pago del proveedor no llegaba al frontend.
+          metodoPagoProveedor: { select: { nombre: true } }
         }
       })
     ]);
@@ -705,6 +794,20 @@ exports.getById = async (req, res, next) => {
       })
     );
 
+    // Total pagado a proveedores de cada paquete: su fila mas sus servicios vinculados.
+    // Se deriva de las mismas filas que ya se leyeron, no se guarda en ninguna columna.
+    const agregados = agregarPorPadre(detalleVentas.map(d => ({
+      id: d.id,
+      parentDetalleId: d.parentDetalleId,
+      categoria: d.categoria,
+      nombreServicio: d.nombreServicio,
+      costoProveedor: d.costoProveedor,
+      ta: d.ta,
+      taCre: d.taCre,
+      proveedor: d.proveedor,
+      metodoPagoProveedor: d.metodoPagoProveedor,
+    })));
+
     const resultMap = {};
     for (const d of detalleVentas) {
       const passengers = mapPassengers(d);
@@ -716,6 +819,8 @@ exports.getById = async (req, res, next) => {
         if (arr.length > prevLength) {
           arr[arr.length - 1].parentDetalleId = d.parentDetalleId;
           arr[arr.length - 1].detalleVentaId = d.id;
+          const agregado = agregados.get(d.id);
+          if (agregado) arr[arr.length - 1].totals = agregado;
         }
       }
     }
@@ -822,6 +927,7 @@ exports.getPaginatedDetails = async (req, res, next) => {
     
     const baseInclude = {
       proveedor: true,
+      metodoPagoProveedor: { select: { nombre: true } },
       pasajerosDetalle: {
         include: { persona: { include: { tipoDocumento: true } } }
       },
@@ -844,13 +950,31 @@ exports.getPaginatedDetails = async (req, res, next) => {
     const transform = PRODUCT_TRANSFORMS[tab];
     const target = [];
     
+    // Total pagado a proveedores de cada paquete de esta pagina. La consulta va aparte
+    // porque la paginacion trae solo los detalles de una categoria, y los servicios
+    // vinculados a un paquete son de otras.
+    const agregados = agregarPorPadre(
+      await prisma.detalleVenta.findMany({ where: { ventaId: saleId }, select: SELECT_AGREGADO }),
+    );
+
     if (transform) {
       for (const d of details) {
         // Antes armaba su propio array y leia `pd.persona.nroDocumento`, campo que no
         // existe (en Personas es `documento`), asi que el documento llegaba vacio a la
         // pestana de detalle. Reusar mapPassengers arregla eso y ordena titular primero.
         const passengers = mapPassengers(d);
+        const prevLength = target.length;
         transform(d, passengers, target);
+
+        // El agregado se adjunta aca y no por indice al final: un detalle cuyo Prod* no
+        // existe no empuja nada al target, y entonces los indices de `details` y `target`
+        // dejan de corresponder. Es como lo hace getSale.
+        if (target.length > prevLength) {
+          const item = target[target.length - 1];
+          item.detalleVentaId = item.detalleVentaId || d.id;
+          const agregado = agregados.get(d.id);
+          if (agregado) item.totals = agregado;
+        }
       }
     }
 
@@ -1187,6 +1311,42 @@ function getPassengerList(item) {
  * En las demas categorias se conserva el comportamiento anterior, que es el que sostiene
  * las ventas historicas.
  */
+/**
+ * Totales de la venta, sumados en el servidor.
+ *
+ * Antes llegaban calculados desde el navegador (`montoTotal: data.total || 0`). Ese
+ * calculo vive en un useEffect que guarda los importes como strings y puede ir un render
+ * atrasado, y Siigo factura contra `montoTotal`: un total desfasado sale impreso en la
+ * factura. Se derivan de los mismos items que trae el request.
+ *
+ * Se recorre PRODUCT_HANDLERS y no una lista propia, para que un producto nuevo no quede
+ * fuera del total por olvido.
+ */
+function calcularTotales(data) {
+  let costoProveedor = 0, ta = 0, taCre = 0, items = 0;
+  for (const field of Object.keys(PRODUCT_HANDLERS)) {
+    const arr = Array.isArray(data[field]) ? data[field] : [];
+    for (const item of arr) {
+      items += 1;
+      costoProveedor += Number(item.supplierCost) || 0;
+      ta += Number(item.ta) || 0;
+      taCre += Number(item.taCre) || 0;
+    }
+  }
+  // Sin items no hay de donde derivar: se respeta lo que mande el cliente en vez de
+  // dejar la venta en cero.
+  if (items === 0) {
+    return {
+      costoProveedor: Number(data.supplierCost) || 0,
+      ta: Number(data.ta) || 0,
+      taCre: Number(data.taCre) || 0,
+      total: Number(data.total) || 0,
+      derivado: false,
+    };
+  }
+  return { costoProveedor, ta, taCre, total: costoProveedor + ta + taCre, derivado: true };
+}
+
 const CATEGORIAS_CON_BOOKING_POR_PASAJERO = ['hoteleria', 'planes'];
 
 const reservaDePasajero = (p, item, categoria) =>
@@ -1717,13 +1877,15 @@ exports.create = async (req, res, next) => {
 
       const metodoPagoId = await resolvePaymentMethodId(tx, data.paymentMethod, memCache);
 
+      const totales = calcularTotales(data);
+
       const ventaCreateData = {
         clienteId: data.clientId,
         usuarioId: req.user.id,
-        montoTotal: data.total || 0,
-        costoProveedorTotal: data.supplierCost || 0,
-        taTotal: data.ta || 0,
-        taCreTotal: data.taCre || 0,
+        montoTotal: totales.total,
+        costoProveedorTotal: totales.costoProveedor,
+        taTotal: totales.ta,
+        taCreTotal: totales.taCre,
         comisionistaId: data.commissionAgentId || null,
         responsableId: data.responsableId || null,
         montoComisionBruto: data.commissionAgentAmount || 0,
@@ -1910,11 +2072,10 @@ exports.update = async (req, res, next) => {
       }
     }
 
+    // Los totales NO se toman del cliente: se recalculan desde las filas al final de la
+    // transaccion, cuando ya estan creados los productos que trae este request. Un patch
+    // parcial no puede traer un total correcto, y Siigo factura contra `montoTotal`.
     const updateData = {};
-    if (data.total !== undefined) updateData.montoTotal = data.total;
-    if (data.supplierCost !== undefined) updateData.costoProveedorTotal = data.supplierCost;
-    if (data.ta !== undefined) updateData.taTotal = data.ta;
-    if (data.taCre !== undefined) updateData.taCreTotal = data.taCre;
     if (data.status) updateData.status = data.status;
     if (data.observations !== undefined) updateData.observaciones = data.observations;
     if (data.isCredit !== undefined) updateData.esCredito = data.isCredit;
@@ -2196,6 +2357,26 @@ exports.update = async (req, res, next) => {
           }
         }
       }
+
+      // Totales derivados de las filas que quedaron, ya con los productos de este
+      // request creados y los eliminados borrados.
+      const filas = await tx.detalleVenta.findMany({
+        where: { ventaId: id },
+        select: { costoProveedor: true, ta: true, taCre: true },
+      });
+      const suma = (campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
+      const costoProveedorTotal = suma('costoProveedor');
+      const taTotal = suma('ta');
+      const taCreTotal = suma('taCre');
+      await tx.ventas.update({
+        where: { id },
+        data: {
+          costoProveedorTotal,
+          taTotal,
+          taCreTotal,
+          montoTotal: costoProveedorTotal + taTotal + taCreTotal,
+        },
+      });
     }, {
       maxWait: 15000,
       timeout: 30000
