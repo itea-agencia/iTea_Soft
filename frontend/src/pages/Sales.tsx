@@ -550,7 +550,7 @@ export default function Sales() {
                 onReviewStatusChange={(saleId, isReviewed) => {
                   updateReviewStatus(saleId, isReviewed)
                     .then(() => {
-                      setSuccessMessage("Estado de revisión actualizado");
+                      setSuccessMessage("Venta marcada como facturada");
                       setShowSuccess(true);
                       setTimeout(() => setShowSuccess(false), 3000);
                     })

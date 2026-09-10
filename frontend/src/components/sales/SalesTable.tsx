@@ -7,6 +7,9 @@ import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
 import { Sale, Client, User } from "../../types";
 
+// Valor centinela del select. Separado de la etiqueta a proposito.
+const MARCAR_FACTURADO = 'marcar-facturado';
+
 interface SalesTableProps {
   sales: Sale[];
   clients: Client[];
@@ -121,25 +124,27 @@ export default function SalesTable({
                   {sale.status === "pagado" && onReviewStatusChange && (
                     <div className="relative inline-flex items-center">
                       {sale.isReviewed ? (
-                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100" title="Revisado">
+                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100" title="Facturado">
                           <CheckCircle2 size={12} />
                         </span>
                       ) : (
                         <div
                           className="relative flex items-center justify-center w-5 h-5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary transition-colors border border-transparent hover:border-gray-200"
-                          title="Marcar como revisado"
+                          title="Marcar como facturado"
                         >
                           <select
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            value="Pendiente"
+                            value=""
                             onChange={(e) => {
-                              if (e.target.value === "Revisado") {
+                              // El valor es un centinela, no la etiqueta: asi renombrar el
+                              // texto visible no puede romper la accion.
+                              if (e.target.value === MARCAR_FACTURADO) {
                                 onReviewStatusChange(sale.id, true);
                               }
                             }}
                           >
-                            <option value="Pendiente" disabled>Opciones...</option>
-                            <option value="Revisado">Marcar Revisado</option>
+                            <option value="" disabled>Opciones...</option>
+                            <option value={MARCAR_FACTURADO}>Marcar como facturado</option>
                           </select>
                           <ChevronDown size={14} className="pointer-events-none" />
                         </div>
