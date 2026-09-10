@@ -312,7 +312,29 @@ export interface PackageTotals {
   bySupplier: SupplierLine[];
 }
 
+/** Concepto de un pago a proveedor dentro de un paquete. */
+export type ConceptoPago = 'transporte' | 'hotel' | 'seguro';
+
+/**
+ * Lo que se le paga a un proveedor dentro de un paquete.
+ *
+ * Un paquete se le compra a varios a la vez: los vuelos a uno, el hotel a otro, el seguro
+ * a un tercero, y a cada uno se le paga aparte y con su propio metodo. El hotel, los
+ * vuelos y los pasajeros ya viven en el paquete, asi que de cada proveedor solo falta la
+ * plata: no hay que llenar el formulario del servicio otra vez.
+ */
+export interface SupplierPayment {
+  concept: ConceptoPago;
+  supplier?: string;
+  paymentMethod?: string;
+  supplierCost?: number;
+  ta?: number;
+  taCre?: number;
+}
+
 export interface PlanData {
+  /** Los pagos a proveedores del paquete. Sus importes suman el costo del paquete. */
+  supplierPayments?: SupplierPayment[];
   detalleVentaId?: string;
   /** Derivado por el servidor. Solo viene en las lecturas; no se envia al guardar. */
   totals?: PackageTotals;

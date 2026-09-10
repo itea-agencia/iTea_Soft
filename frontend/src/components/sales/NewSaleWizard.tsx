@@ -365,67 +365,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     form.conventions, form.restaurants, form.visas, form.passports, form.petServices
   ]);
 
-  /**
-   * Los servicios que cuelgan de un paquete, con su proveedor y lo que se le paga.
-   *
-   * El vinculo se declara en el servicio (`linkedToPlanIndex`), no en el paquete, asi que
-   * hay que recorrer los productos y filtrar. Al guardar, ese indice se convierte en
-   * `parentDetalleId` y el servidor deriva el total del paquete de las mismas filas.
-   */
-  const serviciosVinculadosDe = (planIdx: number) => {
-    const grupos: Array<[string, string]> = [
-      ['tickets', 'Tiquetería'], ['hotels', 'Hotelería'], ['insurances', 'Seguro de Viaje'],
-      ['checkIns', 'Check-in'], ['migrations', 'Migración'], ['simCards', 'SIM Card'],
-      ['baggages', 'Equipaje'], ['carRentals', 'Renta de Vehículo'],
-      ['landTravels', 'Viaje Terrestre'], ['fincas', 'Finca'], ['tours', 'Tour'],
-      ['conventions', 'Centro de Convención'], ['restaurants', 'Restaurante'],
-      ['visas', 'Visa'], ['passports', 'Pasaporte'], ['petServices', 'Servicio de Mascota'],
-    ];
-    const out: any[] = [];
-    for (const [clave, label] of grupos) {
-      for (const item of ((form as any)[clave] || []) as any[]) {
-        if (item?.linkedToPlanIndex !== planIdx) continue;
-        out.push({
-          category: clave,
-          label,
-          supplier: item.supplier || item.supplierName || item.transportCompany,
-          paymentMethod: item.supplierPaymentMethod,
-          supplierCost: item.supplierCost,
-          ta: item.ta,
-          taCre: item.taCre,
-        });
-      }
-    }
-    return out;
-  };
-
-  /**
-   * Agrega un pago a proveedor al paquete abierto y abre el formulario del servicio.
-   *
-   * Deja el vinculo puesto de entrada, asi que no hay que acordarse de elegir el paquete
-   * en el select del servicio. Tambien registra la categoria en `selectedProducts`, que es
-   * lo que hace que el servicio aparezca en el paso de productos.
-   */
-  const agregarPagoAProveedor = (categoria: string) => {
-    if (activeIdx === null) return;
-    const prod = PRODUCTOS[categoria];
-    if (!prod) return;
-
-    const cliente = data.clients.find((c: any) => c.name === form.clientId);
-    const nuevoIdx = ((form as any)[prod.key] || []).length;
-
-    setForm((prev: any) => ({
-      ...prev,
-      [prod.key]: [...(prev[prod.key] || []), { ...prod.initial(cliente), linkedToPlanIndex: activeIdx }],
-      selectedProducts: prev.selectedProducts.includes(categoria)
-        ? prev.selectedProducts
-        : [...prev.selectedProducts, categoria],
-    }));
-
-    setActiveForm(categoria as any);
-    setActiveIdx(nuevoIdx);
-  };
-
   /* ---- helpers --------------------------------------------------- */
   const set = <K extends keyof WizardFormData>(
     key: K,
@@ -1459,8 +1398,25 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 // Voucher is optional now
               }
 
-              if (plan.supplierCost === undefined || plan.supplierCost < 0) errors.push("Costo Proveedor (>= $0)");
-              if (plan.ta === undefined || plan.ta < 0) errors.push("Valor TA (>= $0)");
+              const pagosDelPlan = plan.supplierPayments || [];
+              if (pagosDelPlan.length > 0) {
+                // Con pagos, el costo del paquete es su suma. Lo que hay que exigir es que
+                // cada pago con dinero tenga proveedor: la linea IT de Siigo lleva el
+                // Tercero y sin el la factura se rechaza. Mejor avisarlo al guardar que
+                // descubrirlo al facturar.
+                pagosDelPlan.forEach((pg, i) => {
+                  const monto = (Number(pg.supplierCost) || 0) + (Number(pg.ta) || 0) + (Number(pg.taCre) || 0);
+                  if (monto > 0 && !pg.supplier?.trim()) {
+                    errors.push(`Pago a proveedor #${i + 1}: falta el proveedor`);
+                  }
+                  if ((Number(pg.supplierCost) || 0) < 0 || (Number(pg.ta) || 0) < 0 || (Number(pg.taCre) || 0) < 0) {
+                    errors.push(`Pago a proveedor #${i + 1}: los valores no pueden ser negativos`);
+                  }
+                });
+              } else {
+                if (plan.supplierCost === undefined || plan.supplierCost < 0) errors.push("Costo Proveedor (>= $0)");
+                if (plan.ta === undefined || plan.ta < 0) errors.push("Valor TA (>= $0)");
+              }
 
               if (plan.guests && plan.guests.length > 0) {
                 plan.guests.forEach((g, gIdx) => {
@@ -1689,8 +1645,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   }}
                   data={data}
                   triggerError={triggerError}
-                  linkedServices={serviciosVinculadosDe(activeIdx)}
-                  onAddLinkedService={agregarPagoAProveedor}
                 />
               );
             case "checkin":

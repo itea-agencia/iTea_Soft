@@ -2,22 +2,23 @@ import { useId } from "react";
 import { Package, Plane, Bus, Building2, Users, Briefcase, Trash2, PlusCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { FormField, Input, Combobox, Select , CurrencyInput} from "../../ui/Form";
 import { Button } from "../../ui/Button";
-import { PlanData, PlanGuestInfo } from "../../../types";
+import { PlanData, PlanGuestInfo, SupplierPayment, ConceptoPago } from "../../../types";
 import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
-import { PRODUCTOS, PAGOS_FRECUENTES_DE_PAQUETE } from "../wizardData";
 import { DateTimePicker } from "./TicketForm";
 import { VoucherField } from "./VoucherField";
 
-/** Un servicio vinculado a este paquete, con su proveedor y lo que se le paga. */
-export interface ServicioVinculado {
-  category: string;
-  label: string;
-  supplier?: string;
-  paymentMethod?: string;
-  supplierCost?: number;
-  ta?: number;
-  taCre?: number;
-}
+/**
+ * Los conceptos de pago de un paquete, con el nombre que ve el usuario.
+ *
+ * `transporte` se muestra como Aereo o Terrestre segun el tipo de transporte del paquete,
+ * que es donde vive ese dato: guardar dos conceptos distintos lo duplicaria y permitiria
+ * que se contradigan.
+ */
+const CONCEPTOS: Array<{ id: ConceptoPago; label: (esTerrestre: boolean) => string }> = [
+  { id: 'transporte', label: (t) => (t ? 'Terrestre' : 'Aéreo') },
+  { id: 'hotel', label: () => 'Hotel' },
+  { id: 'seguro', label: () => 'Seguro de Viaje' },
+];
 
 interface PlanFormProps {
   plan: PlanData;
@@ -25,23 +26,9 @@ interface PlanFormProps {
   data: any;
   triggerError?: (msg: string) => void;
   mainClient?: any;
-  /**
-   * Los servicios que cuelgan de este paquete. El costo de un paquete vive en ellos, uno
-   * por proveedor, porque a cada proveedor se le paga aparte y de cada uno sale una linea
-   * IT distinta en la factura de Siigo.
-   */
-  linkedServices?: ServicioVinculado[];
-  /**
-   * Agrega un pago a proveedor a este paquete y abre su formulario.
-   *
-   * La accion tiene que vivir aca. Antes solo se podia vincular desde el servicio suelto:
-   * habia que salir del paquete, agregar la categoria por su lado y acordarse de volver a
-   * elegir el paquete en un select. Al reves de como se piensa el problema.
-   */
-  onAddLinkedService?: (category: string) => void;
 }
 
-export function PlanForm({ plan, onChange, data, triggerError, mainClient, linkedServices = [], onAddLinkedService }: PlanFormProps) {
+export function PlanForm({ plan, onChange, data, triggerError, mainClient }: PlanFormProps) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -62,42 +49,38 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
   // bandera y las fechas se contradigan.
   const hayRegreso = Boolean(plan.flightReturnDate);
 
-  // Total pagado a proveedores del paquete: lo propio mas cada servicio vinculado.
-  // Derivado en el render; el servidor calcula el que se persiste.
+  /**
+   * Los pagos a proveedores del paquete. Los importes del paquete son su suma, asi que
+   * cuando hay pagos los campos propios quedan de solo lectura: si se pudieran editar
+   * tambien, el mismo hotel se contaria dos veces y nada lo detectaria.
+   */
+  const pagos = plan.supplierPayments || [];
+  const conPagos = pagos.length > 0;
+
   const propio = {
     supplierCost: Number(plan.supplierCost) || 0,
     ta: Number(plan.ta) || 0,
     taCre: Number(plan.taCre) || 0,
   };
-  const agregado = linkedServices.reduce(
-    (acc, s) => ({
-      supplierCost: acc.supplierCost + (Number(s.supplierCost) || 0),
-      ta: acc.ta + (Number(s.ta) || 0),
-      taCre: acc.taCre + (Number(s.taCre) || 0),
+  const sumaPagos = pagos.reduce(
+    (acc, pg) => ({
+      supplierCost: acc.supplierCost + (Number(pg.supplierCost) || 0),
+      ta: acc.ta + (Number(pg.ta) || 0),
+      taCre: acc.taCre + (Number(pg.taCre) || 0),
     }),
-    propio,
+    { supplierCost: 0, ta: 0, taCre: 0 },
   );
+  const agregado = conPagos ? sumaPagos : propio;
   const totalPaquete = agregado.supplierCost + agregado.ta + agregado.taCre;
 
-  // Cuando el costo vive en los servicios vinculados, los campos del paquete quedan de
-  // solo lectura: si se pudieran editar tambien, el mismo hotel se contaria dos veces.
-  // Un paquete sin vinculados los conserva editables, que es el caso del paquete comprado
-  // armado a un operador.
-  const costoEnVinculados = linkedServices.length > 0;
+  const addPago = (concept: ConceptoPago) =>
+    onChange({ supplierPayments: [...pagos, { concept }] });
 
-  // Las lineas de la lista de pagos: el paquete y sus servicios. Solo entran las que
-  // tienen importe, porque una fila sin dinero no es un pago. Misma regla que el servidor.
-  const lineasDePago = [
-    { label: "Paquete", supplier: plan.supplier, paymentMethod: plan.supplierPaymentMethod, ...propio },
-    ...linkedServices.map((sv) => ({
-      label: sv.label,
-      supplier: sv.supplier,
-      paymentMethod: sv.paymentMethod,
-      supplierCost: Number(sv.supplierCost) || 0,
-      ta: Number(sv.ta) || 0,
-      taCre: Number(sv.taCre) || 0,
-    })),
-  ].filter((l) => l.supplierCost > 0 || l.ta > 0 || l.taCre > 0);
+  const removePago = (idx: number) =>
+    onChange({ supplierPayments: pagos.filter((_, i) => i !== idx) });
+
+  const updatePago = (idx: number, updates: Partial<SupplierPayment>) =>
+    onChange({ supplierPayments: pagos.map((pg, i) => (i === idx ? { ...pg, ...updates } : pg)) });
 
   const addGuest = () => {
     onChange({
@@ -646,7 +629,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
           <FormField label="Costo Proveedor">
             <CurrencyInput
               value={plan.supplierCost ?? ""}
-              disabled={costoEnVinculados}
+              disabled={conPagos}
               onChange={(val) =>
                 onChange({
                   supplierCost: val === "" ? undefined : Number(val),
@@ -657,7 +640,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
           <FormField label="Valor TA">
             <CurrencyInput
               value={plan.ta ?? ""}
-              disabled={costoEnVinculados}
+              disabled={conPagos}
               onChange={(val) =>
                 onChange({
                   ta: val === "" ? undefined : Number(val),
@@ -670,7 +653,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
           <FormField label="Valor TA CRE">
             <CurrencyInput
               value={plan.taCre ?? ""}
-              disabled={costoEnVinculados}
+              disabled={conPagos}
               onChange={(val) =>
                 onChange({
                   taCre: val === "" ? undefined : Number(val),
@@ -694,73 +677,105 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient, linke
         {/* Desglose por proveedor. A cada uno se le paga aparte y con su propio metodo,
             asi que lo que hay que conciliar es esta lista, no un unico numero. */}
         {/* Pagos a proveedores del paquete.
-            Cada servicio se le compra a un proveedor distinto y se le paga aparte, asi
-            que lo que hay que conciliar es esta lista, no un unico numero. Y la accion de
-            agregar uno vive aca, no en el servicio suelto. */}
+            Un paquete se le compra a varios proveedores a la vez y a cada uno se le paga
+            aparte. El hotel, los vuelos y los pasajeros ya estan arriba, asi que de cada
+            proveedor solo falta la plata: no hay que llenar el formulario del servicio
+            otra vez. Una tarjeta por concepto, para que se vea separado lo aereo, lo del
+            hotel y lo del seguro. */}
         <div className="mt-4 pt-3 border-t border-dashed border-emerald-200 dark:border-emerald-500/30">
           <p className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-400/70 uppercase tracking-widest mb-2">
             Pagos a proveedores del paquete
           </p>
 
-          {lineasDePago.length === 0 ? (
+          {pagos.length === 0 && (
             <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
-              Todavía no hay pagos registrados. Agregá el hotel, los tiquetes o el seguro:
-              cada uno lleva su proveedor, su costo y su método de pago.
+              Si el paquete se le paga a varios proveedores, agregá uno por concepto. Cada
+              uno lleva su proveedor, su costo, su TA y su método de pago; el costo del
+              paquete pasa a ser la suma.
             </p>
-          ) : (
-            <div className="space-y-1.5 mb-3">
-              {lineasDePago.map((l, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-3 text-xs">
-                  <div className="min-w-0">
-                    <span className="font-bold text-gray-700 dark:text-slate-200">{l.label}</span>
-                    <span className="text-gray-500 dark:text-slate-400">
-                      {l.supplier ? ` · ${l.supplier}` : " · sin proveedor"}
-                      {l.paymentMethod ? ` · ${l.paymentMethod}` : ""}
-                    </span>
-                  </div>
-                  <span className="text-gray-800 dark:text-slate-200 shrink-0">
-                    ${l.supplierCost.toLocaleString("es-CO")}
-                    {l.ta + l.taCre > 0 && (
-                      <span className="text-gray-500 dark:text-slate-400">
-                        {" "}+ TA ${(l.ta + l.taCre).toLocaleString("es-CO")}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
           )}
 
-          {onAddLinkedService && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
-                Agregar
-              </span>
-              {PAGOS_FRECUENTES_DE_PAQUETE.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => onAddLinkedService(cat)}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 transition-colors flex items-center gap-1"
+          <div className="space-y-3 mb-3">
+            {pagos.map((pago, idx) => {
+              const concepto = CONCEPTOS.find((c) => c.id === pago.concept);
+              return (
+                <div
+                  key={idx}
+                  className="p-3 border border-emerald-200/70 dark:border-emerald-500/30 rounded-lg bg-white dark:bg-slate-800 relative group"
                 >
-                  <PlusCircle size={13} /> {PRODUCTOS[cat].label}
-                </button>
-              ))}
-              {/* El resto detras de un select, para no poner diecisiete botones. */}
-              <select
-                value=""
-                onChange={(e) => { if (e.target.value) onAddLinkedService(e.target.value); }}
-                className="text-xs px-2 py-1 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300"
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
+                      {concepto ? concepto.label(esTerrestre) : pago.concept}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePago(idx)}
+                      className="text-red-400 hover:text-red-600 p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                      title="Quitar este pago"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <FormField label="Proveedor">
+                      <Combobox
+                        value={pago.supplier || ""}
+                        onChange={(val) => updatePago(idx, { supplier: val })}
+                        options={data.config.suppliers.map((sp: any) => ({ value: sp.name, label: sp.name }))}
+                        placeholder="Seleccionar..."
+                      />
+                    </FormField>
+                    <FormField label="Costo">
+                      <CurrencyInput
+                        value={pago.supplierCost ?? ""}
+                        onChange={(val) => updatePago(idx, { supplierCost: val === "" ? undefined : Number(val) })}
+                      />
+                    </FormField>
+                    <FormField label="Valor TA">
+                      <CurrencyInput
+                        value={pago.ta ?? ""}
+                        onChange={(val) => updatePago(idx, { ta: val === "" ? undefined : Number(val) })}
+                      />
+                    </FormField>
+                    <FormField label="Valor TA CRE">
+                      <CurrencyInput
+                        value={pago.taCre ?? ""}
+                        onChange={(val) => updatePago(idx, { taCre: val === "" ? undefined : Number(val) })}
+                      />
+                    </FormField>
+                    <FormField label="Método de Pago">
+                      <Combobox
+                        value={pago.paymentMethod || ""}
+                        onChange={(val) => updatePago(idx, { paymentMethod: val })}
+                        options={data.config.cards.map((m: any) => ({
+                          value: m.name,
+                          label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
+                        }))}
+                        placeholder="Seleccionar..."
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+              Agregar pago
+            </span>
+            {CONCEPTOS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => addPago(c.id)}
+                className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 transition-colors flex items-center gap-1"
               >
-                <option value="">Otro servicio…</option>
-                {Object.entries(PRODUCTOS)
-                  .filter(([cat]) => cat !== "planes" && !PAGOS_FRECUENTES_DE_PAQUETE.includes(cat as any))
-                  .map(([cat, p]) => (
-                    <option key={cat} value={cat}>{p.label}</option>
-                  ))}
-              </select>
-            </div>
-          )}
+                <PlusCircle size={13} /> {c.label(esTerrestre)}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">

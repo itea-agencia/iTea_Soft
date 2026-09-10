@@ -176,6 +176,7 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   supplierPaymentMethod: "",
   hotelReference: "",
   flightReturnNumber: "",
+  supplierPayments: [],
   flightReservationNumber: "",
   observations: "",
   flightNumber: "",
@@ -537,13 +538,6 @@ export const PRODUCTOS: Record<string, { key: string; label: string; initial: (c
   pasaporte:                { key: 'passports',    label: 'Pasaporte',             initial: INITIAL_PASSPORT },
   servicio_mascotas:        { key: 'petServices',  label: 'Servicio de Mascotas',  initial: INITIAL_PET_SERVICE },
 };
-
-/**
- * Los servicios que se le compran a un proveedor distinto dentro de un paquete, en el
- * orden en que aparecen en la realidad: el hotel, los vuelos y el seguro. El resto queda
- * detras de "Otro servicio" para no llenar la tarjeta con diecisiete botones.
- */
-export const PAGOS_FRECUENTES_DE_PAQUETE = ['hoteleria', 'tiqueteria', 'seguros_viaje'] as const;
 
 /**
  * Los vinculos a paquetes que hay que reescribir despues de borrar el paquete de la

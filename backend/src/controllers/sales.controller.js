@@ -163,6 +163,104 @@ const PRODUCT_INCLUDES = {
   viajes_terrestres: { prodViajesTerrestres: true }
 };
 
+/**
+ * Los importes de un servicio.
+ *
+ * Un paquete se paga a varios proveedores, y en ese caso el costo del paquete es la suma
+ * de sus filas de pago. Se mantiene en `detalle_venta` para que los totales de la venta,
+ * el agregado y la guarda de totales de Siigo sigan valiendo sin tocarse.
+ */
+function financierosDe(item) {
+  const pagos = Array.isArray(item.supplierPayments) ? item.supplierPayments : null;
+  if (!pagos || pagos.length === 0) {
+    return {
+      costoProveedor: Number(item.supplierCost) || 0,
+      ta: Number(item.ta) || 0,
+      taCre: Number(item.taCre) || 0,
+    };
+  }
+  const suma = (campo) => pagos.reduce((t, p) => t + (Number(p[campo]) || 0), 0);
+  return { costoProveedor: suma('supplierCost'), ta: suma('ta'), taCre: suma('taCre') };
+}
+
+/** Concepto de pago valido, o null si viene cualquier otra cosa. */
+const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro'];
+const conceptoValido = (c) => (CONCEPTOS_PAGO.includes(c) ? c : null);
+
+/**
+ * Filas de pago a proveedor listas para un create anidado.
+ *
+ * Una fila sin importe y sin proveedor no es un pago y no se guarda: asi una fila que el
+ * usuario agrego y dejo vacia no ensucia la factura ni el desglose.
+ */
+async function armarPagosProveedor(tx, item, resolverProveedor, resolverMetodo, cache) {
+  const pagos = Array.isArray(item.supplierPayments) ? item.supplierPayments : [];
+  const out = [];
+  for (let i = 0; i < pagos.length; i++) {
+    const pago = pagos[i];
+    const concepto = conceptoValido(pago.concept);
+    if (!concepto) continue;
+
+    const costoProveedor = Number(pago.supplierCost) || 0;
+    const ta = Number(pago.ta) || 0;
+    const taCre = Number(pago.taCre) || 0;
+    if (costoProveedor === 0 && ta === 0 && taCre === 0 && !pago.supplier) continue;
+
+    out.push({
+      concepto,
+      proveedorId: await resolverProveedor(tx, pago.supplier, cache),
+      costoProveedor,
+      ta,
+      taCre,
+      metodoPagoProveedorId: await resolverMetodo(tx, pago.paymentMethod, cache),
+      orden: i + 1,
+    });
+  }
+  return out;
+}
+
+/**
+ * Crea las filas de pago a proveedor de un servicio. Devuelve cuantas creo.
+ *
+ * Una fila sin importe y sin proveedor no es un pago y no se guarda: asi una fila que el
+ * usuario agrego y dejo vacia no ensucia la factura ni el desglose.
+ */
+async function crearPagosProveedor(tx, detalleId, item, resolverProveedor, resolverMetodo) {
+  const pagos = Array.isArray(item.supplierPayments) ? item.supplierPayments : [];
+  let creados = 0;
+  for (let i = 0; i < pagos.length; i++) {
+    const pago = pagos[i];
+    const concepto = conceptoValido(pago.concept);
+    if (!concepto) continue;
+
+    const costoProveedor = Number(pago.supplierCost) || 0;
+    const ta = Number(pago.ta) || 0;
+    const taCre = Number(pago.taCre) || 0;
+    if (costoProveedor === 0 && ta === 0 && taCre === 0 && !pago.supplier) continue;
+
+    await tx.pagosProveedor.create({
+      data: {
+        detalleVentaId: detalleId,
+        concepto,
+        proveedorId: await resolverProveedor(tx, pago.supplier),
+        costoProveedor,
+        ta,
+        taCre,
+        metodoPagoProveedorId: await resolverMetodo(tx, pago.paymentMethod),
+        orden: i + 1,
+      },
+    });
+    creados += 1;
+  }
+  return creados;
+}
+
+/**
+ * Nombre de cada concepto de pago. `transporte` se resuelve mas fino en el frontend, que
+ * sabe si el paquete es aereo o terrestre; aca queda el nombre neutro.
+ */
+const NOMBRE_CONCEPTO = { transporte: 'Transporte', hotel: 'Hotel', seguro: 'Seguro de Viaje' };
+
 /** Nombre de cada categoria como lo entiende el usuario, no como se llama la tabla. */
 const NOMBRE_CATEGORIA = {
   tiqueteria: 'Tiquetería',
@@ -215,18 +313,40 @@ function agregarPorPadre(filas) {
     taCre: Number(f.taCre) || 0,
   });
 
+  /**
+   * Un servicio pagado a varios proveedores aporta una linea por pago, no una sola.
+   * Los importes del detalle son la suma de esas filas, asi que si se listara el detalle
+   * ademas de sus pagos, el total quedaria al doble.
+   */
+  const lineasDe = (f) => {
+    const pagos = f.pagosProveedor || [];
+    if (pagos.length === 0) return [linea(f)];
+    return pagos.map((p, i) => ({
+      detalleVentaId: `${f.id}:${p.orden ?? i}`,
+      category: f.categoria,
+      concept: p.concepto,
+      serviceName: NOMBRE_CONCEPTO[p.concepto] || p.concepto,
+      supplier: p.proveedor?.nombre || null,
+      paymentMethod: p.metodoPagoProveedor?.nombre || null,
+      supplierCost: Number(p.costoProveedor) || 0,
+      ta: Number(p.ta) || 0,
+      taCre: Number(p.taCre) || 0,
+    }));
+  };
+
   const totales = new Map();
   for (const padre of filas) {
     const hijos = hijosDe.get(padre.id) || [];
-    // Solo el propio padre no es un agregado: sin hijos no hay nada que sumar.
-    if (hijos.length === 0) continue;
+    // Un servicio con varios pagos ya es un agregado aunque no tenga servicios hijos:
+    // es el caso normal de un paquete, donde el desglose vive en sus filas de pago.
+    if (hijos.length === 0 && (padre.pagosProveedor || []).length === 0) continue;
 
     // El paquete no lleva costo propio: todo peso vive en un servicio vinculado con su
     // proveedor. Su fila se incluye de todos modos por si arrastra un costo historico.
     //
     // Solo entran las lineas con dinero: una fila sin importe no es un pago, y en una
     // lista titulada "pagos a proveedores" solo estorbaria.
-    const bySupplier = [padre, ...hijos].map(linea).filter(l =>
+    const bySupplier = [padre, ...hijos].flatMap(lineasDe).filter(l =>
       l.supplierCost > 0 || l.ta > 0 || l.taCre > 0);
 
     const suma = (campo) => bySupplier.reduce((t, l) => t + l[campo], 0);
@@ -247,6 +367,14 @@ const SELECT_AGREGADO = {
   costoProveedor: true, ta: true, taCre: true,
   proveedor: { select: { nombre: true } },
   metodoPagoProveedor: { select: { nombre: true } },
+  pagosProveedor: {
+    select: {
+      concepto: true, costoProveedor: true, ta: true, taCre: true, orden: true,
+      proveedor: { select: { nombre: true } },
+      metodoPagoProveedor: { select: { nombre: true } },
+    },
+    orderBy: { orden: 'asc' },
+  },
 };
 
 function mapPassengers(detalle) {
@@ -416,6 +544,16 @@ const PRODUCT_TRANSFORMS = {
       childrenCount: p.menoresCount,
       hotelReference: p.referenciaHotel,
       observations: p.observaciones,
+      // Los pagos a proveedores del paquete: el transporte, el hotel y el seguro, cada
+      // uno con su proveedor y su metodo. Los importes del paquete son su suma.
+      supplierPayments: (d.pagosProveedor || []).map(pg => ({
+        concept: pg.concepto,
+        supplier: pg.proveedor?.nombre || '',
+        paymentMethod: pg.metodoPagoProveedor?.nombre || '',
+        supplierCost: Number(pg.costoProveedor) || 0,
+        ta: Number(pg.ta) || 0,
+        taCre: Number(pg.taCre) || 0,
+      })),
       // El booking y el tiquete son de cada integrante, no del paquete. `mapPassengers` ya
       // los provee; antes este map los descartaba y por eso el detalle no los mostraba.
       guests: passengers.map(g => ({
@@ -762,7 +900,11 @@ exports.getById = async (req, res, next) => {
           proveedor: true,
           // A cada proveedor se le paga aparte y con su propio metodo. Faltaba en el
           // include, asi que el metodo de pago del proveedor no llegaba al frontend.
-          metodoPagoProveedor: { select: { nombre: true } }
+          metodoPagoProveedor: { select: { nombre: true } },
+          pagosProveedor: {
+            include: { proveedor: { select: { nombre: true } }, metodoPagoProveedor: { select: { nombre: true } } },
+            orderBy: { orden: 'asc' }
+          }
         }
       })
     ]);
@@ -928,6 +1070,10 @@ exports.getPaginatedDetails = async (req, res, next) => {
     const baseInclude = {
       proveedor: true,
       metodoPagoProveedor: { select: { nombre: true } },
+      pagosProveedor: {
+        include: { proveedor: { select: { nombre: true } }, metodoPagoProveedor: { select: { nombre: true } } },
+        orderBy: { orden: 'asc' }
+      },
       pasajerosDetalle: {
         include: { persona: { include: { tipoDocumento: true } } }
       },
@@ -1531,6 +1677,10 @@ async function createProductItems(tx, ventaId, clienteId, data) {
       if (!item || Object.keys(item).length === 0) continue;
 
       try {
+        // Un paquete pagado a varios proveedores tiene el costo repartido en sus filas
+        // de pago; en el detalle se guarda la suma, para que los totales de la venta, el
+        // agregado y la guarda de totales de Siigo sigan valiendo sin cambios.
+        const fin = financierosDe(item);
         const resolvedSupplierId = await resolveSupplierId(tx, nombreProveedorDe(item), memCache);
         const resolvedSupplierPaymentMethodId = await resolvePaymentMethodId(tx, item.supplierPaymentMethod, memCache);
 
@@ -1548,10 +1698,10 @@ async function createProductItems(tx, ventaId, clienteId, data) {
           ventaId,
           categoria: handler.category,
           nombreServicio: handler.nombreServicio,
-          subtotal: (item.supplierCost || 0) + (item.ta || 0) + (item.taCre || 0),
-          costoProveedor: item.supplierCost || 0,
-          ta: item.ta || 0,
-          taCre: item.taCre || 0,
+          subtotal: fin.costoProveedor + fin.ta + fin.taCre,
+          costoProveedor: fin.costoProveedor,
+          ta: fin.ta,
+          taCre: fin.taCre,
           proveedorId: resolvedSupplierId,
           metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
           origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
@@ -1565,6 +1715,9 @@ async function createProductItems(tx, ventaId, clienteId, data) {
           data: detalleObj
         });
 
+        // Las filas de pago a proveedor del servicio. En un paquete son el hotel, el
+        // transporte y el seguro, cada uno con su proveedor y su metodo de pago.
+        await crearPagosProveedor(tx, detalle.id, item, resolveSupplierId, resolvePaymentMethodId);
         const productData = await handler.transform(item, detalle.id, tx);
         const product = await tx[handler.table].create({ data: productData });
 
@@ -1707,6 +1860,7 @@ exports.create = async (req, res, next) => {
         for (const item of items) {
           if (!item || Object.keys(item).length === 0) continue;
 
+          const fin = financierosDe(item);
           const [resolvedSupplierId, resolvedSupplierPaymentMethodId] = await Promise.all([
             resolveSupplierId(tx, nombreProveedorDe(item), memCache),
             resolvePaymentMethodId(tx, item.supplierPaymentMethod, memCache)
@@ -1740,10 +1894,10 @@ exports.create = async (req, res, next) => {
           const detalleObj = {
             categoria: handler.category,
             nombreServicio: handler.nombreServicio,
-            subtotal: (item.supplierCost || 0) + (item.ta || 0) + (item.taCre || 0),
-            costoProveedor: item.supplierCost || 0,
-            ta: item.ta || 0,
-            taCre: item.taCre || 0,
+            subtotal: fin.costoProveedor + fin.ta + fin.taCre,
+            costoProveedor: fin.costoProveedor,
+            ta: fin.ta,
+            taCre: fin.taCre,
             proveedorId: resolvedSupplierId,
             metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
             origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
@@ -1760,6 +1914,15 @@ exports.create = async (req, res, next) => {
             detalleObj.pasajerosDetalle = {
               create: pasajerosDetalleData
             };
+          }
+
+          // Las filas de pago a proveedor del servicio. En un paquete son el transporte,
+          // el hotel y el seguro, cada uno con su proveedor y su metodo de pago.
+          const pagosProveedorData = await armarPagosProveedor(
+            tx, item, resolveSupplierId, resolvePaymentMethodId, memCache,
+          );
+          if (pagosProveedorData.length > 0) {
+            detalleObj.pagosProveedor = { create: pagosProveedorData };
           }
 
           if (handler.table === 'prodTiqueteria' && item.legs && item.legs.length > 0) {
@@ -2165,6 +2328,7 @@ exports.update = async (req, res, next) => {
             const existing = await tx[handler.table].findUnique({ where: { id: item.id } });
             if (existing) continue;
           }
+          const fin = financierosDe(item);
           const resolvedSupplierId = await resolveSupplierId(tx, nombreProveedorDe(item));
           const resolvedSupplierPaymentMethodId = await resolvePaymentMethodId(tx, item.supplierPaymentMethod);
 
@@ -2173,9 +2337,10 @@ exports.update = async (req, res, next) => {
               ventaId: id,
               categoria: handler.category,
               nombreServicio: handler.nombreServicio,
-              subtotal: (item.supplierCost || 0) + (item.ta || 0) + (item.taCre || 0),
-              costoProveedor: item.supplierCost || 0,
-              ta: item.ta || 0,
+              subtotal: fin.costoProveedor + fin.ta + fin.taCre,
+              costoProveedor: fin.costoProveedor,
+              ta: fin.ta,
+              taCre: fin.taCre,
               proveedorId: resolvedSupplierId,
               metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
               origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
@@ -2185,6 +2350,9 @@ exports.update = async (req, res, next) => {
               observaciones: item.observations || null
             }
           });
+          // Las filas de pago a proveedor del servicio. En un paquete son el hotel, el
+          // transporte y el seguro, cada uno con su proveedor y su metodo de pago.
+          await crearPagosProveedor(tx, detalle.id, item, resolveSupplierId, resolvePaymentMethodId);
           const productData = await handler.transform(item, detalle.id, tx);
           const product = await tx[handler.table].create({ data: productData });
 
@@ -2884,6 +3052,16 @@ exports.generateSiigoInvoice = async (req, res, next) => {
         detalleVentas: {
           include: {
             proveedor: true,
+            // Un paquete se paga a varios proveedores, y la linea IT de Siigo lleva un
+            // solo Tercero: cada pago necesita su propia linea, con el codigo del
+            // catalogo que corresponde a su concepto.
+            pagosProveedor: {
+              include: { proveedor: true },
+              orderBy: { orden: 'asc' }
+            },
+            // `tipoTransporte` decide si el pago del transporte de un paquete se factura
+            // como tiquete aereo o como viaje terrestre.
+            prodPlanes: { select: { tipoTransporte: true } },
             prodTiqueteria: {
               include: {
                 aerolinea: true,

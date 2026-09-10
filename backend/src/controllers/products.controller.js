@@ -80,20 +80,88 @@ async function resolverProveedorId(tx, data) {
   return match?.id || null;
 }
 
+// El metodo de pago puede llegar como id o como nombre. Este controlador solo aceptaba
+// el id (`parseInt(data.supplierPaymentMethod)`) mientras sales.controller resuelve por
+// nombre, que es lo que manda el formulario; aca se aceptan los dos.
+async function resolverMetodoPagoId(tx, bruto) {
+  if (bruto === undefined || bruto === null || bruto === '') return null;
+  const id = parseInt(bruto, 10);
+  if (!Number.isNaN(id)) return id;
+  const match = await tx.metodosPago.findFirst({ where: { nombre: String(bruto) } });
+  return match?.id || null;
+}
+
+/**
+ * Concepto de pago valido, o null si viene cualquier otra cosa.
+ */
+const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro'];
+
+/**
+ * Filas de pago a proveedor de un servicio, listas para un create anidado.
+ *
+ * Un paquete se le compra a varios proveedores a la vez y a cada uno se le paga aparte.
+ * Una fila sin importe y sin proveedor no es un pago y no se guarda.
+ */
+async function armarPagosProveedor(tx, data) {
+  const pagos = Array.isArray(data.supplierPayments) ? data.supplierPayments : [];
+  const out = [];
+  for (let i = 0; i < pagos.length; i++) {
+    const pago = pagos[i];
+    if (!CONCEPTOS_PAGO.includes(pago.concept)) continue;
+
+    const costoProveedor = Number(pago.supplierCost) || 0;
+    const ta = Number(pago.ta) || 0;
+    const taCre = Number(pago.taCre) || 0;
+    if (costoProveedor === 0 && ta === 0 && taCre === 0 && !pago.supplier) continue;
+
+    out.push({
+      concepto: pago.concept,
+      proveedorId: await resolverProveedorId(tx, { supplier: pago.supplier }),
+      costoProveedor,
+      ta,
+      taCre,
+      metodoPagoProveedorId: await resolverMetodoPagoId(tx, pago.paymentMethod),
+      orden: i + 1,
+    });
+  }
+  return out;
+}
+
+/**
+ * Los importes de un servicio. Si se pago a varios proveedores, son la suma de sus filas
+ * de pago: el detalle guarda el total para que los totales de la venta, el agregado por
+ * paquete y la guarda de totales de Siigo sigan valiendo sin cambios.
+ */
+function financierosDe(data, pagos) {
+  if (!pagos || pagos.length === 0) {
+    return {
+      costoProveedor: Number(data.supplierCost) || 0,
+      ta: Number(data.ta) || 0,
+      taCre: Number(data.taCre) || 0,
+    };
+  }
+  const suma = (campo) => pagos.reduce((t, p) => t + (Number(p[campo]) || 0), 0);
+  return { costoProveedor: suma('costoProveedor'), ta: suma('ta'), taCre: suma('taCre') };
+}
+
 async function createDetalleProducto(tx, ventaId, categoria, data) {
+  const pagosProveedorData = await armarPagosProveedor(tx, data);
+  const fin = financierosDe(data, pagosProveedorData);
+
   return tx.detalleVenta.create({
     data: {
       ventaId,
       categoria,
       nombreServicio: data.nombreServicio || null,
-      subtotal: data.subtotal || ((data.supplierCost || 0) + (data.ta || 0) + (data.taCre || 0)),
-      ta: data.ta || 0,
-      taCre: data.taCre || 0,
-      costoProveedor: data.supplierCost || 0,
+      subtotal: fin.costoProveedor + fin.ta + fin.taCre,
+      ta: fin.ta,
+      taCre: fin.taCre,
+      costoProveedor: fin.costoProveedor,
+      ...(pagosProveedorData.length > 0 ? { pagosProveedor: { create: pagosProveedorData } } : {}),
       // Mismo criterio que sales.controller: el proveedor llega como `supplier`,
       // `supplierName` o `supplierId` segun el formulario.
       proveedorId: await resolverProveedorId(tx, data),
-      metodoPagoProveedorId: data.supplierPaymentMethod ? parseInt(data.supplierPaymentMethod) : null,
+      metodoPagoProveedorId: await resolverMetodoPagoId(tx, data.supplierPaymentMethod),
       voucherUrl: data.voucherUrl || null,
       fechaInicioViaje: data.startDate ? new Date(data.startDate) : null,
       fechaFinViaje: data.endDate ? new Date(data.endDate) : null,
