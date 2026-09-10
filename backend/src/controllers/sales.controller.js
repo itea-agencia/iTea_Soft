@@ -1477,9 +1477,14 @@ function calcularTotales(data) {
     const arr = Array.isArray(data[field]) ? data[field] : [];
     for (const item of arr) {
       items += 1;
-      costoProveedor += Number(item.supplierCost) || 0;
-      ta += Number(item.ta) || 0;
-      taCre += Number(item.taCre) || 0;
+      // Pasa por financierosDe y no por item.supplierCost: un paquete pagado a varios
+      // proveedores tiene la plata en `supplierPayments`, y sumar el campo suelto dejaba
+      // la venta en cero. Con `monto_total` en cero, el paso de pagos la marcaba pagada
+      // sin registrar ningun pago, y Siigo habria facturado contra ese cero.
+      const fin = financierosDe(item);
+      costoProveedor += fin.costoProveedor;
+      ta += fin.ta;
+      taCre += fin.taCre;
     }
   }
   // Sin items no hay de donde derivar: se respeta lo que mande el cliente en vez de

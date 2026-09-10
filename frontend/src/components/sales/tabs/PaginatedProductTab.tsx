@@ -114,6 +114,17 @@ function renderTicketPassengers(
   );
 }
 
+/**
+ * Lo pagado a proveedores de un paquete.
+ *
+ * Un paquete pagado a varios tiene la plata en sus filas de pago, y el servidor las suma
+ * en `totals`. Leer `supplierCost` suelto mostraba un guion aunque tuviera plata cargada.
+ */
+function costoDelPaquete(plan: any): string {
+  const total = plan?.totals?.supplierCost ?? plan?.supplierCost;
+  return total ? formatCurrency(total) : '-';
+}
+
 function renderGrid(items: { label: string; value: any }[]) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -466,7 +477,10 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                 renderGrid([
                   { label: "Tipo de Paquete", value: "Por Proveedor" },
                   { label: "Proveedor / Operador", value: plan.supplier || "—" },
-                  { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
+                  // El costo de un paquete pagado a varios proveedores es la suma de sus
+                  // pagos, que el servidor deriva en `totals`. Leer `supplierCost` suelto
+                  // mostraba un guion aunque el paquete tuviera plata cargada.
+                  { label: "Pagado a Proveedores", value: costoDelPaquete(plan) },
                   ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
                 ])
               ) : (
@@ -478,7 +492,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                     ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
                     { label: "Tipo de Transporte", value: plan.transportType || "Aéreo" },
                     { label: "Proveedor", value: plan.supplier || plan.supplierName },
-                    { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
+                    { label: "Pagado a Proveedores", value: costoDelPaquete(plan) },
                     { label: "Adultos", value: plan.adultsCount },
                     { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
                   ])}

@@ -540,6 +540,30 @@ export const PRODUCTOS: Record<string, { key: string; label: string; initial: (c
 };
 
 /**
+ * Los importes de un item del formulario.
+ *
+ * Un paquete pagado a varios proveedores tiene la plata en `supplierPayments`, no en
+ * `supplierCost`: leer el campo suelto dejaba el total de la venta en cero, y con el
+ * total en cero el paso de pagos marcaba la venta como pagada sin registrar ningun pago.
+ *
+ * Existe para que "cuanto cuesta este item" se responda en un solo lugar. Antes estaba
+ * escrito a mano en dieciocho lineas del wizard, una por producto, asi que un cambio en
+ * donde vive la plata tenia que acertarle a las dieciocho.
+ */
+export function importesDe(item: any): { supplierCost: number; ta: number; taCre: number } {
+  const pagos = Array.isArray(item?.supplierPayments) ? item.supplierPayments : null;
+  if (!pagos || pagos.length === 0) {
+    return {
+      supplierCost: Number(item?.supplierCost) || 0,
+      ta: Number(item?.ta) || 0,
+      taCre: Number(item?.taCre) || 0,
+    };
+  }
+  const suma = (campo: string) => pagos.reduce((t: number, p: any) => t + (Number(p?.[campo]) || 0), 0);
+  return { supplierCost: suma('supplierCost'), ta: suma('ta'), taCre: suma('taCre') };
+}
+
+/**
  * Los vinculos a paquetes que hay que reescribir despues de borrar el paquete de la
  * posicion `idx`. Devuelve SOLO los arrays que cambian, para que valga igual en el wizard
  * (que puede escribir el formulario completo) y en el paso de productos (que tiene un
