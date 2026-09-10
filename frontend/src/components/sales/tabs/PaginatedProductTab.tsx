@@ -487,7 +487,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                     ])}
                   </div>
 
-                  {(plan.flightNumber || plan.flightDepartureDate || plan.flightReturnDate) && (
+                  {(plan.flightNumber || plan.flightReservationNumber || plan.flightDepartureDate || plan.flightReturnDate) && (
                     <div className="bg-blue-50/40 dark:bg-blue-900/10 rounded-lg p-3 mt-2.5 border border-blue-100/60 dark:border-blue-800/30">
                       <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100 dark:border-blue-800/40">
                         <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1">
@@ -500,6 +500,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                         </span>
                       </div>
                       {renderGrid([
+                        { label: plan.transportType === 'Terrestre' ? "Localizador" : "N° Reserva", value: plan.flightReservationNumber },
                         { label: "Salida Ida", value: plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : "-" },
                         { label: "Llegada Ida", value: plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : "-" },
                         { label: "Salida Regreso", value: plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : "-" },

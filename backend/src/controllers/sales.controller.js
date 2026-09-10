@@ -303,6 +303,7 @@ const PRODUCT_TRANSFORMS = {
       airline: String(p.aerolineaId || ''),
       airlineName: p.aerolinea?.nombre || null,
       flightNumber: p.nroVuelo || null,
+      flightReservationNumber: p.nroReservaVuelo || null,
       startDate: p.fechaViajeInicio?.toISOString() || null,
       endDate: p.fechaViajeFin?.toISOString() || null,
       flightDepartureDate: p.fechaSalidaVuelo?.toISOString() || null,
@@ -899,6 +900,9 @@ const PRODUCT_HANDLERS = {
         nombreHotel: d.hotelName || null,
         aerolineaId,
         nroVuelo: d.flightNumber || null,
+        // El PNR del vuelo del paquete. El booking de cada integrante es otra cosa y
+        // vive en pasajeros_detalle.
+        nroReservaVuelo: String(d.flightReservationNumber || '').trim().slice(0, 20) || null,
         fechaViajeInicio: d.startDate ? new Date(d.startDate) : null,
         fechaViajeFin: d.endDate ? new Date(d.endDate) : null,
         fechaSalidaVuelo: d.flightDepartureDate ? new Date(d.flightDepartureDate) : null,

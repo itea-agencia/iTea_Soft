@@ -281,6 +281,8 @@ export interface PlanData {
   ta: number;
   taCre?: number;
   flightNumber: string;
+  /** PNR del vuelo del paquete, uno por reserva. En un paquete terrestre, el localizador. */
+  flightReservationNumber?: string;
   packageId?: number | string;
   packageName?: string;
   packageRateId?: number | string;

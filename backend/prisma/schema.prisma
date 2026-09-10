@@ -563,6 +563,10 @@ model ProdPlanes {
   fechaLlegadaVuelo        DateTime?       @map("fecha_llegada_vuelo")
   nombreHotel              String?         @map("nombre_hotel")
   nroVuelo                 String?         @map("nro_vuelo")
+  // El PNR del vuelo del paquete: uno por reserva, no por integrante. En un paquete
+  // terrestre es el localizador del operador. Como `nroVuelo`, sirve a los dos tipos
+  // de transporte y la interfaz cambia solo la etiqueta.
+  nroReservaVuelo          String?         @map("nro_reserva_vuelo")
   checkinStatusIda         CheckinStatus?  @default(pendiente) @map("checkin_status_ida")
   checkinStatusRegreso     CheckinStatus?  @default(pendiente) @map("checkin_status_regreso")
   tipoPaquete              String?         @default("own") @map("tipo_paquete")

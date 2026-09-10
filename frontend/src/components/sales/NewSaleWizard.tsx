@@ -606,6 +606,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 if (plan.hotelReference && !/^[A-Z0-9_-]{3,20}$/.test(plan.hotelReference)) {
                   errors.push("Ref. Hotel (3-20 caracteres: letras, números, guion o guion bajo)");
                 }
+                if (plan.flightReservationNumber && !/^[A-Z0-9_-]{3,20}$/.test(plan.flightReservationNumber)) {
+                  errors.push("N° de Reserva del transporte (3-20 caracteres: letras, números, guion o guion bajo)");
+                }
 
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
@@ -1329,6 +1332,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 // 6 caracteres, que rechazaba el valor real del hotel (PH_3510R-1).
                 if (plan.hotelReference && !/^[A-Z0-9_-]{3,20}$/.test(plan.hotelReference)) {
                   errors.push("Ref. Hotel (3-20 caracteres: letras, números, guion o guion bajo)");
+                }
+                if (plan.flightReservationNumber && !/^[A-Z0-9_-]{3,20}$/.test(plan.flightReservationNumber)) {
+                  errors.push("N° de Reserva del transporte (3-20 caracteres: letras, números, guion o guion bajo)");
                 }
                 
                 if (!plan.flightDepartureDate) errors.push("Fecha Ida (requerido)");

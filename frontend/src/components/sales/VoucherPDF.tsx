@@ -497,7 +497,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 {propio && hayTransporte && (
                   <>
                     <SubHead>{esTerrestre ? 'Transporte terrestre' : 'Transporte aéreo'}</SubHead>
-                    <div className="v-data-grid cols-2">
+                    <div className="v-data-grid">
                       <DataCell
                         label={esTerrestre ? 'Empresa de transporte' : 'Aerolínea'}
                         value={(plan as any).airlineName || plan.airline}
@@ -506,6 +506,11 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                       <DataCell
                         label={esTerrestre ? 'Placa del vehículo' : 'N° de vuelo'}
                         value={plan.flightNumber}
+                      />
+                      <DataCell
+                        label={esTerrestre ? 'Localizador' : 'N° de reserva'}
+                        value={plan.flightReservationNumber}
+                        highlight
                       />
                     </div>
                     <TripLegs

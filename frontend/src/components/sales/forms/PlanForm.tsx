@@ -280,6 +280,17 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 maxLength={12}
               />
             </FormField>
+            {/* El PNR del vuelo es uno por reserva. El Booking de cada integrante esta
+                abajo, en Integrantes, y son datos distintos. Opcional como los demas
+                codigos del paquete: llegan dias despues de vender. */}
+            <FormField label={plan.transportType === 'Terrestre' ? 'Localizador' : 'N° de Reserva'}>
+              <Input
+                value={plan.flightReservationNumber || ""}
+                onChange={(e) => onChange({ flightReservationNumber: sanearCodigo(e.target.value) })}
+                placeholder={plan.transportType === 'Terrestre' ? 'Ej: RO-88421' : 'Ej: KJH8RT'}
+                maxLength={20}
+              />
+            </FormField>
           </div>
 
           <div className="mt-4 pt-3 border-t border-dashed border-blue-100 dark:border-blue-500/20">

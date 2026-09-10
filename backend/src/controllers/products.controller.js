@@ -389,6 +389,7 @@ exports.createPlan = H(CATEGORIES.plan, 'prodPlanes', (d, detalleId) => ({
   fechaRegresoVuelo: d.flightReturnDate ? new Date(d.flightReturnDate) : null,
   adultosCount: d.adultsCount || 0,
   menoresCount: d.childrenCount || 0,
+  nroReservaVuelo: d.flightReservationNumber || null,
   referenciaHotel: d.hotelReference || d.confirmationNumber || null,
   observaciones: d.observations || null
 })).create;

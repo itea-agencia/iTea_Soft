@@ -170,6 +170,7 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   taCre: 0,
   supplierPaymentMethod: "",
   hotelReference: "",
+  flightReservationNumber: "",
   observations: "",
   flightNumber: "",
   adultsCount: 2,
