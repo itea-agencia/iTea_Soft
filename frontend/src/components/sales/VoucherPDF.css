@@ -367,6 +367,29 @@
   border-right: none;
 }
 
+/* En una rejilla de 2 columnas manda el 2n, no el 3n heredado de la de 3. */
+.itea-voucher .v-data-grid.cols-2 > .v-data-cell:nth-child(3n) {
+  border-right: 1px solid #f1f5f9;
+}
+
+.itea-voucher .v-data-grid.cols-2 > .v-data-cell:nth-child(2n) {
+  border-right: none;
+}
+
+/* ── Sub-encabezado dentro de una tarjeta de producto ──
+   Mismo tratamiento que .v-payment-col h4: filete naranja y versalitas navy.
+   Separa hotel de transporte sin agregar otra tarjeta ni otro color. */
+.itea-voucher .v-sub-head {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #102846 !important;
+  border-left: 4px solid #f2892f;
+  padding: 2px 0 2px 8px;
+  margin: 16px 18px 8px;
+}
+
 .itea-voucher .v-data-cell-label {
   font-size: 10.5px;
   font-weight: 700;

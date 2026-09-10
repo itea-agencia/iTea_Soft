@@ -39,6 +39,132 @@ function ProductCard({ emoji, title, children }: { emoji: string; title: string;
   );
 }
 
+function SubHead({ children }: { children: React.ReactNode }) {
+  return <div className="v-sub-head">{children}</div>;
+}
+
+/** Columna de PassengerTable. `get` extrae el valor de cada pasajero. */
+interface PaxColumn {
+  head: string;
+  get: (p: any) => React.ReactNode;
+  left?: boolean;
+}
+
+/**
+ * Tabla de pasajeros del voucher.
+ *
+ * Los cuatro bloques que listan personas (vuelo, viaje terrestre y las dos ramas de
+ * paquete) repetian la misma tabla con estilos inline, y esos estilos pintaban el
+ * encabezado de azul #0d5ca7, que no pertenece a la paleta del documento y tapaba el
+ * degradado naranja de .v-flight-table. Ahora hay una sola tabla y el estilo lo pone
+ * el CSS.
+ *
+ * Una columna cuyo valor esta vacio en todos los pasajeros no se dibuja: en un voucher
+ * impreso una columna entera de guiones solo estorba.
+ */
+function PassengerTable({ title, passengers, columns }: { title: string; passengers: any[]; columns: PaxColumn[] }) {
+  if (!passengers || passengers.length === 0) return null;
+
+  const tieneDato = (col: PaxColumn) =>
+    passengers.some((p) => {
+      const v = col.get(p);
+      return v !== null && v !== undefined && v !== '';
+    });
+
+  const cols = columns.filter((col, i) => i === 0 || tieneDato(col));
+
+  return (
+    <>
+      <SubHead>{title}</SubHead>
+      <table className="v-flight-table">
+        <thead>
+          <tr>
+            {cols.map((col) => (
+              <th key={col.head} className={col.left ? 'text-left' : 'text-center'}>{col.head}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {passengers.map((p, i) => (
+            <tr key={i}>
+              {cols.map((col, ci) => (
+                <td key={col.head} className={col.left ? 'text-left' : 'text-center'}>
+                  <div className="v-f-main">
+                    {col.get(p) || '—'}
+                    {ci === 0 && p.esTitular && <span className="v-badge-orange">&nbsp;&nbsp;Titular</span>}
+                  </div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+/** Columnas de integrantes de un paquete: sus codigos vienen por persona. */
+const COLUMNAS_INTEGRANTES: PaxColumn[] = [
+  { head: 'Nombre', get: (g) => g.name, left: true },
+  { head: 'Tipo doc.', get: (g) => g.docType },
+  { head: 'N° documento', get: (g) => g.docNumber },
+  { head: 'Booking', get: (g) => g.nroReserva },
+  { head: 'N° tiquete', get: (g) => g.nroTiquete },
+];
+
+/**
+ * Tramos de ida y regreso.
+ *
+ * Antes eran cuatro celdas sueltas con las etiquetas "Fecha Salida Vuelo (Ida)",
+ * "Llegada Vuelo Ida", "Fecha Regreso Vuelo (Regreso)" —que decia regreso dos veces— y
+ * "Llegada Vuelo Regreso", mas tres celdas vacias para cuadrar la rejilla. Un viaje
+ * redondo son dos filas con los mismos dos datos, asi que la tabla nombra el tramo una
+ * vez y las etiquetas dejan de repetirlo. La fila de regreso solo aparece si hay regreso.
+ */
+function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; llegada?: string }> }) {
+  const conDatos = legs.filter((l) => l.salida || l.llegada);
+  if (conDatos.length === 0) return null;
+
+  // Un valor sin hora sale de formatDateTime como "12:00 a. m.", que es una hora de
+  // salida que nadie escribio. En un voucher impreso eso desinforma, asi que si no hay
+  // hora se imprime solo la fecha.
+  const fechaHora = (valor?: string) => {
+    if (!valor) return '—';
+    return valor.includes('T') && !valor.includes('T00:00') ? formatDateTime(valor) : formatDate(valor);
+  };
+
+  return (
+    <table className="v-flight-table">
+      <thead>
+        <tr>
+          <th className="text-left">Tramo</th>
+          <th className="text-center">Salida</th>
+          <th className="text-center">Llegada</th>
+        </tr>
+      </thead>
+      <tbody>
+        {conDatos.map((l) => (
+          <tr key={l.nombre}>
+            <td className="text-left"><div className="v-f-main">{l.nombre}</div></td>
+            <td className="text-center"><div className="v-f-main">{fechaHora(l.salida)}</div></td>
+            <td className="text-center"><div className="v-f-main">{fechaHora(l.llegada)}</div></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** "2 adultos, 1 nino" — sin parentesis ni la palabra "resumen". */
+function describirViajeros(adultos?: number, ninos?: number) {
+  const partes: string[] = [];
+  const a = adultos ?? 0;
+  const n = ninos ?? 0;
+  if (a > 0) partes.push(`${a} ${a === 1 ? 'adulto' : 'adultos'}`);
+  if (n > 0) partes.push(`${n} ${n === 1 ? 'niño' : 'niños'}`);
+  return partes.join(', ');
+}
+
 function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketData; idx: number; airportMap?: Record<string, AirportInfo>; baggageList?: any[] }) {
   const mainLegs = ticket.legs && ticket.legs.length > 0 ? ticket.legs : [];
   const returnLeg = ticket.returnLeg ? [ticket.returnLeg] : [];
@@ -163,40 +289,18 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
         })}
       </div>
 
-      {ticket.passengers && ticket.passengers.length > 0 && (
-        <div style={{ marginTop: '20px' }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold' }}>
-            PASAJEROS DEL VUELO:
-          </div>
-          <table className="v-flight-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>NOMBRE</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>DOCUMENTO</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° RESERVA</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° TIQUETE</th>
-                <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ticket.passengers.map((p, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '12px', fontWeight: 'bold', color: '#000000' }}>
-                    {p.name}
-                    {p.esTitular && (
-                      <span style={{ marginLeft: '8px', padding: '2px 8px', color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>PASAJERO PRINCIPAL</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docNumber || '—'}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.nroReserva || '—'}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.nroTiquete || '—'}</td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asiento || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <PassengerTable
+        title="Pasajeros del vuelo"
+        passengers={ticket.passengers || []}
+        columns={[
+          { head: 'Nombre', get: (p) => p.name, left: true },
+          { head: 'Tipo doc.', get: (p) => p.docType },
+          { head: 'N° documento', get: (p) => p.docNumber },
+          { head: 'N° reserva', get: (p) => p.nroReserva },
+          { head: 'N° tiquete', get: (p) => p.nroTiquete },
+          { head: 'Asiento', get: (p) => p.asiento },
+        ]}
+      />
     </div>
   );
 }
@@ -356,96 +460,73 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           </ProductCard>
         )}
 
-        {/* ══ PAQUETES ════════════════════════════════════════════════ */}
+        {/* ══ PAQUETES ══════════════════════════════════════ */}
         {plans.length > 0 && (
           <ProductCard emoji="📦" title="Paquetes">
-            {plans.map((plan, i) => (
+            {plans.map((plan, i) => {
+              const esTerrestre = plan.transportType === 'Terrestre';
+              const propio = plan.packageType !== 'supplier';
+              const hayTransporte = Boolean(
+                (plan as any).airlineName || plan.airline || plan.flightNumber ||
+                plan.flightDepartureDate || plan.flightReturnDate,
+              );
+              return (
               <React.Fragment key={`plan-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
+
+                {/* Identidad del paquete: lo mismo para paquete propio y de proveedor. */}
                 <div className="v-data-grid">
-                  {plan.packageType === "supplier" ? (
-                    <>
-                      <DataCell label="Nombre del Plan / Paquete" value={plan.planName || plan.packageName} highlight />
-                      <DataCell label="Proveedor / Operador" value={plan.supplier} />
-                      <DataCell label="Tipo de Paquete" value="Por Proveedor" />
-                      {(plan.guests || []).length > 0 && (
-                        <div style={{ gridColumn: '1 / -1', marginTop: '12px' }}>
-                          <div style={{ color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold' }}>
-                            INTEGRANTES DEL PAQUETE:
-                          </div>
-                          <table className="v-flight-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                            <thead>
-                              <tr>
-                                {['NOMBRE', 'TIPO DOC.', 'N° DOCUMENTO', 'BOOKING', 'N° TIQUETE'].map((h, hi) => (
-                                  <th key={hi} style={{ textAlign: hi === 0 ? 'left' : 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(plan.guests || []).map((g: any, gi: number) => (
-                                <tr key={gi} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                  <td style={{ padding: '12px', fontWeight: 'bold', color: '#000000' }}>
-                                    {g.name}
-                                    {g.esTitular && (
-                                      <span style={{ marginLeft: '8px', padding: '2px 8px', color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>TITULAR</span>
-                                    )}
-                                  </td>
-                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.docType || '—'}</td>
-                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.docNumber || '—'}</td>
-                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.nroReserva || '—'}</td>
-                                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{g.nroTiquete || '—'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                      {plan.observations && (
-                        <DataCell
-                          label="Observaciones"
-                          value={plan.observations}
-                          fullWidth={true}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <DataCell label="Nombre del Plan / Paquete" value={plan.planName || plan.packageName} highlight />
-                      <DataCell label="Hotel Incluido" value={plan.hotelName} />
-                      <DataCell label="Proveedor / Operador" value={plan.supplier} />
-
-                      <DataCell label="Fecha Inicio Viaje" value={plan.startDate ? formatDate(plan.startDate) : null} />
-                      <DataCell label="Fecha Fin Viaje" value={plan.endDate ? formatDate(plan.endDate) : null} />
-                      <DataCell label="Pasajeros (Resumen)" value={`${plan.adultsCount ?? 0} adulto(s) / ${plan.childrenCount ?? 0} niño(s)`} />
-
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Empresa de Transporte" : "Aerolínea"} value={(plan as any).airlineName || plan.airline} />
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Placa / Vehículo" : "N° Vuelo"} value={plan.flightNumber} />
-                      <DataCell label="Ref. Hotel" value={plan.hotelReference} />
-
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Fecha Salida (Ida)" : "Fecha Salida Vuelo (Ida)"} value={plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : null} />
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Llegada Destino (Ida)" : "Llegada Vuelo Ida"} value={plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : null} />
-                      <DataCell label="" value={<span />} />
-
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Fecha Salida (Regreso)" : "Fecha Regreso Vuelo (Regreso)"} value={plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : null} />
-                      <DataCell label={plan.transportType === 'Terrestre' ? "Llegada Origen (Regreso)" : "Llegada Vuelo Regreso"} value={plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : null} />
-                      <DataCell label="" value={<span />} />
-
-                      <DataCell
-                        label="Lista de Pasajeros / Huéspedes"
-                        value={(plan.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || '—'}
-                        fullWidth={true}
-                      />
-
-                      {plan.observations && (
-                        <DataCell
-                          label="Observaciones"
-                          value={plan.observations}
-                          fullWidth={true}
-                        />
-                      )}
-                    </>
-                  )}
+                  <DataCell label="Plan" value={plan.planName || plan.packageName} highlight />
+                  <DataCell label="Proveedor" value={plan.supplier} />
+                  <DataCell label="Viajeros" value={describirViajeros(plan.adultsCount, plan.childrenCount)} />
+                  <DataCell label="Inicio del viaje" value={plan.startDate ? formatDate(plan.startDate) : null} />
+                  <DataCell label="Fin del viaje" value={plan.endDate ? formatDate(plan.endDate) : null} />
                 </div>
+
+                {/* Un paquete de proveedor no detalla hotel ni transporte: los presta el operador. */}
+                {propio && (plan.hotelName || plan.hotelReference) && (
+                  <>
+                    <SubHead>Hotel</SubHead>
+                    <div className="v-data-grid cols-2">
+                      <DataCell label="Hotel" value={plan.hotelName} highlight />
+                      <DataCell label="Referencia del hotel" value={plan.hotelReference} />
+                    </div>
+                  </>
+                )}
+
+                {propio && hayTransporte && (
+                  <>
+                    <SubHead>{esTerrestre ? 'Transporte terrestre' : 'Transporte aéreo'}</SubHead>
+                    <div className="v-data-grid cols-2">
+                      <DataCell
+                        label={esTerrestre ? 'Empresa de transporte' : 'Aerolínea'}
+                        value={(plan as any).airlineName || plan.airline}
+                        highlight
+                      />
+                      <DataCell
+                        label={esTerrestre ? 'Placa del vehículo' : 'N° de vuelo'}
+                        value={plan.flightNumber}
+                      />
+                    </div>
+                    <TripLegs
+                      legs={[
+                        { nombre: 'Ida', salida: plan.flightDepartureDate, llegada: plan.flightDepartureArrivalDate },
+                        { nombre: 'Regreso', salida: plan.flightReturnDate, llegada: plan.flightReturnArrivalDate },
+                      ]}
+                    />
+                  </>
+                )}
+
+                {/* Cada integrante lleva su propio booking y su tiquete. La lista unida por
+                    comas que habia antes los descartaba, y son el dato con el que el
+                    pasajero se presenta en el mostrador. */}
+                <PassengerTable title="Integrantes" passengers={plan.guests || []} columns={COLUMNAS_INTEGRANTES} />
+
+                {plan.observations && (
+                  <div className="v-data-grid">
+                    <DataCell label="Observaciones" value={plan.observations} fullWidth />
+                  </div>
+                )}
 
                 {getChildrenForPlan(plan.detalleVentaId).length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -508,7 +589,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   </div>
                 )}
               </React.Fragment>
-            ))}
+              );
+            })}
           </ProductCard>
         )}
 
@@ -611,44 +693,17 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   )}
                 </div>
 
-                {lt.passengers && lt.passengers.length > 0 && (
-                  <div style={{ marginTop: '20px' }}>
-                    <div style={{ color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', fontSize: '11px', fontWeight: 'bold' }}>
-                      PASAJEROS:
-                    </div>
-                    <table className="v-flight-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ textAlign: 'left', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>NOMBRE</th>
-                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>TIPO DOC.</th>
-                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>N° DOCUMENTO</th>
-                          <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>{lt.isRoundTrip ? 'ASIENTO IDA' : 'ASIENTO'}</th>
-                          {lt.isRoundTrip && (
-                            <th style={{ textAlign: 'center', padding: '8px 12px', backgroundColor: '#0d5ca7', color: 'white', fontWeight: 'bold', fontSize: '10px' }}>ASIENTO REGRESO</th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lt.passengers.map((p: any, j: number) => (
-                          <tr key={j} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#000000' }}>
-                              {p.name}
-                              {p.esTitular && (
-                                <span style={{ marginLeft: '8px', padding: '2px 8px', color: '#0369a1', borderRadius: '12px', fontSize: '9px', fontWeight: 'bold' }}>PASAJERO PRINCIPAL</span>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docType || '—'}</td>
-                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.docNumber || '—'}</td>
-                            <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asiento || '—'}</td>
-                            {lt.isRoundTrip && (
-                              <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#000000' }}>{p.asientoRegreso || '—'}</td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <PassengerTable
+                  title="Pasajeros"
+                  passengers={lt.passengers || []}
+                  columns={[
+                    { head: 'Nombre', get: (p) => p.name, left: true },
+                    { head: 'Tipo doc.', get: (p) => p.docType },
+                    { head: 'N° documento', get: (p) => p.docNumber },
+                    { head: lt.isRoundTrip ? 'Asiento ida' : 'Asiento', get: (p) => p.asiento },
+                    { head: 'Asiento regreso', get: (p) => p.asientoRegreso },
+                  ]}
+                />
               </React.Fragment>
             ))}
           </ProductCard>
