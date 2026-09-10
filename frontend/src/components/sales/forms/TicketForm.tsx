@@ -1280,11 +1280,14 @@ export function TicketForm({
                     </div>
 
                     {/* Los codigos identifican la reserva de este pasajero. Antes el
-                        Booking se ocultaba al titular (`!pax.esTitular &&`), asi que el
-                        suyo se tomaba del codigo de reserva del tiquete y quedaba igual
-                        para todos. */}
+                        codigo de reserva se ocultaba al titular (`!pax.esTitular &&`), asi
+                        que el suyo se tomaba del codigo del tiquete y quedaba igual para
+                        todos.
+                        En tiqueteria el codigo se llama "Cod. Reserva": lo entrega la
+                        aerolinea. "Booking" es la palabra de hoteleria y paquetes, donde
+                        lo entrega el hotel, y no se traslada aca. */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      <FormField label="Booking (Opcional)">
+                      <FormField label="Cód. Reserva (Opcional)">
                         <Input
                           maxLength={6}
                           value={pax.nroReserva || ''}
