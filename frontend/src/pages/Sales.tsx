@@ -204,13 +204,40 @@ export default function Sales() {
     // Altura máxima del contenido por página A4 (820px de ancho -> 1160px de alto. Restando pie de página ~75px y margen de seguridad)
     const maxContentHeight = 1070;
 
+    // Un encabezado no se separa de lo que anuncia.
+    //
+    // "Otros Servicios Reservados" y su aviso son dos hijos sueltos de ~45px y ~35px, así
+    // que el llenado codicioso los acomodaba al final de una página y el primer bloque de
+    // producto, que ya no cabía, se iba a la siguiente: media hoja en blanco debajo de un
+    // título que no presentaba nada. Estos elementos viajan con el bloque que introducen.
+    const CLASES_ACOMPANANTES = ['v-section-title', 'v-notice'];
+    const acompanaAlSiguiente = (el: HTMLElement) =>
+      CLASES_ACOMPANANTES.some(c => el.classList.contains(c));
+
+    const alturaTotal = (els: HTMLElement[]) =>
+      els.reduce((total, el) => total + getElementHeightWithMargins(el), 0);
+
     for (const child of childrenToDistribute) {
       const childHeight = getElementHeightWithMargins(child);
-      
+
       if (currentPageHeight + childHeight > maxContentHeight && currentPageContent.length > 0) {
-        pagesData.push(currentPageContent);
-        currentPageContent = [child];
-        currentPageHeight = childHeight;
+        // Los encabezados que quedaron al final de la página se arrastran al salto.
+        const arrastrados: HTMLElement[] = [];
+        while (currentPageContent.length > 0 && acompanaAlSiguiente(currentPageContent[currentPageContent.length - 1])) {
+          arrastrados.unshift(currentPageContent.pop() as HTMLElement);
+        }
+
+        // Si la página entera eran encabezados no hay nada de qué separarlos: se quedan
+        // donde están y el bloque se agrega detrás, aunque desborde. Pasa solo si un
+        // bloque solo es más alto que la página, que ya se desbordaba antes de esto.
+        if (currentPageContent.length === 0) {
+          currentPageContent = [...arrastrados, child];
+          currentPageHeight = alturaTotal(currentPageContent);
+        } else {
+          pagesData.push(currentPageContent);
+          currentPageContent = [...arrastrados, child];
+          currentPageHeight = alturaTotal(currentPageContent);
+        }
       } else {
         currentPageContent.push(child);
         currentPageHeight += childHeight;
