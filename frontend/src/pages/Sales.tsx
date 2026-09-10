@@ -48,6 +48,17 @@ export default function Sales() {
   const [salesDetails, setSalesDetails] = useState<Record<number, Sale>>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Los errores se mostraban en el recuadro verde de exito, con un "❌" adelante para
+  // compensar. Ahora tienen el suyo, y este helper evita repetir el setTimeout en los
+  // cuatro lugares que lo necesitan.
+  const mostrarError = (mensaje: string) => {
+    setErrorMessage(mensaje);
+    setShowError(true);
+    setTimeout(() => setShowError(false), 5000);
+  };
   const [activeTab, setActiveTab] = useState<'list' | 'credit'>('list');
   const [detailedProduct, setDetailedProduct] = useState<{
     type: string;
@@ -295,14 +306,13 @@ export default function Sales() {
       const { doc } = await buildVoucherPdf(voucherSale);
       doc.save(`Voucher_Samtur_#${voucherSale.id}_${voucherSale.clientName.replace(/\s+/g, '_')}.pdf`);
 
-      setSuccessMessage(`✅ Voucher descargado correctamente`);
+      setSuccessMessage(`Voucher #${voucherSale.id} descargado`);
       setTimeout(() => setShowSuccess(false), 3000);
       setVoucherSale(null);
       setVoucherFullSale(null);
     } catch (err) {
       console.error(err);
-      setSuccessMessage(`❌ Error al generar el PDF`);
-      setTimeout(() => setShowSuccess(false), 3000);
+      mostrarError("No se pudo generar el PDF del voucher.");
     } finally {
       setIsPdfGenerating(false);
     }
@@ -323,15 +333,13 @@ export default function Sales() {
       setSuccessMessage(`Enviando al cliente...`);
       const result = await api.sendVoucher(voucherSale.id, pdfBase64);
 
-      setSuccessMessage(`✅ Voucher enviado a ${result.email}`);
+      setSuccessMessage(`Voucher enviado a ${result.email}`);
       setTimeout(() => setShowSuccess(false), 4000);
       setVoucherSale(null);
       setVoucherFullSale(null);
     } catch (err: any) {
       console.error(err);
-      const msg = err?.response?.data?.error?.message || 'Error al enviar el voucher';
-      setSuccessMessage(`❌ ${msg}`);
-      setTimeout(() => setShowSuccess(false), 4000);
+      mostrarError(err?.response?.data?.error?.message || "No se pudo enviar el voucher.");
     } finally {
       setIsSendingVoucher(false);
     }
@@ -348,10 +356,7 @@ export default function Sales() {
       setVoidConfirm(null);
       setVoidReason("");
     } catch (err: any) {
-      const errorMsg = err?.response?.data?.error?.message || err.message || "Error desconocido";
-      setSuccessMessage(`Error al anular: ${errorMsg}`);
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      mostrarError(err?.response?.data?.error?.message || err.message || "No se pudo anular la venta.");
     } finally {
       setIsVoiding(false);
     }
@@ -391,6 +396,18 @@ export default function Sales() {
           <div>
             <p className="font-bold text-sm">Operación Exitosa</p>
             <p className="text-xs opacity-90">{successMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {showError && (
+        <div className="fixed top-20 right-6 z-[200] bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-slide-in-right">
+          <div className="bg-red-500 text-white rounded-full p-1">
+            <X size={18} />
+          </div>
+          <div>
+            <p className="font-bold text-sm">Error</p>
+            <p className="text-xs opacity-90">{errorMessage}</p>
           </div>
         </div>
       )}
@@ -555,10 +572,10 @@ export default function Sales() {
                       setTimeout(() => setShowSuccess(false), 3000);
                     })
                     .catch((err: any) => {
-                      const msg = err.response?.data?.error?.message || "Error al actualizar estado";
-                      setSuccessMessage(msg);
-                      setShowSuccess(true);
-                      setTimeout(() => setShowSuccess(false), 4000);
+                      mostrarError(
+                        err.response?.data?.error?.message
+                          || "No se pudo marcar la venta como facturada."
+                      );
                     });
                 }}
               />
