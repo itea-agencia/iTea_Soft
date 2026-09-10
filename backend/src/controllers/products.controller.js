@@ -94,7 +94,7 @@ async function resolverMetodoPagoId(tx, bruto) {
 /**
  * Concepto de pago valido, o null si viene cualquier otra cosa.
  */
-const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro'];
+const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro', 'paquete'];
 
 /**
  * Filas de pago a proveedor de un servicio, listas para un create anidado.

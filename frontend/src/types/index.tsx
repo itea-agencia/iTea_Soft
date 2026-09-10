@@ -313,7 +313,7 @@ export interface PackageTotals {
 }
 
 /** Concepto de un pago a proveedor dentro de un paquete. */
-export type ConceptoPago = 'transporte' | 'hotel' | 'seguro';
+export type ConceptoPago = 'transporte' | 'hotel' | 'seguro' | 'paquete';
 
 /**
  * Lo que se le paga a un proveedor dentro de un paquete.

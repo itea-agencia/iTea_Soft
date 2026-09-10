@@ -18,6 +18,9 @@ const CONCEPTOS: Array<{ id: ConceptoPago; label: (esTerrestre: boolean) => stri
   { id: 'transporte', label: (t) => (t ? 'Terrestre' : 'Aéreo') },
   { id: 'hotel', label: () => 'Hotel' },
   { id: 'seguro', label: () => 'Seguro de Viaje' },
+  // Para el paquete comprado armado a un operador: un solo proveedor por todo. Va al
+  // final porque en la practica excluye a los otros tres.
+  { id: 'paquete', label: () => 'Paquete completo' },
 ];
 
 interface PlanFormProps {
@@ -614,68 +617,24 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
           <Briefcase size={14} /> Finanzas
         </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Proveedor">
-            <Combobox
-              value={plan.supplier}
-              onChange={(val) => onChange({ supplier: val })}
-              options={data.config.suppliers.map((s: any) => ({ value: s.name, label: s.name }))}
-              placeholder="Seleccionar proveedor..."
-            />
-          </FormField>
-          {/* Cuando el costo vive en los servicios vinculados, estos campos quedan de
-              solo lectura: si se pudieran editar tambien, el mismo hotel se contaria dos
-              veces y nada lo detectaria. */}
-          <FormField label="Costo Proveedor">
-            <CurrencyInput
-              value={plan.supplierCost ?? ""}
-              disabled={conPagos}
-              onChange={(val) =>
-                onChange({
-                  supplierCost: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Valor TA">
-            <CurrencyInput
-              value={plan.ta ?? ""}
-              disabled={conPagos}
-              onChange={(val) =>
-                onChange({
-                  ta: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          {/* Faltaba: el paquete no tenia donde ingresar la TA CRE, aunque el total de la
-              venta ya la sumaba y el resto de los productos si la capturan. */}
-          <FormField label="Valor TA CRE">
-            <CurrencyInput
-              value={plan.taCre ?? ""}
-              disabled={conPagos}
-              onChange={(val) =>
-                onChange({
-                  taCre: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Método de Pago">
-            <Combobox
-              value={plan.supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
-              options={data.config.cards.map((m: any) => ({
-                value: m.name,
-                label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
-              }))}
-              placeholder="Seleccionar método..."
-            />
-          </FormField>
-        </div>
+        {/* El bloque de un solo proveedor que habia aca se retiro: con los pagos por
+            concepto no pertenecia a ningun servicio, y tener dos lugares donde cargar la
+            misma plata invita a contarla dos veces.
+            Un paquete comprado armado a un operador se registra como un pago de concepto
+            "Paquete completo", que se factura como IT/IP Paquetes. */}
+        {!conPagos && (propio.supplierCost > 0 || propio.ta > 0 || propio.taCre > 0) && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              Este paquete tiene un costo cargado de la forma anterior:{" "}
+              <strong>${propio.supplierCost.toLocaleString("es-CO")}</strong> de costo y{" "}
+              <strong>${(propio.ta + propio.taCre).toLocaleString("es-CO")}</strong> de TA
+              {plan.supplier ? `, a ${plan.supplier}` : ""}. Se sigue contando en el total.
+              Si agregás pagos por concepto, el total pasa a ser su suma y este valor deja
+              de usarse.
+            </p>
+          </div>
+        )}
 
-        {/* Desglose por proveedor. A cada uno se le paga aparte y con su propio metodo,
-            asi que lo que hay que conciliar es esta lista, no un unico numero. */}
         {/* Pagos a proveedores del paquete.
             Un paquete se le compra a varios proveedores a la vez y a cada uno se le paga
             aparte. El hotel, los vuelos y los pasajeros ya estan arriba, asi que de cada

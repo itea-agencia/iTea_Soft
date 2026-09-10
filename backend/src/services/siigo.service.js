@@ -217,6 +217,7 @@ class SiigoService {
    * `transporte` se resuelve con `tipoTransporte` del paquete, que es donde vive ese dato.
    */
   static categoriaDeConcepto(concepto, detalle) {
+    if (concepto === 'paquete') return 'planes';
     if (concepto === 'hotel') return 'hoteleria';
     if (concepto === 'seguro') return 'seguros_viaje';
     if (concepto === 'transporte') {

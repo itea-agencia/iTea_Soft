@@ -184,7 +184,7 @@ function financierosDe(item) {
 }
 
 /** Concepto de pago valido, o null si viene cualquier otra cosa. */
-const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro'];
+const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro', 'paquete'];
 const conceptoValido = (c) => (CONCEPTOS_PAGO.includes(c) ? c : null);
 
 /**
@@ -259,7 +259,10 @@ async function crearPagosProveedor(tx, detalleId, item, resolverProveedor, resol
  * Nombre de cada concepto de pago. `transporte` se resuelve mas fino en el frontend, que
  * sabe si el paquete es aereo o terrestre; aca queda el nombre neutro.
  */
-const NOMBRE_CONCEPTO = { transporte: 'Transporte', hotel: 'Hotel', seguro: 'Seguro de Viaje' };
+const NOMBRE_CONCEPTO = {
+  transporte: 'Transporte', hotel: 'Hotel', seguro: 'Seguro de Viaje',
+  paquete: 'Paquete completo',
+};
 
 /** Nombre de cada categoria como lo entiende el usuario, no como se llama la tabla. */
 const NOMBRE_CATEGORIA = {

@@ -300,6 +300,9 @@ enum ConceptoPago {
   transporte
   hotel
   seguro
+  // El paquete comprado armado a un operador: un solo proveedor por todo. Se factura
+  // como IT/IP Paquetes, que es lo que corresponde.
+  paquete
 }
 
 /**

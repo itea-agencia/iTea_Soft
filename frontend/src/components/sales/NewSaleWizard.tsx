@@ -1413,9 +1413,12 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                     errors.push(`Pago a proveedor #${i + 1}: los valores no pueden ser negativos`);
                   }
                 });
-              } else {
-                if (plan.supplierCost === undefined || plan.supplierCost < 0) errors.push("Costo Proveedor (>= $0)");
-                if (plan.ta === undefined || plan.ta < 0) errors.push("Valor TA (>= $0)");
+              } else if (!(Number(plan.supplierCost) > 0 || Number(plan.ta) > 0 || Number(plan.taCre) > 0)) {
+                // El bloque de un solo proveedor se retiro del formulario: el costo del
+                // paquete son sus pagos. Un paquete sin ninguno no tiene costo, que
+                // practicamente siempre es un olvido. Un paquete viejo que trae el costo
+                // de la forma anterior sigue pasando, para no bloquear su edicion.
+                errors.push("Pagos a proveedores (agregá al menos uno)");
               }
 
               if (plan.guests && plan.guests.length > 0) {
