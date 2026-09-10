@@ -233,7 +233,11 @@ const PRODUCT_TRANSFORMS = {
       flightMode: t.modoVuelo,
       checkinStatus: t.checkinStatus,
       baggagePlan: t.planEquipaje ? `${t.planEquipaje.tipoTarifa}` : null,
-      seatNumber: passengers.length > 0 ? passengers[0].asiento : null,
+      // `seatNumber` salia del PRIMER pasajero y se presentaba como el asiento del
+      // tiquete entero; de ahi volvia a la escritura y se copiaba a todos. El asiento es
+      // de cada pasajero y va en `passengers[]`. Se deja el campo para no romper lecturas
+      // viejas de un solo pasajero, pero nadie lo hereda ya.
+      seatNumber: passengers.length === 1 ? passengers[0].asiento : null,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
@@ -244,7 +248,11 @@ const PRODUCT_TRANSFORMS = {
         docType: String(p.tipoDocumento || ''),
         docNumber: p.nroDocumento || '',
         esTitular: p.esTitular,
+        // Un pasajero va en un asiento a la ida y puede ir en otro al regreso. La columna
+        // ya existia; tiqueteria era la unica que no la leia, y el asiento de regreso
+        // terminaba guardado en el tramo, donde no distingue de quien es.
         asiento: p.asiento || '',
+        asientoRegreso: p.asientoRegreso || '',
         nroReserva: p.nroReserva || '',
         nroTiquete: p.nroTiquete || ''
       }))
@@ -1186,6 +1194,25 @@ const reservaDePasajero = (p, item, categoria) =>
   (CATEGORIAS_CON_BOOKING_POR_PASAJERO.includes(categoria) ? null : item.reservationNumber) ||
   null;
 
+/**
+ * Categorias donde el asiento es de cada pasajero y NO se hereda del producto.
+ *
+ * En tiqueteria el asiento se heredaba de `item.seatNumber`, que la lectura deriva del
+ * PRIMER pasajero, asi que el asiento de uno se copiaba a todos los demas. En produccion
+ * eso dejo la venta 19 con dos pasajeros en el asiento 11A, que es imposible.
+ *
+ * En las demas categorias se conserva el comportamiento anterior: los productos de un
+ * solo pasajero (check-in, equipaje) si traen el asiento a nivel producto.
+ */
+const CATEGORIAS_CON_ASIENTO_POR_PASAJERO = ['tiqueteria', 'planes', 'viajes_terrestres'];
+
+const asientoDePasajero = (p, item, categoria) =>
+  p.asiento ||
+  (CATEGORIAS_CON_ASIENTO_POR_PASAJERO.includes(categoria)
+    ? null
+    : (item.seatNumber || item.seat || p.seat)) ||
+  null;
+
 async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaId) {
   if (!name && !docNumber) {
     return defaultPersonaId || null;
@@ -1393,7 +1420,8 @@ async function createProductItems(tx, ventaId, clienteId, data) {
                 detalleVentaId: detalle.id,
                 personaId: pId,
                 esTitular: pId === personaId,
-                asiento: item.seatNumber || p.seat || null,
+                asiento: asientoDePasajero(p, item, handler.category),
+                asientoRegreso: p.asientoRegreso || null,
                 nroReserva: reservaDePasajero(p, item, handler.category),
                 nroTiquete: p.nroTiquete || item.ticketNumber || null
               }
@@ -1540,7 +1568,7 @@ exports.create = async (req, res, next) => {
                 pasajerosDetalleData.push({
                   personaId: pid,
                   esTitular: p.esTitular ?? true,
-                  asiento: p.asiento || item.seatNumber || item.seat || null,
+                  asiento: asientoDePasajero(p, item, handler.category),
                   asientoRegreso: p.asientoRegreso || null,
                   nroReserva: reservaDePasajero(p, item, handler.category),
                   nroTiquete: p.nroTiquete || item.ticketNumber || null
@@ -2008,7 +2036,7 @@ exports.update = async (req, res, next) => {
               passengersToCreate.push({
                 personaId: resolvedPid,
                 esTitular: p.esTitular ?? true,
-                asiento: p.asiento || item.seatNumber || item.seat || null,
+                asiento: asientoDePasajero(p, item, handler.category),
                 asientoRegreso: p.asientoRegreso || null,
                 nroReserva: reservaDePasajero(p, item, handler.category),
                 nroTiquete: p.nroTiquete || item.ticketNumber || null

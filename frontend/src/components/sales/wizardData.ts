@@ -113,6 +113,7 @@ export const INITIAL_TICKET = (client?: any): TicketData => ({
       birthDate: client?.birthDate ? client.birthDate.split('T')[0] : "",
       esTitular: true,
       asiento: "",
+      asientoRegreso: "",
       nroReserva: "",
       nroTiquete: ""
     }

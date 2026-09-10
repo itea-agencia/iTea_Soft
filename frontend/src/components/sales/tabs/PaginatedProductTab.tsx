@@ -333,10 +333,16 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Vuelo</span>
                         <span className="font-medium text-gray-800 dark:text-slate-200">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
                       </div>
-                      <div className="text-gray-600 dark:text-slate-400">
-                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
-                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.seat || "-"}</span>
-                      </div>
+                      {/* El asiento del tramo solo se muestra si lo tiene: en las escalas
+                          es su unico lugar, y en tramos viejos conserva el dato. El de la
+                          ida y el del regreso son de cada pasajero y salen en los chips de
+                          abajo, asi que un "-" aca solo confundiria. */}
+                      {leg.seat && (
+                        <div className="text-gray-600 dark:text-slate-400">
+                          <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
+                          <span className="font-medium text-gray-800 dark:text-slate-200">{leg.seat}</span>
+                        </div>
+                      )}
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">N° Tiquete</span>
                         <span className="font-medium text-gray-800 dark:text-slate-200 break-all">{leg.ticketNumber || "-"}</span>
@@ -381,10 +387,12 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Vuelo</span>
                         <span className="font-medium text-blue-800 dark:text-blue-300">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
                       </div>
-                      <div className="text-gray-600 dark:text-slate-400">
-                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
-                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.seat || "-"}</span>
-                      </div>
+                      {leg.seat && (
+                        <div className="text-gray-600 dark:text-slate-400">
+                          <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
+                          <span className="font-medium text-blue-800 dark:text-blue-300">{leg.seat}</span>
+                        </div>
+                      )}
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">N° Tiquete</span>
                         <span className="font-medium text-blue-800 dark:text-blue-300 break-all">{leg.ticketNumber || "-"}</span>

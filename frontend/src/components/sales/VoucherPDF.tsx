@@ -287,10 +287,17 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
                   )}
                 </span>
               </div>
-              <div style={{ minWidth: '80px' }}>
-                <span className="v-fd-label">Asiento:</span>
-                <span className="v-fd-val">{leg.seat || ticket.seatNumber || '—'}</span>
-              </div>
+              {/* `ticket.seatNumber` era el asiento del PRIMER pasajero presentado como
+                  el del tiquete entero, asi que en un tiquete de varios se imprimia el
+                  asiento ajeno. Los asientos van en la tabla de pasajeros, uno por
+                  persona y por tramo. Aca solo queda el del tramo cuando existe, que es
+                  el caso de las escalas. */}
+              {leg.seat && (
+                <div style={{ minWidth: '80px' }}>
+                  <span className="v-fd-label">Asiento:</span>
+                  <span className="v-fd-val">{leg.seat}</span>
+                </div>
+              )}
               {(leg.ticketNumber || ticket.ticketNumber || (ticket.passengers && ticket.passengers[0]?.nroTiquete)) && (
                 <div style={{ minWidth: '100px' }}>
                   <span className="v-fd-label">N° Tiquete:</span>
@@ -315,7 +322,8 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
           { head: 'N° documento', get: (p) => p.docNumber },
           { head: 'N° reserva', get: (p) => p.nroReserva },
           { head: 'N° tiquete', get: (p) => p.nroTiquete },
-          { head: 'Asiento', get: (p) => p.asiento },
+          { head: ticket.flightMode === 'round_trip' ? 'Asiento ida' : 'Asiento', get: (p) => p.asiento },
+          { head: 'Asiento regreso', get: (p) => p.asientoRegreso },
         ]}
       />
     </div>

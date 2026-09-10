@@ -356,6 +356,12 @@ export interface TicketData {
   returnStops?: FlightLeg[];
   legs: FlightLeg[];
   returnLeg?: FlightLeg;
+  // El asiento vive en el pasajero, no en el tramo: dos pasajeros del mismo tiquete van
+  // en asientos distintos, y cada uno puede ir en otro al regreso. `TramosVuelo.asiento`
+  // guardaba uno solo por tramo, compartido por todos, y en produccion dejo dos
+  // pasajeros en el asiento 11A (venta 19) y el asiento de regreso invisible para el
+  // pasajero (ventas 7 y 16). Sigue existiendo solo para las escalas, que no tienen
+  // columna propia por pasajero.
   passengers: {
     name: string;
     docType: string;
@@ -363,6 +369,7 @@ export interface TicketData {
     birthDate: string;
     esTitular?: boolean;
     asiento?: string;
+    asientoRegreso?: string;
     nroReserva?: string;
     nroTiquete?: string;
   }[];
