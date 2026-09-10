@@ -471,13 +471,13 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                     { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
                   ])}
 
-                  <div className="bg-amber-50/40 rounded-lg p-3 mt-3 border border-amber-100/60">
-                    <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-100">
-                      <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest flex items-center gap-1">
+                  <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-lg p-3 mt-3 border border-amber-100/60 dark:border-amber-800/30">
+                    <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-100 dark:border-amber-800/40">
+                      <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
                         <Building2 size={11} /> Hotel
                       </p>
                       {plan.hotelName && (
-                        <span className="text-[10px] font-bold text-amber-800">{plan.hotelName}</span>
+                        <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">{plan.hotelName}</span>
                       )}
                     </div>
                     {renderGrid([
@@ -488,13 +488,13 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                   </div>
 
                   {(plan.flightNumber || plan.flightDepartureDate || plan.flightReturnDate) && (
-                    <div className="bg-blue-50/40 rounded-lg p-3 mt-2.5 border border-blue-100/60">
-                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100">
-                        <p className="text-[10px] font-bold text-blue-700 uppercase tracking-widest flex items-center gap-1">
+                    <div className="bg-blue-50/40 dark:bg-blue-900/10 rounded-lg p-3 mt-2.5 border border-blue-100/60 dark:border-blue-800/30">
+                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100 dark:border-blue-800/40">
+                        <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1">
                           {plan.transportType === 'Terrestre' ? <Bus size={11} /> : <Plane size={11} />}
                           {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
                         </p>
-                        <span className="text-[10px] font-bold text-blue-800">
+                        <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">
                           {plan.airlineName || plan.airline}
                           {plan.flightNumber ? ` · ${plan.flightNumber}` : ''}
                         </span>

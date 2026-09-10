@@ -340,53 +340,6 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         </div>
       )}
 
-      <div className="bg-emerald-50/20 dark:bg-emerald-500/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
-        <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <Briefcase size={14} /> Finanzas
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Proveedor">
-            <Combobox
-              value={plan.supplier}
-              onChange={(val) => onChange({ supplier: val })}
-              options={data.config.suppliers.map((s: any) => ({ value: s.name, label: s.name }))}
-              placeholder="Seleccionar proveedor..."
-            />
-          </FormField>
-          <FormField label="Costo Proveedor">
-            <CurrencyInput
-              value={plan.supplierCost ?? ""}
-              onChange={(val) =>
-                onChange({
-                  supplierCost: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Valor TA">
-            <CurrencyInput
-              value={plan.ta ?? ""}
-              onChange={(val) =>
-                onChange({
-                  ta: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Método de Pago">
-            <Combobox
-              value={plan.supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
-              options={data.config.cards.map((m: any) => ({
-                value: m.name,
-                label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
-              }))}
-              placeholder="Seleccionar método..."
-            />
-          </FormField>
-        </div>
-      </div>
-
       <div className="bg-gray-50 dark:bg-slate-800/50 p-4 rounded-xl border border-gray-100 dark:border-slate-700">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
@@ -548,6 +501,53 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
           </FormField>
         </div>
       </div>
+      <div className="bg-emerald-50/20 dark:bg-emerald-500/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
+        <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <Briefcase size={14} /> Finanzas
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Nombre del Proveedor">
+            <Combobox
+              value={plan.supplier}
+              onChange={(val) => onChange({ supplier: val })}
+              options={data.config.suppliers.map((s: any) => ({ value: s.name, label: s.name }))}
+              placeholder="Seleccionar proveedor..."
+            />
+          </FormField>
+          <FormField label="Costo Proveedor">
+            <CurrencyInput
+              value={plan.supplierCost ?? ""}
+              onChange={(val) =>
+                onChange({
+                  supplierCost: val === "" ? undefined : Number(val),
+                })
+              }
+            />
+          </FormField>
+          <FormField label="Valor TA">
+            <CurrencyInput
+              value={plan.ta ?? ""}
+              onChange={(val) =>
+                onChange({
+                  ta: val === "" ? undefined : Number(val),
+                })
+              }
+            />
+          </FormField>
+          <FormField label="Método de Pago">
+            <Combobox
+              value={plan.supplierPaymentMethod || ""}
+              onChange={(val) => onChange({ supplierPaymentMethod: val })}
+              options={data.config.cards.map((m: any) => ({
+                value: m.name,
+                label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
+              }))}
+              placeholder="Seleccionar método..."
+            />
+          </FormField>
+        </div>
+      </div>
+
     </div>
   );
 }
