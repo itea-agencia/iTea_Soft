@@ -259,8 +259,8 @@ const PRODUCT_TRANSFORMS = {
       hotelType: h.tipoHotel,
       destination: h.destino,
       reservationNumber: h.nroReserva,
-      startDate: h.fechaEntrada?.toISOString().split('T')[0] || null,
-      endDate: h.fechaSalida?.toISOString().split('T')[0] || null,
+      startDate: h.fechaEntrada?.toISOString() || null,
+      endDate: h.fechaSalida?.toISOString() || null,
       observations: h.observaciones,
       // El booking es de cada huesped, no del hotel. `mapPassengers` ya lo provee; antes
       // este map lo descartaba junto con el titular, el mismo defecto que tenia paquetes.
