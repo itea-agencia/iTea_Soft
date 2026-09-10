@@ -331,7 +331,6 @@ async function main() {
         nombres: u.nombres, apellidos: u.apellidos,
         tipoDocumentoId: u.tipoDocumentoId, documento: u.documento,
         email: u.email, telefono: u.telefono, birthDate: u.birthDate,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.nombres}`,
         status: u.status || 'active'
       }
     );
@@ -380,8 +379,7 @@ async function main() {
       {
         nombres: c.nombres, apellidos: c.apellidos,
         tipoDocumentoId: c.tipoDocumentoId, documento: c.documento,
-        email: c.email, telefono: c.telefono, birthDate: c.birthDate,
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.nombres.split(' ')[0]}`
+        email: c.email, telefono: c.telefono, birthDate: c.birthDate
       }
     );
     const cliente = await upsertByUnique(

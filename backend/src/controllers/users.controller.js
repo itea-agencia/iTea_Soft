@@ -50,7 +50,6 @@ exports.list = async (req, res, next) => {
           p.telefono as "phone", 
           p.documento as "docNumber", 
           p.birth_date as "birthDate", 
-          p.avatar_url as "avatar",
           td.abreviatura as "docType",
           r.nombre as "role"
         FROM usuarios u
@@ -74,7 +73,6 @@ exports.list = async (req, res, next) => {
       docType: u.docType || null,
       docNumber: u.docNumber,
       status: u.status,
-      avatar: u.avatar,
       birthDate: u.birthDate,
       lastLogin: u.ultimoLogin,
       createdAt: u.creadoAt,
@@ -109,7 +107,6 @@ exports.getById = async (req, res, next) => {
       docType: usuario.persona.tipoDocumento?.abreviatura || null,
       docNumber: usuario.persona.documento,
       status: usuario.status,
-      avatar: usuario.persona.avatarUrl,
       birthDate: usuario.persona.birthDate,
       lastLogin: usuario.ultimoLogin,
       createdAt: usuario.creadoAt,
@@ -167,7 +164,6 @@ exports.create = async (req, res, next) => {
             email: data.email || existingPersona.email,
             telefono: data.phone || existingPersona.telefono,
             birthDate: data.birthDate ? new Date(data.birthDate) : existingPersona.birthDate,
-            avatarUrl: data.avatar || existingPersona.avatarUrl,
             status: data.status || 'active',
             deletedAt: null
           }
@@ -185,7 +181,6 @@ exports.create = async (req, res, next) => {
           email: data.email,
           telefono: data.phone,
           birthDate: data.birthDate ? new Date(data.birthDate) : null,
-          avatarUrl: data.avatar || null,
           status: data.status || 'active'
         }
       });
@@ -259,7 +254,6 @@ exports.create = async (req, res, next) => {
       docNumber: usuario.persona.documento,
       status: usuario.status,
       birthDate: usuario.persona.birthDate,
-      avatar: usuario.persona.avatarUrl,
       createdAt: usuario.creadoAt,
       lastLogin: usuario.ultimoLogin
     }, null, 201);
@@ -299,7 +293,6 @@ exports.update = async (req, res, next) => {
     }
 
     if (data.birthDate) personaUpdate.birthDate = new Date(data.birthDate);
-    if (data.avatar !== undefined) personaUpdate.avatarUrl = data.avatar;
     if (data.email) personaUpdate.email = data.email;
 
     if (data.docType) {
@@ -343,7 +336,6 @@ exports.update = async (req, res, next) => {
       docNumber: updated.persona.documento,
       status: updated.status,
       birthDate: updated.persona.birthDate,
-      avatar: updated.persona.avatarUrl,
       createdAt: updated.creadoAt,
       lastLogin: updated.ultimoLogin
     });
@@ -417,22 +409,3 @@ exports.updatePermissions = async (req, res, next) => {
   }
 };
 
-exports.uploadAvatar = async (req, res, next) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (!req.file) return error(res, 'Archivo requerido', 400);
-
-    const usuario = await prisma.usuarios.findUnique({ where: { id } });
-    if (!usuario) return error(res, 'Usuario no encontrado', 404);
-
-    const avatarUrl = `/uploads/${req.file.filename}`;
-    await prisma.personas.update({
-      where: { id: usuario.personaId },
-      data: { avatarUrl }
-    });
-
-    success(res, { avatarUrl });
-  } catch (err) {
-    next(err);
-  }
-};

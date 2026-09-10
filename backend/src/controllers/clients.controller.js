@@ -89,7 +89,6 @@ exports.list = async (req, res, next) => {
           p.direccion as "address",
           p.ciudad_codigo_dane as "cityCode",
           p.status,
-          p.avatar_url as "avatar",
           td.abreviatura as "docType"
         FROM clientes c
         JOIN personas p ON c.persona_id = p.id
@@ -114,7 +113,6 @@ exports.list = async (req, res, next) => {
       cityCode: c.cityCode || null,
       cityName: ciudadesDane.buscar(c.cityCode)?.nombre || null,
       status: c.status,
-      avatar: c.avatar,
       registrationDate: c.fechaRegistro,
       createdBy: c.creadoPorId
     }));
@@ -158,7 +156,6 @@ exports.getById = async (req, res, next) => {
       cityCode: cliente.persona.ciudadCodigoDane || null,
       cityName: ciudadesDane.buscar(cliente.persona.ciudadCodigoDane)?.nombre || null,
       status: cliente.persona.status,
-      avatar: cliente.persona.avatarUrl,
       registrationDate: cliente.fechaRegistro,
       createdBy: cliente.creadoPorId,
       sales: includeSales ? cliente.ventas?.map(v => ({
@@ -216,7 +213,6 @@ exports.create = async (req, res, next) => {
             tipoDocumentoId: tipoDocumentoId || existingPersona.tipoDocumentoId,
             email: data.email || existingPersona.email,
             telefono: data.phone || existingPersona.telefono,
-            avatarUrl: data.avatar || existingPersona.avatarUrl,
             birthDate: data.birthDate ? new Date(data.birthDate) : existingPersona.birthDate,
             direccion: data.address !== undefined ? (data.address || null) : existingPersona.direccion,
             ciudadCodigoDane: data.cityCode !== undefined ? validarCiudad(data.cityCode) : existingPersona.ciudadCodigoDane,
@@ -236,7 +232,6 @@ exports.create = async (req, res, next) => {
           documento: data.docNumber || null,
           email: data.email,
           telefono: data.phone,
-          avatarUrl: data.avatar || null,
           birthDate: data.birthDate ? new Date(data.birthDate) : null,
           direccion: data.address || null,
           ciudadCodigoDane: validarCiudad(data.cityCode),
@@ -274,7 +269,6 @@ exports.create = async (req, res, next) => {
       phone: data.phone,
       email: data.email,
       birthDate: data.birthDate,
-      avatar: persona.avatarUrl,
       status: 'active',
       registrationDate: cliente.fechaRegistro,
       createdBy: cliente.creadoPorId
@@ -315,7 +309,6 @@ exports.update = async (req, res, next) => {
 
     if (data.email) personaData.email = data.email;
     if (data.phone) personaData.telefono = data.phone;
-    if (data.avatar) personaData.avatarUrl = data.avatar;
     if (data.birthDate) personaData.birthDate = new Date(data.birthDate);
     // Con `!== undefined` en vez de truthy, para poder borrar la direccion enviando ''.
     if (data.address !== undefined) personaData.direccion = data.address || null;
@@ -356,22 +349,3 @@ exports.toggleStatus = async (req, res, next) => {
   }
 };
 
-exports.uploadAvatar = async (req, res, next) => {
-  try {
-    const id = parseInt(req.params.id);
-    if (!req.file) return error(res, 'Archivo requerido', 400);
-
-    const cliente = await prisma.clientes.findUnique({ where: { id } });
-    if (!cliente) return error(res, 'Cliente no encontrado', 404);
-
-    const avatarUrl = `/uploads/${req.file.filename}`;
-    await prisma.personas.update({
-      where: { id: cliente.personaId },
-      data: { avatarUrl }
-    });
-
-    success(res, { avatarUrl });
-  } catch (err) {
-    next(err);
-  }
-};

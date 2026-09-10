@@ -9,7 +9,6 @@ export interface LoginResponse {
     lastName?: string;
     email: string;
     role: 'admin' | 'asesor' | 'freelancer';
-    avatar: string | null;
     phone: string;
     status: 'active' | 'inactive';
     docType: string | null;

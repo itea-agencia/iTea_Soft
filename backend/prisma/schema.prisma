@@ -114,7 +114,6 @@ model Personas {
   // el departamento son sus dos primeros digitos, asi que no hace falta guardarlo.
   direccion        String?
   ciudadCodigoDane String?            @map("ciudad_codigo_dane")
-  avatarUrl        String?            @map("avatar_url")
   // Id del tercero en Siigo. Evita buscar por documento en cada emision.
   // Ojo: los ids de la sandbox no sirven en produccion; al cambiar de cuenta hay que limpiarlos.
   siigoCustomerId  String?            @map("siigo_customer_id")

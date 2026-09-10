@@ -39,7 +39,6 @@ import {
 import StatCard from "../components/ui/StatCard";
 import PermissionsGrid from "../components/users/PermissionsGrid";
 import UserDetailModal from "../components/users/UserDetailModal";
-import Avatar from "../components/ui/Avatar";
 import SortIcon from "../components/ui/SortIcon";
 import LoadingScreen from "../components/ui/LoadingScreen";
 

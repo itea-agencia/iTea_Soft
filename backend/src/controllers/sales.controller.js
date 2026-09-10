@@ -73,7 +73,6 @@ exports.list = async (req, res, next) => {
           v.responsable_id as "responsableId",
           cp.nombres || ' ' || cp.apellidos as "clientName",
           cp.email as "clientEmail",
-          cp.avatar_url as "clientAvatar",
           up.nombres || ' ' || up.apellidos as "asesorName",
           comp.nombres || ' ' || comp.apellidos as "commissionAgentName"
           
@@ -96,7 +95,6 @@ exports.list = async (req, res, next) => {
         clientId: v.clienteId,
         clientName: v.clientName,
         clientEmail: v.clientEmail,
-        clientAvatar: v.clientAvatar,
         responsableId: v.responsableId,
         asesorId: v.usuarioId,
         asesorName: v.asesorName,
@@ -1708,7 +1706,7 @@ exports.create = async (req, res, next) => {
     const created = await prisma.ventas.findUnique({
       where: { id: result },
       include: {
-        cliente: { select: { persona: { select: { nombres: true, apellidos: true, email: true, avatarUrl: true } } } },
+        cliente: { select: { persona: { select: { nombres: true, apellidos: true, email: true } } } },
         usuario: { select: { persona: { select: { nombres: true, apellidos: true } } } },
         comisionista: { select: { persona: { select: { nombres: true, apellidos: true } } } },
         metodoPagoPrincipal: true,
@@ -1787,7 +1785,6 @@ exports.create = async (req, res, next) => {
       clientId: created.clienteId,
       clientName: `${created.cliente.persona.nombres} ${created.cliente.persona.apellidos}`,
       clientEmail: created.cliente.persona.email || null,
-      clientAvatar: created.cliente.persona.avatarUrl || null,
       asesorId: created.usuarioId,
       asesorName: `${created.usuario.persona.nombres} ${created.usuario.persona.apellidos}`,
       date: created.creadoAt,

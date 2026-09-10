@@ -51,7 +51,6 @@ async function auth(req, res, next) {
       personaId: usuario.personaId,
       email: usuario.email,
       nombre: `${usuario.persona.nombres} ${usuario.persona.apellidos}`,
-      avatarUrl: usuario.persona.avatarUrl,
       role: usuario.rol.nombre,
       permisosRol: usuario.rol.permisosRol.map(pr => ({
         modulo: pr.permiso.modulo,

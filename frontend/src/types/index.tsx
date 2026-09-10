@@ -16,7 +16,6 @@ export interface User {
   status: "active" | "inactive";
   createdAt?: string;
   lastLogin?: string;
-  avatar?: string | null;
   customPermissions?: RolePermissions;
   permisos?: { modulo: string; accion: string }[];
 }
@@ -107,7 +106,6 @@ export interface Client {
   /** Derivado del catálogo por el backend; no se envía al guardar. */
   cityName?: string | null;
   status: "active" | "inactive";
-  avatar?: string;
   registrationDate: string;
   createdBy?: number;
 }
@@ -641,7 +639,6 @@ export interface Sale {
   clientId: number;
   clientName: string;
   clientEmail?: string;
-  clientAvatar?: string;
   asesorId: number;
   asesorName: string;
   responsableId?: number;
