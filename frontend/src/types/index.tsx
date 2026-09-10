@@ -253,9 +253,16 @@ export interface HotelGuestInfo extends GuestInfo {
   nroReserva?: string;
 }
 
-/** Un integrante de paquete es un huésped con booking que además lleva su tiquete aéreo. */
+/**
+ * Un integrante de paquete es un huésped con booking que además lleva su tiquete y su
+ * asiento en cada tramo. El asiento vive en la persona, no en el producto: dos
+ * integrantes del mismo paquete van en asientos distintos, y cada uno puede ir en otro
+ * al regreso. Es el mismo modelo que ya usa viajes terrestres.
+ */
 export interface PlanGuestInfo extends HotelGuestInfo {
   nroTiquete?: string;
+  asiento?: string;
+  asientoRegreso?: string;
 }
 
 export interface HotelData {
@@ -284,8 +291,11 @@ export interface PlanData {
   supplierCost: number;
   ta: number;
   taCre?: number;
+  /** Número de vuelo de la ida. En un paquete terrestre, la placa. */
   flightNumber: string;
-  /** PNR del vuelo del paquete, uno por reserva. En un paquete terrestre, el localizador. */
+  /** Número de vuelo del regreso: un paquete de ida y vuelta son dos vuelos distintos. */
+  flightReturnNumber?: string;
+  /** PNR de la reserva, uno para los dos tramos. En un paquete terrestre, el localizador. */
   flightReservationNumber?: string;
   packageId?: number | string;
   packageName?: string;

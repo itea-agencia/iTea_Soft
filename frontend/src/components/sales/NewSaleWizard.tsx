@@ -598,9 +598,17 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 }
                 if (plan.flightNumber && plan.transportType !== 'Terrestre') {
                   if (plan.flightNumber.length > 12) {
-                    errors.push("Número de Vuelo (máx 12 caracteres)");
+                    errors.push("Número de Vuelo de ida (máx 12 caracteres)");
                   } else if (!/^[A-Z0-9-]+$/.test(plan.flightNumber)) {
-                    errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
+                    errors.push("Número de Vuelo de ida (debe ser alfanumérico en mayúsculas)");
+                  }
+                }
+                // El vuelo de regreso es opcional: un paquete de solo ida no tiene.
+                if (plan.flightReturnNumber && plan.transportType !== 'Terrestre') {
+                  if (plan.flightReturnNumber.length > 12) {
+                    errors.push("Número de Vuelo de regreso (máx 12 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.flightReturnNumber)) {
+                    errors.push("Número de Vuelo de regreso (debe ser alfanumérico en mayúsculas)");
                   }
                 }
                 // La referencia es del hotel, asi que no depende del tipo de transporte.
@@ -1321,12 +1329,23 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 if (plan.childrenCount === undefined || plan.childrenCount < 0 || plan.childrenCount > 999) errors.push("Menores (0-999)");
                 
                 if (!plan.flightNumber || plan.flightNumber.trim().length === 0) {
-                  errors.push(plan.transportType === 'Terrestre' ? "Placa / Vehículo (requerido)" : "Número de Vuelo (requerido)");
+                  errors.push(plan.transportType === 'Terrestre' ? "Placa del Vehículo de ida (requerido)" : "Número de Vuelo de ida (requerido)");
                 } else if (plan.transportType !== 'Terrestre') {
                   if (plan.flightNumber.length > 12) {
-                    errors.push("Número de Vuelo (máx 12 caracteres)");
+                    errors.push("Número de Vuelo de ida (máx 12 caracteres)");
                   } else if (!/^[A-Z0-9-]+$/.test(plan.flightNumber)) {
-                    errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
+                    errors.push("Número de Vuelo de ida (debe ser alfanumérico en mayúsculas)");
+                  }
+                }
+
+                // El vuelo de regreso no se exige aunque haya fecha de regreso: el numero
+                // puede llegar despues, igual que el booking y el tiquete. Solo se valida
+                // el formato si viene.
+                if (plan.flightReturnNumber && plan.transportType !== 'Terrestre') {
+                  if (plan.flightReturnNumber.length > 12) {
+                    errors.push("Número de Vuelo de regreso (máx 12 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.flightReturnNumber)) {
+                    errors.push("Número de Vuelo de regreso (debe ser alfanumérico en mayúsculas)");
                   }
                 }
                 

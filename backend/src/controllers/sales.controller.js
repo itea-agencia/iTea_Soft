@@ -310,6 +310,7 @@ const PRODUCT_TRANSFORMS = {
       airline: String(p.aerolineaId || ''),
       airlineName: p.aerolinea?.nombre || null,
       flightNumber: p.nroVuelo || null,
+      flightReturnNumber: p.nroVueloRegreso || null,
       flightReservationNumber: p.nroReservaVuelo || null,
       startDate: p.fechaViajeInicio?.toISOString() || null,
       endDate: p.fechaViajeFin?.toISOString() || null,
@@ -330,6 +331,11 @@ const PRODUCT_TRANSFORMS = {
         esTitular: g.esTitular === true,
         nroReserva: g.nroReserva || '',
         nroTiquete: g.nroTiquete || '',
+        // Un integrante va en un asiento a la ida y puede ir en otro al regreso. Las dos
+        // columnas ya existian en pasajeros_detalle, creadas para viajes terrestres; lo
+        // unico que faltaba era que el paquete las leyera.
+        asiento: g.asiento || '',
+        asientoRegreso: g.asientoRegreso || '',
       })),
       packageType: p.tipoPaquete || 'own',
       transportType: p.tipoTransporte || 'Aéreo',
@@ -907,6 +913,7 @@ const PRODUCT_HANDLERS = {
         nombreHotel: d.hotelName || null,
         aerolineaId,
         nroVuelo: d.flightNumber || null,
+        nroVueloRegreso: d.flightReturnNumber || null,
         // El PNR del vuelo del paquete. El booking de cada integrante es otra cosa y
         // vive en pasajeros_detalle.
         nroReservaVuelo: String(d.flightReservationNumber || '').trim().slice(0, 20) || null,

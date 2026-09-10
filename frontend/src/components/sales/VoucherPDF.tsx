@@ -110,6 +110,10 @@ const COLUMNAS_INTEGRANTES: PaxColumn[] = [
   { head: 'N° documento', get: (g) => g.docNumber },
   { head: 'Booking', get: (g) => g.nroReserva },
   { head: 'N° tiquete', get: (g) => g.nroTiquete },
+  // El asiento es de cada persona y de cada tramo. Si nadie tiene asiento de regreso la
+  // columna no se dibuja, asi que un paquete de solo ida no muestra una columna vacia.
+  { head: 'Asiento ida', get: (g) => g.asiento },
+  { head: 'Asiento regreso', get: (g) => g.asientoRegreso },
 ];
 
 /** Columnas de huespedes de un hotel: el booking lo entrega el hotel por persona. */
@@ -124,9 +128,17 @@ const COLUMNAS_HUESPEDES: PaxColumn[] = COLUMNAS_INTEGRANTES.filter(c => c.head 
  * redondo son dos filas con los mismos dos datos, asi que la tabla nombra el tramo una
  * vez y las etiquetas dejan de repetirlo. La fila de regreso solo aparece si hay regreso.
  */
-function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; llegada?: string }> }) {
-  const conDatos = legs.filter((l) => l.salida || l.llegada);
+function TripLegs({ legs, codigoLabel = 'Vuelo' }: {
+  legs: Array<{ nombre: string; codigo?: string; salida?: string; llegada?: string }>;
+  codigoLabel?: string;
+}) {
+  const conDatos = legs.filter((l) => l.codigo || l.salida || l.llegada);
   if (conDatos.length === 0) return null;
+
+  // Un paquete de ida y vuelta son dos vuelos distintos, asi que el numero va en la fila
+  // de su tramo y no arriba, donde antes era uno solo para ambos. Si ningun tramo lo
+  // trae, la columna no se dibuja.
+  const conCodigo = conDatos.some((l) => l.codigo);
 
   // Un valor sin hora sale de formatDateTime como "12:00 a. m.", que es una hora de
   // salida que nadie escribio. En un voucher impreso eso desinforma, asi que si no hay
@@ -141,6 +153,7 @@ function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; lle
       <thead>
         <tr>
           <th className="text-left">Tramo</th>
+          {conCodigo && <th className="text-center">{codigoLabel}</th>}
           <th className="text-center">Salida</th>
           <th className="text-center">Llegada</th>
         </tr>
@@ -149,6 +162,7 @@ function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; lle
         {conDatos.map((l) => (
           <tr key={l.nombre}>
             <td className="text-left"><div className="v-f-main">{l.nombre}</div></td>
+            {conCodigo && <td className="text-center"><div className="v-f-main">{l.codigo || '—'}</div></td>}
             <td className="text-center"><div className="v-f-main">{fechaHora(l.salida)}</div></td>
             <td className="text-center"><div className="v-f-main">{fechaHora(l.llegada)}</div></td>
           </tr>
@@ -477,7 +491,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
               const propio = plan.packageType !== 'supplier';
               const hayTransporte = Boolean(
                 (plan as any).airlineName || plan.airline || plan.flightNumber ||
-                plan.flightDepartureDate || plan.flightReturnDate,
+                plan.flightReturnNumber || plan.flightDepartureDate || plan.flightReturnDate,
               );
               return (
               <React.Fragment key={`plan-${i}`}>
@@ -506,15 +520,13 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 {propio && hayTransporte && (
                   <>
                     <SubHead>{esTerrestre ? 'Transporte terrestre' : 'Transporte aéreo'}</SubHead>
-                    <div className="v-data-grid">
+                    {/* Arriba va solo lo que cubre los dos tramos: la aerolinea y el
+                        PNR. El numero de vuelo bajo a la fila de su tramo. */}
+                    <div className="v-data-grid cols-2">
                       <DataCell
                         label={esTerrestre ? 'Empresa de transporte' : 'Aerolínea'}
                         value={(plan as any).airlineName || plan.airline}
                         highlight
-                      />
-                      <DataCell
-                        label={esTerrestre ? 'Placa del vehículo' : 'N° de vuelo'}
-                        value={plan.flightNumber}
                       />
                       <DataCell
                         label={esTerrestre ? 'Localizador' : 'N° de reserva'}
@@ -523,9 +535,10 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                       />
                     </div>
                     <TripLegs
+                      codigoLabel={esTerrestre ? 'Placa' : 'Vuelo'}
                       legs={[
-                        { nombre: 'Ida', salida: plan.flightDepartureDate, llegada: plan.flightDepartureArrivalDate },
-                        { nombre: 'Regreso', salida: plan.flightReturnDate, llegada: plan.flightReturnArrivalDate },
+                        { nombre: 'Ida', codigo: plan.flightNumber, salida: plan.flightDepartureDate, llegada: plan.flightDepartureArrivalDate },
+                        { nombre: 'Regreso', codigo: plan.flightReturnNumber, salida: plan.flightReturnDate, llegada: plan.flightReturnArrivalDate },
                       ]}
                     />
                   </>

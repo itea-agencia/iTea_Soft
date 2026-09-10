@@ -562,10 +562,14 @@ model ProdPlanes {
   fechaLlegadaRegresoVuelo DateTime?       @map("fecha_llegada_regreso_vuelo")
   fechaLlegadaVuelo        DateTime?       @map("fecha_llegada_vuelo")
   nombreHotel              String?         @map("nombre_hotel")
+  // Numero de vuelo de cada tramo. Un paquete de ida y vuelta son dos vuelos distintos
+  // (AV9720 a la ida, AV9721 al regreso), y las fechas ya modelaban los dos tramos
+  // mientras el numero era uno solo para ambos. En un paquete terrestre son las placas.
   nroVuelo                 String?         @map("nro_vuelo")
-  // El PNR del vuelo del paquete: uno por reserva, no por integrante. En un paquete
-  // terrestre es el localizador del operador. Como `nroVuelo`, sirve a los dos tipos
-  // de transporte y la interfaz cambia solo la etiqueta.
+  nroVueloRegreso          String?         @map("nro_vuelo_regreso")
+  // El PNR es uno por reserva y cubre los dos tramos, a diferencia del numero de vuelo.
+  // El booking de cada integrante es otra cosa y vive en PasajerosDetalle.
+  // En un paquete terrestre es el localizador del operador.
   nroReservaVuelo          String?         @map("nro_reserva_vuelo")
   checkinStatusIda         CheckinStatus?  @default(pendiente) @map("checkin_status_ida")
   checkinStatusRegreso     CheckinStatus?  @default(pendiente) @map("checkin_status_regreso")

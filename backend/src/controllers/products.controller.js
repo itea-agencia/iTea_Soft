@@ -385,10 +385,17 @@ exports.createPlan = H(CATEGORIES.plan, 'prodPlanes', (d, detalleId) => ({
   aerolineaId: d.airline ? parseInt(d.airline) : null,
   fechaViajeInicio: d.startDate ? new Date(d.startDate) : null,
   fechaViajeFin: d.endDate ? new Date(d.endDate) : null,
+  // Los dos tramos completos: salida, llegada y numero de vuelo de cada uno. Este
+  // transform es mas corto que el de sales.controller y no guardaba el numero de vuelo
+  // ni las llegadas, asi que un paquete creado por aca perdia la mitad del transporte.
   fechaSalidaVuelo: d.flightDepartureDate ? new Date(d.flightDepartureDate) : null,
+  fechaLlegadaVuelo: d.flightDepartureArrivalDate ? new Date(d.flightDepartureArrivalDate) : null,
   fechaRegresoVuelo: d.flightReturnDate ? new Date(d.flightReturnDate) : null,
+  fechaLlegadaRegresoVuelo: d.flightReturnArrivalDate ? new Date(d.flightReturnArrivalDate) : null,
   adultosCount: d.adultsCount || 0,
   menoresCount: d.childrenCount || 0,
+  nroVuelo: d.flightNumber || null,
+  nroVueloRegreso: d.flightReturnNumber || null,
   nroReservaVuelo: d.flightReservationNumber || null,
   referenciaHotel: d.hotelReference || d.confirmationNumber || null,
   observaciones: d.observations || null

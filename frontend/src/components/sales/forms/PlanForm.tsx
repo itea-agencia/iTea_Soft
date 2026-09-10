@@ -30,9 +30,18 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
   // Derivado en render: si datos heredados no traen titular, se resalta el primero.
   const conTitular = hayTitular(guests);
 
+  const esTerrestre = plan.transportType === 'Terrestre';
+  // Ida y vuelta se deriva de la fecha de regreso: un paquete con regreso ES de ida y
+  // vuelta. Guardar una bandera aparte, como hace viajes terrestres, permite que la
+  // bandera y las fechas se contradigan.
+  const hayRegreso = Boolean(plan.flightReturnDate);
+
   const addGuest = () => {
     onChange({
-      guests: [...guests, { name: "", docType: "", docNumber: "", esTitular: false, nroReserva: "", nroTiquete: "" }],
+      guests: [
+        ...guests,
+        { name: "", docType: "", docNumber: "", esTitular: false, nroReserva: "", nroTiquete: "", asiento: "", asientoRegreso: "" },
+      ],
     });
   };
 
@@ -271,18 +280,13 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             {plan.transportType === 'Terrestre' ? <Bus size={14} /> : <Plane size={14} />}
             {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
           </h4>
+          {/* Arriba va solo lo que cubre los dos tramos. El numero de vuelo baja a su
+              tramo: un paquete de ida y vuelta son dos vuelos distintos, y las fechas ya
+              modelaban los dos tramos mientras el numero era uno solo para ambos. */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label={plan.transportType === 'Terrestre' ? 'Placa / Vehículo' : 'Número de Vuelo'}>
-              <Input
-                value={plan.flightNumber}
-                onChange={(e) => onChange({ flightNumber: sanearCodigo(e.target.value, 12) })}
-                placeholder={plan.transportType === 'Terrestre' ? 'Ej: SRG123' : 'Ej: AV9301'}
-                maxLength={12}
-              />
-            </FormField>
-            {/* El PNR del vuelo es uno por reserva. El Booking de cada integrante esta
-                abajo, en Integrantes, y son datos distintos. Opcional como los demas
-                codigos del paquete: llegan dias despues de vender. */}
+            {/* El PNR es uno por reserva y cubre los dos tramos. El Booking de cada
+                integrante esta abajo, en Integrantes, y son datos distintos. Opcional
+                como los demas codigos del paquete: llegan dias despues de vender. */}
             <FormField label={plan.transportType === 'Terrestre' ? 'Localizador' : 'N° de Reserva'}>
               <Input
                 value={plan.flightReservationNumber || ""}
@@ -297,7 +301,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             <p className="text-[10px] font-bold text-blue-700/80 dark:text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1">
               <ArrowRight size={11} /> Ida
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField label={esTerrestre ? 'Placa del Vehículo' : 'Número de Vuelo'}>
+                <Input
+                  value={plan.flightNumber}
+                  onChange={(e) => onChange({ flightNumber: sanearCodigo(e.target.value, 12) })}
+                  placeholder={esTerrestre ? 'Ej: SRG123' : 'Ej: AV9720'}
+                  maxLength={12}
+                />
+              </FormField>
               <FormField label={plan.transportType === 'Terrestre' ? 'Salida (Origen)' : 'Salida'}>
                 <DateTimePicker
                   value={plan.flightDepartureDate || ""}
@@ -323,7 +335,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             <p className="text-[10px] font-bold text-blue-700/80 dark:text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1">
               <ArrowLeft size={11} /> Regreso
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField label={esTerrestre ? 'Placa del Vehículo' : 'Número de Vuelo'}>
+                <Input
+                  value={plan.flightReturnNumber || ""}
+                  onChange={(e) => onChange({ flightReturnNumber: sanearCodigo(e.target.value, 12) })}
+                  placeholder={esTerrestre ? 'Ej: SRG455' : 'Ej: AV9721'}
+                  maxLength={12}
+                />
+              </FormField>
               <FormField label={plan.transportType === 'Terrestre' ? 'Regreso (Destino)' : 'Salida'}>
                 <DateTimePicker
                   value={plan.flightReturnDate || ""}
@@ -365,7 +385,6 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         <div className="space-y-4">
           {guests.map((guest, gIdx) => {
             const esTitular = guest.esTitular || (!conTitular && gIdx === 0);
-            const esTerrestre = plan.transportType === 'Terrestre';
 
             return (
               <div
@@ -471,7 +490,8 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 {/* Los codigos son de cada integrante, no del paquete: el hotel entrega un
                     booking por persona y la aerolinea un tiquete por persona. Antes vivian
                     a nivel paquete y el backend los copiaba a todos por igual. */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Los codigos identifican la reserva de esta persona. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                   <FormField label="Booking (Opcional)">
                     <Input
                       value={guest.nroReserva || ""}
@@ -481,11 +501,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                       className="text-xs"
                     />
                   </FormField>
-                  <FormField label={esTerrestre ? "Tiquete / Puesto (Opcional)" : "N° Tiquete (Opcional)"}>
+                  {/* Antes esta etiqueta decia "Tiquete / Puesto" con placeholder
+                      "Ej: Asiento 12" en los paquetes terrestres: un parche por no tener
+                      campo de asiento, que metia el puesto dentro del numero de tiquete.
+                      Con asientos propios abajo, el tiquete vuelve a ser el tiquete. */}
+                  <FormField label="N° Tiquete (Opcional)">
                     <Input
                       value={guest.nroTiquete || ""}
                       onChange={(e) => updateGuest(gIdx, { nroTiquete: sanearCodigo(e.target.value) })}
-                      placeholder={esTerrestre ? "Ej: Asiento 12" : "Ej: 0000000127297"}
+                      placeholder={esTerrestre ? "Ej: 4587-221" : "Ej: 0000000127297"}
                       maxLength={20}
                       className="text-xs"
                     />
@@ -495,6 +519,34 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                       </p>
                     )}
                   </FormField>
+                </div>
+
+                {/* El asiento es de cada persona y de cada tramo: dos integrantes del
+                    mismo paquete van en asientos distintos, y cada uno puede ir en otro
+                    al regreso. Fila aparte de los codigos porque son dos clases de dato:
+                    el codigo identifica la reserva, el asiento dice donde va sentado.
+                    Sin regreso, la fila se reduce a un solo campo, como en terrestre. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField label={hayRegreso ? "Asiento Ida (Opcional)" : "Asiento (Opcional)"}>
+                    <Input
+                      value={guest.asiento || ""}
+                      onChange={(e) => updateGuest(gIdx, { asiento: sanearCodigo(e.target.value, 6) })}
+                      placeholder="Ej: 12A"
+                      maxLength={6}
+                      className="text-xs"
+                    />
+                  </FormField>
+                  {hayRegreso && (
+                    <FormField label="Asiento Regreso (Opcional)">
+                      <Input
+                        value={guest.asientoRegreso || ""}
+                        onChange={(e) => updateGuest(gIdx, { asientoRegreso: sanearCodigo(e.target.value, 6) })}
+                        placeholder="Ej: 4C"
+                        maxLength={6}
+                        className="text-xs"
+                      />
+                    </FormField>
+                  )}
                 </div>
               </div>
             );
