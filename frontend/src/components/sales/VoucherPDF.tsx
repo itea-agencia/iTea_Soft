@@ -496,7 +496,6 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           <ProductCard emoji="📦" title="Paquetes">
             {plans.map((plan, i) => {
               const esTerrestre = plan.transportType === 'Terrestre';
-              const propio = plan.packageType !== 'supplier';
               const hayTransporte = Boolean(
                 (plan as any).airlineName || plan.airline || plan.flightNumber ||
                 plan.flightReturnNumber || plan.flightDepartureDate || plan.flightReturnDate,
@@ -507,15 +506,22 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
                 {/* Identidad del paquete: lo mismo para paquete propio y de proveedor. */}
                 <div className="v-data-grid">
+                  {/* Sin "Proveedor": el voucher lo ve el cliente, y su proveedor no es
+                      el mayorista de la agencia sino el hotel y la aerolinea, que salen
+                      abajo en sus bloques. Ademas un paquete ahora se le paga a varios y
+                      la celda quedaba vacia. Los costos por proveedor son informacion
+                      interna y viven en el ver detalle. */}
                   <DataCell label="Plan" value={plan.planName || plan.packageName} highlight />
-                  <DataCell label="Proveedor" value={plan.supplier} />
                   <DataCell label="Viajeros" value={describirViajeros(plan.adultsCount, plan.childrenCount)} />
                   <DataCell label="Inicio del viaje" value={plan.startDate ? formatDate(plan.startDate) : null} />
                   <DataCell label="Fin del viaje" value={plan.endDate ? formatDate(plan.endDate) : null} />
                 </div>
 
-                {/* Un paquete de proveedor no detalla hotel ni transporte: los presta el operador. */}
-                {propio && (plan.hotelName || plan.hotelReference) && (
+                {/* El bloque se dibuja si hay dato, no segun el tipo de paquete. Antes
+                    estaba condicionado a que el paquete fuera propio, asi que un paquete
+                    comprado a un operador escondia el hotel y su referencia aunque
+                    estuvieran cargados, y el cliente necesita saber donde se aloja. */}
+                {(plan.hotelName || plan.hotelReference) && (
                   <>
                     <SubHead>Hotel</SubHead>
                     <div className="v-data-grid cols-2">
@@ -525,7 +531,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   </>
                 )}
 
-                {propio && hayTransporte && (
+                {hayTransporte && (
                   <>
                     <SubHead>{esTerrestre ? 'Transporte terrestre' : 'Transporte aéreo'}</SubHead>
                     {/* Arriba va solo lo que cubre los dos tramos: la aerolinea y el

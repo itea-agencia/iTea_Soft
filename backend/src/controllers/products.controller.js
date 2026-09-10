@@ -507,6 +507,14 @@ exports.createPlan = H(CATEGORIES.plan, 'prodPlanes', (d, detalleId) => ({
   nroVuelo: d.flightNumber || null,
   nroVueloRegreso: d.flightReturnNumber || null,
   nroReservaVuelo: d.flightReservationNumber || null,
+  // Estos cuatro faltaban, asi que un paquete creado por este endpoint perdia el nombre
+  // del hotel —y el detalle y el voucher mostraban el bloque de hotel vacio— y caia en
+  // los valores por defecto de tipo de paquete y de transporte, que a su vez deciden las
+  // etiquetas de la interfaz y con que codigo se factura el transporte en Siigo.
+  nombreHotel: d.hotelName || null,
+  paqueteTarifaId: d.packageRateId ? parseInt(d.packageRateId) : null,
+  tipoPaquete: d.packageType || 'own',
+  tipoTransporte: d.transportType || 'Aéreo',
   referenciaHotel: d.hotelReference || d.confirmationNumber || null,
   observaciones: d.observations || null
 })).create;
