@@ -95,20 +95,18 @@ export function Step1Client({ form, set, data, errors }: any) {
           );
           if (!client) return null;
           return (
-            <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 shadow-sm">
-              <img
-                src={client.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${client.firstName}`}
-                alt={client.name}
-                className="w-12 h-12 rounded-full bg-gray-100"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-800 text-sm truncate">
-                  {client.name}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {client.docType} {client.docNumber} · {client.email}
-                </p>
-              </div>
+            <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <p className="font-bold text-gray-800 text-sm truncate">
+                {client.name}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {[
+                  [client.docType, client.docNumber].filter(Boolean).join(" "),
+                  client.email,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
             </div>
           );
         })()}
