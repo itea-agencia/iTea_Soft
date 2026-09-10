@@ -197,50 +197,129 @@ export default function Sales() {
     const footerElement = originalChildren.find(el => el.classList.contains('v-footer'));
     const childrenToDistribute = originalChildren.filter(el => !el.classList.contains('v-footer'));
 
-    const pagesData: HTMLElement[][] = [];
-    let currentPageContent: HTMLElement[] = [];
-    let currentPageHeight = 0;
-
     // Altura máxima del contenido por página A4 (820px de ancho -> 1160px de alto. Restando pie de página ~75px y margen de seguridad)
     const maxContentHeight = 1070;
 
-    // Un encabezado no se separa de lo que anuncia.
-    //
-    // "Otros Servicios Reservados" y su aviso son dos hijos sueltos de ~45px y ~35px, así
-    // que el llenado codicioso los acomodaba al final de una página y el primer bloque de
-    // producto, que ya no cabía, se iba a la siguiente: media hoja en blanco debajo de un
-    // título que no presentaba nada. Estos elementos viajan con el bloque que introducen.
+    /**
+     * Una pieza de página: el elemento y su alto ya medido.
+     *
+     * El alto se guarda porque una tarjeta partida se arma como un clon suelto del
+     * documento, y a un elemento desprendido getBoundingClientRect le devuelve cero.
+     */
+    type Pieza = { el: HTMLElement; alto: number };
+
+    const pagesData: Pieza[][] = [];
+    let currentPageContent: Pieza[] = [];
+    let currentPageHeight = 0;
+
+    // Un encabezado no se separa de lo que anuncia: "Otros Servicios Reservados" y su
+    // aviso son dos hijos sueltos de ~45px y ~35px que siempre caben al final de la
+    // página en curso, y dejaban un título que no presentaba nada.
     const CLASES_ACOMPANANTES = ['v-section-title', 'v-notice'];
     const acompanaAlSiguiente = (el: HTMLElement) =>
       CLASES_ACOMPANANTES.some(c => el.classList.contains(c));
 
-    const alturaTotal = (els: HTMLElement[]) =>
-      els.reduce((total, el) => total + getElementHeightWithMargins(el), 0);
+    const agregar = (pieza: Pieza) => {
+      currentPageContent.push(pieza);
+      currentPageHeight += pieza.alto;
+    };
+
+    const cerrarPagina = () => {
+      const arrastrados: Pieza[] = [];
+      while (currentPageContent.length > 0 && acompanaAlSiguiente(currentPageContent[currentPageContent.length - 1].el)) {
+        arrastrados.unshift(currentPageContent.pop() as Pieza);
+      }
+      if (currentPageContent.length > 0) pagesData.push(currentPageContent);
+      currentPageContent = arrastrados;
+      currentPageHeight = arrastrados.reduce((total, p) => total + p.alto, 0);
+    };
+
+    /** Clon de una tarjeta de producto con solo algunos de sus bloques. */
+    const armarTrozo = (tarjeta: HTMLElement, etiqueta: HTMLElement | null, bloques: HTMLElement[], continuacion: boolean) => {
+      const trozo = tarjeta.cloneNode(false) as HTMLElement;
+      if (etiqueta) {
+        const clon = etiqueta.cloneNode(true) as HTMLElement;
+        if (continuacion) clon.appendChild(document.createTextNode(' (continuación)'));
+        trozo.appendChild(clon);
+      }
+      // Un separador de ítems al principio de una hoja es una línea punteada suelta.
+      const utiles = bloques[0]?.classList.contains('v-item-divider') ? bloques.slice(1) : bloques;
+      utiles.forEach(b => trozo.appendChild(b.cloneNode(true)));
+      return trozo;
+    };
+
+    /**
+     * Reparte una tarjeta de producto que no cabe en el espacio libre.
+     *
+     * La paginación solo movía hijos completos, así que una tarjeta que apenas no cabía
+     * se iba entera a la hoja siguiente y dejaba la anterior con el encabezado y nada
+     * más; y una más alta que la hoja se recortaba en silencio. Ahora se parte por sus
+     * bloques internos y la etiqueta se repite con "(continuación)".
+     */
+    const repartirTarjeta = (tarjeta: HTMLElement) => {
+      const etiqueta = tarjeta.querySelector('.v-product-label') as HTMLElement | null;
+      const altoEtiqueta = etiqueta ? getElementHeightWithMargins(etiqueta) : 0;
+      const bloques = (Array.from(tarjeta.children) as HTMLElement[]).filter(el => el !== etiqueta);
+      const alturaDe = (els: HTMLElement[]) =>
+        els.reduce((total, el) => total + getElementHeightWithMargins(el), 0);
+
+      let acumulados: HTMLElement[] = [];
+      let continuacion = false;
+
+      const volcar = () => {
+        if (acumulados.length === 0) return;
+
+        // Un sub-encabezado al final del trozo presentaría algo que quedó en la otra
+        // hoja: "Integrantes" abajo y la tabla arriba de la siguiente. Se arrastra.
+        const arrastrados: HTMLElement[] = [];
+        while (acumulados.length > 0 && acumulados[acumulados.length - 1].classList.contains('v-sub-head')) {
+          arrastrados.unshift(acumulados.pop() as HTMLElement);
+        }
+        if (acumulados.length === 0) {
+          // El trozo eran solo encabezados: no hay dónde cortar, siguen acumulando.
+          acumulados = arrastrados;
+          return;
+        }
+
+        agregar({
+          el: armarTrozo(tarjeta, etiqueta, acumulados, continuacion),
+          alto: altoEtiqueta + alturaDe(acumulados),
+        });
+        acumulados = arrastrados;
+        continuacion = true;
+      };
+
+      for (const bloque of bloques) {
+        const alto = getElementHeightWithMargins(bloque);
+        const ocupado = altoEtiqueta + alturaDe(acumulados);
+
+        if (ocupado + alto > maxContentHeight - currentPageHeight) {
+          const habiaContenido = acumulados.length > 0;
+          volcar();
+          if (habiaContenido || currentPageContent.length > 0) cerrarPagina();
+          // Si tras el salto el bloque sigue sin caber, se desborda: no se sabe partir
+          // una tabla por dentro, y eso ya pasaba antes de esto.
+        }
+        acumulados.push(bloque);
+      }
+      volcar();
+    };
 
     for (const child of childrenToDistribute) {
-      const childHeight = getElementHeightWithMargins(child);
+      const alto = getElementHeightWithMargins(child);
 
-      if (currentPageHeight + childHeight > maxContentHeight && currentPageContent.length > 0) {
-        // Los encabezados que quedaron al final de la página se arrastran al salto.
-        const arrastrados: HTMLElement[] = [];
-        while (currentPageContent.length > 0 && acompanaAlSiguiente(currentPageContent[currentPageContent.length - 1])) {
-          arrastrados.unshift(currentPageContent.pop() as HTMLElement);
-        }
+      if (alto <= maxContentHeight - currentPageHeight) {
+        agregar({ el: child, alto });
+        continue;
+      }
 
-        // Si la página entera eran encabezados no hay nada de qué separarlos: se quedan
-        // donde están y el bloque se agrega detrás, aunque desborde. Pasa solo si un
-        // bloque solo es más alto que la página, que ya se desbordaba antes de esto.
-        if (currentPageContent.length === 0) {
-          currentPageContent = [...arrastrados, child];
-          currentPageHeight = alturaTotal(currentPageContent);
-        } else {
-          pagesData.push(currentPageContent);
-          currentPageContent = [...arrastrados, child];
-          currentPageHeight = alturaTotal(currentPageContent);
-        }
+      if (child.classList.contains('v-product-block')) {
+        repartirTarjeta(child);
+      } else if (currentPageContent.length > 0) {
+        cerrarPagina();
+        agregar({ el: child, alto });
       } else {
-        currentPageContent.push(child);
-        currentPageHeight += childHeight;
+        agregar({ el: child, alto });
       }
     }
     if (currentPageContent.length > 0) {
@@ -271,8 +350,8 @@ export default function Sales() {
       const contentDiv = document.createElement('div');
       contentDiv.className = 'v-page-content-temp';
       
-      pagesData[i].forEach(child => {
-        contentDiv.appendChild(child.cloneNode(true));
+      pagesData[i].forEach(pieza => {
+        contentDiv.appendChild(pieza.el.cloneNode(true));
       });
       
       pageDiv.appendChild(contentDiv);
