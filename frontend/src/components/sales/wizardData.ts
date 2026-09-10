@@ -132,11 +132,15 @@ export const INITIAL_HOTEL = (client?: any): HotelData => ({
   supplierPaymentMethod: "",
   hotelType: "",
   observations: "",
+  // El titular se siembra marcado: si se deja sin marcar, el formulario muestra una fila
+  // que el estado no reconoce como titular y el backend acaba marcando a todos.
   guests: [
     {
       name: client?.name || "",
       docType: client?.docType || "",
       docNumber: client?.docNumber || "",
+      esTitular: true,
+      nroReserva: "",
     },
   ],
 });

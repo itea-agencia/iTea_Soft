@@ -112,6 +112,9 @@ const COLUMNAS_INTEGRANTES: PaxColumn[] = [
   { head: 'N° tiquete', get: (g) => g.nroTiquete },
 ];
 
+/** Columnas de huespedes de un hotel: el booking lo entrega el hotel por persona. */
+const COLUMNAS_HUESPEDES: PaxColumn[] = COLUMNAS_INTEGRANTES.filter(c => c.head !== 'N° tiquete');
+
 /**
  * Tramos de ida y regreso.
  *
@@ -432,12 +435,18 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Hotel" value={hotel.hotelName} highlight />
                   <DataCell label="Destino" value={hotel.destination} />
                   <DataCell label="Tipo" value={hotel.hotelType} />
-                  <DataCell label="Check-In" value={hotel.startDate ? formatDateTime(hotel.startDate) : null} />
-                  <DataCell label="Check-Out" value={hotel.endDate ? formatDateTime(hotel.endDate) : null} />
-                  <DataCell label="N° Reserva" value={hotel.reservationNumber || 'Pendiente'} />
-                  <DataCell label="Huéspedes" value={(hotel.guests || []).map(g => g.name).join(', ') || '—'} />
-                  {hotel.observations && <DataCell label="Observaciones" value={hotel.observations} />}
+                  <DataCell label="Ingreso" value={hotel.startDate ? formatDateTime(hotel.startDate) : null} />
+                  <DataCell label="Salida" value={hotel.endDate ? formatDateTime(hotel.endDate) : null} />
+                  <DataCell label="Ref. hotel" value={hotel.reservationNumber} highlight />
                 </div>
+                {/* La lista unida por comas descartaba el booking de cada huesped, que es
+                    el codigo con el que se presenta en la recepcion. */}
+                <PassengerTable title="Huéspedes" passengers={hotel.guests || []} columns={COLUMNAS_HUESPEDES} />
+                {hotel.observations && (
+                  <div className="v-data-grid">
+                    <DataCell label="Observaciones" value={hotel.observations} fullWidth />
+                  </div>
+                )}
               </React.Fragment>
             ))}
           </ProductCard>

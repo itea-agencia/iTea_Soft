@@ -240,17 +240,21 @@ export interface GuestInfo {
 }
 
 /**
- * Un integrante de paquete es un huésped con sus propios códigos: el booking que entrega
- * el hotel por persona y el tiquete aéreo. La referencia del hotel es una sola por
- * paquete y vive en `PlanData.hotelReference`.
+ * Un huésped con su propio booking: el código que el hotel entrega por persona, distinto
+ * de la referencia de la reserva, que es una sola y vive en el producto
+ * (`HotelData.reservationNumber`, `PlanData.hotelReference`).
  *
- * No se amplía `GuestInfo` porque lo comparten hotelería, seguros y tours, y ninguno de
+ * No se amplía `GuestInfo` porque lo siguen compartiendo seguros y tours, y ninguno de
  * esos modela titular ni códigos: el tipo mentiría y el compilador dejaría pasar lecturas
  * que en runtime son siempre undefined.
  */
-export interface PlanGuestInfo extends GuestInfo {
+export interface HotelGuestInfo extends GuestInfo {
   esTitular: boolean;
   nroReserva?: string;
+}
+
+/** Un integrante de paquete es un huésped con booking que además lleva su tiquete aéreo. */
+export interface PlanGuestInfo extends HotelGuestInfo {
   nroTiquete?: string;
 }
 
@@ -268,7 +272,7 @@ export interface HotelData {
   supplierPaymentMethod: string;
   hotelType?: string;
   observations?: string;
-  guests: GuestInfo[];
+  guests: HotelGuestInfo[];
 }
 
 export interface PlanData {

@@ -514,6 +514,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (!hotel) return false;
               if (hotel.hotelName && (hotel.hotelName.trim().length < 2 || hotel.hotelName.trim().length > 50)) return false;
               if (hotel.reservationNumber && hotel.reservationNumber.trim().length > 20) return false;
+              // El booking de cada huesped es opcional y se sanea al escribirlo; solo se
+              // cuida el largo, por si un bundle viejo en cache manda algo mas largo.
+              if ((hotel.guests || []).some(g => (g.nroReserva || '').length > 20)) return false;
               
               if (hotel.supplierCost !== undefined && hotel.supplierCost < 0) return false;
               if (hotel.ta !== undefined && hotel.ta < 0) return false;

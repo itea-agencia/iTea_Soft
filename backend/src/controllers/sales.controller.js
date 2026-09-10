@@ -262,8 +262,15 @@ const PRODUCT_TRANSFORMS = {
       startDate: h.fechaEntrada?.toISOString().split('T')[0] || null,
       endDate: h.fechaSalida?.toISOString().split('T')[0] || null,
       observations: h.observaciones,
-      guests: passengers.map(p => ({ name: p.nombreCompleto, docType: String(p.tipoDocumento || ''), docNumber: p.nroDocumento || '' }))
-    ,
+      // El booking es de cada huesped, no del hotel. `mapPassengers` ya lo provee; antes
+      // este map lo descartaba junto con el titular, el mismo defecto que tenia paquetes.
+      guests: passengers.map(p => ({
+        name: p.nombreCompleto,
+        docType: String(p.tipoDocumento || ''),
+        docNumber: p.nroDocumento || '',
+        esTitular: p.esTitular === true,
+        nroReserva: p.nroReserva || '',
+      })),
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
@@ -1154,6 +1161,24 @@ function getPassengerList(item) {
   return null;
 }
 
+/**
+ * Categorias donde el booking es de cada huesped y NO se hereda del producto.
+ *
+ * Historicamente, si un pasajero no traia codigo se le copiaba el del producto, con lo
+ * que todos quedaban con el mismo. En hoteleria y paquetes eso es justo el error a
+ * evitar: el hotel entrega una referencia por reserva y un booking por persona, asi que
+ * un huesped sin booking debe quedar sin booking, no con la referencia del hotel.
+ *
+ * En las demas categorias se conserva el comportamiento anterior, que es el que sostiene
+ * las ventas historicas.
+ */
+const CATEGORIAS_CON_BOOKING_POR_PASAJERO = ['hoteleria', 'planes'];
+
+const reservaDePasajero = (p, item, categoria) =>
+  p.nroReserva ||
+  (CATEGORIAS_CON_BOOKING_POR_PASAJERO.includes(categoria) ? null : item.reservationNumber) ||
+  null;
+
 async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaId) {
   if (!name && !docNumber) {
     return defaultPersonaId || null;
@@ -1362,7 +1387,7 @@ async function createProductItems(tx, ventaId, clienteId, data) {
                 personaId: pId,
                 esTitular: pId === personaId,
                 asiento: item.seatNumber || p.seat || null,
-                nroReserva: p.nroReserva || item.reservationNumber || null,
+                nroReserva: reservaDePasajero(p, item, handler.category),
                 nroTiquete: p.nroTiquete || item.ticketNumber || null
               }
             });
@@ -1510,7 +1535,7 @@ exports.create = async (req, res, next) => {
                   esTitular: p.esTitular ?? true,
                   asiento: p.asiento || item.seatNumber || item.seat || null,
                   asientoRegreso: p.asientoRegreso || null,
-                  nroReserva: p.nroReserva || item.reservationNumber || null,
+                  nroReserva: reservaDePasajero(p, item, handler.category),
                   nroTiquete: p.nroTiquete || item.ticketNumber || null
                 });
               }
@@ -1978,7 +2003,7 @@ exports.update = async (req, res, next) => {
                 esTitular: p.esTitular ?? true,
                 asiento: p.asiento || item.seatNumber || item.seat || null,
                 asientoRegreso: p.asientoRegreso || null,
-                nroReserva: p.nroReserva || item.reservationNumber || null,
+                nroReserva: reservaDePasajero(p, item, handler.category),
                 nroTiquete: p.nroTiquete || item.ticketNumber || null
               });
             }

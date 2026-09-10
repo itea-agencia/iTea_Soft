@@ -408,10 +408,14 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Destino", value: hotel.destination },
               { label: "Proveedor", value: hotel.supplier || hotel.hotelName },
               { label: "Costo Proveedor", value: hotel.supplierCost ? formatCurrency(hotel.supplierCost) : "-" },
-              { label: "Reserva", value: hotel.reservationNumber },
-              { label: "Fechas", value: hotel.startDate && hotel.endDate ? `${formatDate(hotel.startDate)} al ${formatDate(hotel.endDate)}` : (hotel.startDate ? formatDate(hotel.startDate) : (hotel.endDate ? formatDate(hotel.endDate) : "-")) },
+              { label: "Ref. Hotel", value: hotel.reservationNumber },
+              { label: "Ingreso", value: hotel.startDate ? formatDate(hotel.startDate) : "-" },
+              { label: "Salida", value: hotel.endDate ? formatDate(hotel.endDate) : "-" },
             ])}
-            {renderPassengers(hotel.guests || hotel.passengers)}
+            {/* `renderPassengers` solo muestra nombre y documento, asi que el booking de
+                cada huesped no se veia. `renderTicketPassengers` ya marca al titular y
+                dibuja el chip del codigo. */}
+            {renderTicketPassengers(hotel.guests || hotel.passengers, { title: 'Huéspedes', reservaLabel: 'Booking:' })}
             {hotel.observations && (
               <p className="text-xs text-gray-500 mt-2 italic">{hotel.observations}</p>
             )}
