@@ -114,6 +114,17 @@ function renderTicketPassengers(
   );
 }
 
+/**
+ * Lo pagado a proveedores de un paquete.
+ *
+ * Un paquete pagado a varios tiene la plata en sus filas de pago, y el servidor las suma
+ * en `totals`. Leer `supplierCost` suelto mostraba un guion aunque tuviera plata cargada.
+ */
+function costoDelPaquete(plan: any): string {
+  const total = plan?.totals?.supplierCost ?? plan?.supplierCost;
+  return total ? formatCurrency(total) : '-';
+}
+
 function renderGrid(items: { label: string; value: any }[]) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -333,10 +344,16 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Vuelo</span>
                         <span className="font-medium text-gray-800 dark:text-slate-200">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
                       </div>
-                      <div className="text-gray-600 dark:text-slate-400">
-                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
-                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.seat || "-"}</span>
-                      </div>
+                      {/* El asiento del tramo solo se muestra si lo tiene: en las escalas
+                          es su unico lugar, y en tramos viejos conserva el dato. El de la
+                          ida y el del regreso son de cada pasajero y salen en los chips de
+                          abajo, asi que un "-" aca solo confundiria. */}
+                      {leg.seat && (
+                        <div className="text-gray-600 dark:text-slate-400">
+                          <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
+                          <span className="font-medium text-gray-800 dark:text-slate-200">{leg.seat}</span>
+                        </div>
+                      )}
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">N° Tiquete</span>
                         <span className="font-medium text-gray-800 dark:text-slate-200 break-all">{leg.ticketNumber || "-"}</span>
@@ -381,10 +398,12 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Vuelo</span>
                         <span className="font-medium text-blue-800 dark:text-blue-300">{leg.flightNumber || "-"}{leg.isStop ? " (Escala)" : ""}</span>
                       </div>
-                      <div className="text-gray-600 dark:text-slate-400">
-                        <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
-                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.seat || "-"}</span>
-                      </div>
+                      {leg.seat && (
+                        <div className="text-gray-600 dark:text-slate-400">
+                          <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Asiento</span>
+                          <span className="font-medium text-blue-800 dark:text-blue-300">{leg.seat}</span>
+                        </div>
+                      )}
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">N° Tiquete</span>
                         <span className="font-medium text-blue-800 dark:text-blue-300 break-all">{leg.ticketNumber || "-"}</span>
@@ -454,66 +473,103 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
                 <Package size={16} className="text-accent" /> Paquete #{idx + 1} - {plan.planName || "Sin Nombre"}
               </h4>
-              {plan.packageType === "supplier" ? (
-                renderGrid([
-                  { label: "Tipo de Paquete", value: "Por Proveedor" },
-                  { label: "Proveedor / Operador", value: plan.supplier || "—" },
-                  { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
-                  ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
-                ])
-              ) : (
-                <>
-                  {/* Cabecera: identidad y dinero. Los datos de hotel y de transporte van
-                      en bloques propios, porque antes una sola rejilla de 16 celdas los
-                      mezclaba y no se sabia que codigo pertenecia a que servicio. */}
-                  {renderGrid([
-                    ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
-                    { label: "Tipo de Transporte", value: plan.transportType || "Aéreo" },
-                    { label: "Proveedor", value: plan.supplier || plan.supplierName },
-                    { label: "Costo Proveedor", value: plan.supplierCost ? formatCurrency(plan.supplierCost) : "-" },
-                    { label: "Adultos", value: plan.adultsCount },
-                    { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
-                  ])}
+              {/* Una sola estructura para los dos tipos de paquete, con cada bloque
+                  condicionado a que HAYA dato y no al tipo de paquete. Antes uno de
+                  proveedor caia en una rejilla pelada: sin hotel, sin referencia, sin
+                  fechas y sin transporte, aunque estuvieran cargados. */}
+              {renderGrid([
+                ...(plan.packageType === "supplier" ? [{ label: "Tipo de Paquete", value: "Por Proveedor" }] : []),
+                ...(plan.packageName ? [{ label: "Paquete Base", value: plan.packageName }] : []),
+                { label: "Tipo de Transporte", value: plan.transportType || "Aéreo" },
+                // El proveedor solo aca cuando no hay desglose de pagos, que es el caso de
+                // un paquete cargado de la forma anterior. Con pagos, el bloque de abajo
+                // los lista con su monto y su metodo, y un nombre suelto ademas del
+                // desglose puede contradecir a la lista.
+                ...(plan.totals ? [] : [{ label: "Proveedor", value: plan.supplier || plan.supplierName || "—" }]),
+                { label: "Pagado a Proveedores", value: costoDelPaquete(plan) },
+                { label: "Adultos", value: plan.adultsCount },
+                { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
+              ])}
 
-                  <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-lg p-3 mt-3 border border-amber-100/60 dark:border-amber-800/30">
-                    <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-100 dark:border-amber-800/40">
-                      <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
-                        <Building2 size={11} /> Hotel
-                      </p>
-                      {plan.hotelName && (
-                        <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">{plan.hotelName}</span>
-                      )}
-                    </div>
-                    {renderGrid([
-                      { label: "Ref. Hotel", value: plan.hotelReference },
-                      { label: "Ingreso", value: plan.startDate ? formatDateTime(plan.startDate) : "-" },
-                      { label: "Salida", value: plan.endDate ? formatDateTime(plan.endDate) : "-" },
-                    ])}
+              {(plan.hotelName || plan.hotelReference || plan.startDate || plan.endDate) && (
+                <div className="bg-amber-50/40 dark:bg-amber-900/10 rounded-lg p-3 mt-2.5 border border-amber-100/60 dark:border-amber-800/30">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-amber-100 dark:border-amber-800/40">
+                    <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1">
+                      <Building2 size={11} /> Reserva de Hotel
+                    </p>
+                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300">{plan.hotelName || "—"}</span>
                   </div>
+                  {renderGrid([
+                    { label: "Ref. Hotel", value: plan.hotelReference },
+                    { label: "Ingreso", value: plan.startDate ? formatDateTime(plan.startDate) : "-" },
+                    { label: "Salida", value: plan.endDate ? formatDateTime(plan.endDate) : "-" },
+                  ])}
+                </div>
+              )}
 
-                  {(plan.flightNumber || plan.flightReservationNumber || plan.flightDepartureDate || plan.flightReturnDate) && (
-                    <div className="bg-blue-50/40 dark:bg-blue-900/10 rounded-lg p-3 mt-2.5 border border-blue-100/60 dark:border-blue-800/30">
-                      <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100 dark:border-blue-800/40">
-                        <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1">
-                          {plan.transportType === 'Terrestre' ? <Bus size={11} /> : <Plane size={11} />}
-                          {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
-                        </p>
-                        <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">
-                          {plan.airlineName || plan.airline}
-                          {plan.flightNumber ? ` · ${plan.flightNumber}` : ''}
+              {(plan.flightNumber || plan.flightReturnNumber || plan.flightReservationNumber || plan.flightDepartureDate || plan.flightReturnDate) && (
+                <div className="bg-blue-50/40 dark:bg-blue-900/10 rounded-lg p-3 mt-2.5 border border-blue-100/60 dark:border-blue-800/30">
+                  <div className="flex items-center justify-between mb-2 pb-1 border-b border-blue-100 dark:border-blue-800/40">
+                    <p className="text-[10px] font-bold text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-1">
+                      {plan.transportType === 'Terrestre' ? <Bus size={11} /> : <Plane size={11} />}
+                      {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
+                    </p>
+                    <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">
+                      {plan.airlineName || plan.airline}
+                    </span>
+                  </div>
+                  {renderGrid([
+                    { label: plan.transportType === 'Terrestre' ? "Localizador" : "N° Reserva", value: plan.flightReservationNumber },
+                    { label: plan.transportType === 'Terrestre' ? "Placa Ida" : "Vuelo Ida", value: plan.flightNumber },
+                    { label: "Salida Ida", value: plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : "-" },
+                    { label: "Llegada Ida", value: plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : "-" },
+                    { label: plan.transportType === 'Terrestre' ? "Placa Regreso" : "Vuelo Regreso", value: plan.flightReturnNumber },
+                    { label: "Salida Regreso", value: plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : "-" },
+                    { label: "Llegada Regreso", value: plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : "-" },
+                  ])}
+                </div>
+              )}
+              {/* Desglose por proveedor: el servidor lo deriva del paquete mas sus
+                  servicios vinculados. A cada proveedor se le paga aparte y con su propio
+                  metodo, asi que lo que hay que conciliar es esta lista, no un solo numero. */}
+              {/* Se muestra con un solo pago tambien: un paquete comprado armado a un
+                  operador tiene una sola linea, y es donde vive el nombre de ese
+                  operador. Con `> 1` quedaba invisible. */}
+              {plan.totals && plan.totals.bySupplier.length > 0 && (
+                <div className="bg-emerald-50/40 dark:bg-emerald-900/10 rounded-lg p-3 mt-2.5 border border-emerald-100/60 dark:border-emerald-800/30">
+                  <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-2 pb-1 border-b border-emerald-100 dark:border-emerald-800/40">
+                    Pagos a proveedores
+                  </p>
+                  <div className="space-y-1.5">
+                    {plan.totals.bySupplier.map((l: any) => (
+                      <div key={l.detalleVentaId} className="flex items-baseline justify-between gap-3 text-xs">
+                        <div className="min-w-0">
+                          <span className="font-bold text-gray-700 dark:text-slate-200">{l.serviceName || l.category}</span>
+                          <span className="text-gray-500 dark:text-slate-400">
+                            {l.supplier ? ` · ${l.supplier}` : ' · sin proveedor'}
+                            {l.paymentMethod ? ` · ${l.paymentMethod}` : ''}
+                          </span>
+                        </div>
+                        <span className="text-gray-800 dark:text-slate-200 shrink-0">
+                          {formatCurrency(l.supplierCost)}
+                          {l.ta + l.taCre > 0 && (
+                            <span className="text-gray-500 dark:text-slate-400"> + TA {formatCurrency(l.ta + l.taCre)}</span>
+                          )}
                         </span>
                       </div>
-                      {renderGrid([
-                        { label: plan.transportType === 'Terrestre' ? "Localizador" : "N° Reserva", value: plan.flightReservationNumber },
-                        { label: "Salida Ida", value: plan.flightDepartureDate ? formatDateTime(plan.flightDepartureDate) : "-" },
-                        { label: "Llegada Ida", value: plan.flightDepartureArrivalDate ? formatDateTime(plan.flightDepartureArrivalDate) : "-" },
-                        { label: "Salida Regreso", value: plan.flightReturnDate ? formatDateTime(plan.flightReturnDate) : "-" },
-                        { label: "Llegada Regreso", value: plan.flightReturnArrivalDate ? formatDateTime(plan.flightReturnArrivalDate) : "-" },
-                      ])}
-                    </div>
-                  )}
-                </>
+                    ))}
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-emerald-100 dark:border-emerald-800/40 flex items-baseline justify-between text-xs">
+                    <span className="font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-widest text-[10px]">
+                      Total del paquete
+                    </span>
+                    <span className="font-bold text-emerald-900 dark:text-emerald-300">
+                      {formatCurrency(plan.totals.total)}
+                    </span>
+                  </div>
+                </div>
               )}
+
               {renderTicketPassengers(plan.guests || plan.passengers || plan.members, { title: 'Integrantes', reservaLabel: 'Booking:' })}
               {plan.observations && (
                 <p className="text-xs text-gray-500 mt-2 italic">{plan.observations}</p>

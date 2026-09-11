@@ -1,3 +1,4 @@
+import { vinculosReindexados } from "../wizardData";
 import { ShoppingBag, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { Button } from "../../ui/Button";
 import * as LuIcons from "react-icons/lu";
@@ -322,6 +323,14 @@ export function Step2Products({ form, set, data, errors, toggleProduct, actions 
                             const nextItems = [...(form as any)[item.targetKey]];
                             nextItems.splice(item.idx, 1);
                             set(item.targetKey, nextItems);
+
+                            // Borrar un paquete desplaza a los que venian despues, y los
+                            // servicios vinculados apuntan por posicion: sin esto quedarian
+                            // colgados del paquete de al lado.
+                            if (item.targetKey === 'plans') {
+                              const cambios = vinculosReindexados({ ...form, plans: nextItems }, item.idx);
+                              for (const [clave, valor] of Object.entries(cambios)) set(clave, valor);
+                            }
                             
                             // If it was the last item, deselect the product
                             if (nextItems.length === 0) {

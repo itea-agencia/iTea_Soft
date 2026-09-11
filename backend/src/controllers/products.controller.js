@@ -80,20 +80,88 @@ async function resolverProveedorId(tx, data) {
   return match?.id || null;
 }
 
+// El metodo de pago puede llegar como id o como nombre. Este controlador solo aceptaba
+// el id (`parseInt(data.supplierPaymentMethod)`) mientras sales.controller resuelve por
+// nombre, que es lo que manda el formulario; aca se aceptan los dos.
+async function resolverMetodoPagoId(tx, bruto) {
+  if (bruto === undefined || bruto === null || bruto === '') return null;
+  const id = parseInt(bruto, 10);
+  if (!Number.isNaN(id)) return id;
+  const match = await tx.metodosPago.findFirst({ where: { nombre: String(bruto) } });
+  return match?.id || null;
+}
+
+/**
+ * Concepto de pago valido, o null si viene cualquier otra cosa.
+ */
+const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro', 'paquete'];
+
+/**
+ * Filas de pago a proveedor de un servicio, listas para un create anidado.
+ *
+ * Un paquete se le compra a varios proveedores a la vez y a cada uno se le paga aparte.
+ * Una fila sin importe y sin proveedor no es un pago y no se guarda.
+ */
+async function armarPagosProveedor(tx, data) {
+  const pagos = Array.isArray(data.supplierPayments) ? data.supplierPayments : [];
+  const out = [];
+  for (let i = 0; i < pagos.length; i++) {
+    const pago = pagos[i];
+    if (!CONCEPTOS_PAGO.includes(pago.concept)) continue;
+
+    const costoProveedor = Number(pago.supplierCost) || 0;
+    const ta = Number(pago.ta) || 0;
+    const taCre = Number(pago.taCre) || 0;
+    if (costoProveedor === 0 && ta === 0 && taCre === 0 && !pago.supplier) continue;
+
+    out.push({
+      concepto: pago.concept,
+      proveedorId: await resolverProveedorId(tx, { supplier: pago.supplier }),
+      costoProveedor,
+      ta,
+      taCre,
+      metodoPagoProveedorId: await resolverMetodoPagoId(tx, pago.paymentMethod),
+      orden: i + 1,
+    });
+  }
+  return out;
+}
+
+/**
+ * Los importes de un servicio. Si se pago a varios proveedores, son la suma de sus filas
+ * de pago: el detalle guarda el total para que los totales de la venta, el agregado por
+ * paquete y la guarda de totales de Siigo sigan valiendo sin cambios.
+ */
+function financierosDe(data, pagos) {
+  if (!pagos || pagos.length === 0) {
+    return {
+      costoProveedor: Number(data.supplierCost) || 0,
+      ta: Number(data.ta) || 0,
+      taCre: Number(data.taCre) || 0,
+    };
+  }
+  const suma = (campo) => pagos.reduce((t, p) => t + (Number(p[campo]) || 0), 0);
+  return { costoProveedor: suma('costoProveedor'), ta: suma('ta'), taCre: suma('taCre') };
+}
+
 async function createDetalleProducto(tx, ventaId, categoria, data) {
+  const pagosProveedorData = await armarPagosProveedor(tx, data);
+  const fin = financierosDe(data, pagosProveedorData);
+
   return tx.detalleVenta.create({
     data: {
       ventaId,
       categoria,
       nombreServicio: data.nombreServicio || null,
-      subtotal: data.subtotal || ((data.supplierCost || 0) + (data.ta || 0) + (data.taCre || 0)),
-      ta: data.ta || 0,
-      taCre: data.taCre || 0,
-      costoProveedor: data.supplierCost || 0,
+      subtotal: fin.costoProveedor + fin.ta + fin.taCre,
+      ta: fin.ta,
+      taCre: fin.taCre,
+      costoProveedor: fin.costoProveedor,
+      ...(pagosProveedorData.length > 0 ? { pagosProveedor: { create: pagosProveedorData } } : {}),
       // Mismo criterio que sales.controller: el proveedor llega como `supplier`,
       // `supplierName` o `supplierId` segun el formulario.
       proveedorId: await resolverProveedorId(tx, data),
-      metodoPagoProveedorId: data.supplierPaymentMethod ? parseInt(data.supplierPaymentMethod) : null,
+      metodoPagoProveedorId: await resolverMetodoPagoId(tx, data.supplierPaymentMethod),
       voucherUrl: data.voucherUrl || null,
       fechaInicioViaje: data.startDate ? new Date(data.startDate) : null,
       fechaFinViaje: data.endDate ? new Date(data.endDate) : null,
@@ -101,6 +169,37 @@ async function createDetalleProducto(tx, ventaId, categoria, data) {
       destino: data.destination || null,
       observaciones: data.observations || null
     }
+  });
+}
+
+/**
+ * Recalcula los totales de la venta desde sus filas.
+ *
+ * Agregar, editar o borrar un producto por estos endpoints creaba, cambiaba o quitaba un
+ * `detalle_venta` pero no tocaba `ventas.monto_total`, asi que el total de la venta se
+ * desfasaba en silencio. La venta 133 en local llego a decir $60.000 con filas que sumaban
+ * $11.990.000. Y Siigo factura contra `monto_total`.
+ *
+ * Se derivan de las filas y no del payload: un request que agrega un solo producto no
+ * puede saber el total de la venta.
+ */
+async function recalcularTotalesVenta(tx, ventaId) {
+  const filas = await tx.detalleVenta.findMany({
+    where: { ventaId },
+    select: { costoProveedor: true, ta: true, taCre: true },
+  });
+  const suma = (campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
+  const costoProveedorTotal = suma('costoProveedor');
+  const taTotal = suma('ta');
+  const taCreTotal = suma('taCre');
+  await tx.ventas.update({
+    where: { id: ventaId },
+    data: {
+      costoProveedorTotal,
+      taTotal,
+      taCreTotal,
+      montoTotal: costoProveedorTotal + taTotal + taCreTotal,
+    },
   });
 }
 
@@ -236,6 +335,7 @@ const productHandler = (category, tableName, transformData) => ({
           }
         }
 
+        await recalcularTotalesVenta(tx, venta.id);
         return { detalle, product };
       });
 
@@ -277,6 +377,9 @@ const productHandler = (category, tableName, transformData) => ({
               personaId: resolvedPid,
               esTitular: p.esTitular ?? true,
               asiento: p.asiento || p.seat || null,
+              // Faltaba: este handler borra los pasajeros y los vuelve a crear, asi que
+              // sin esta linea una edicion por aca perdia el asiento de regreso.
+              asientoRegreso: p.asientoRegreso || null,
               nroReserva: p.nroReserva || null,
               nroTiquete: p.nroTiquete || null
             });
@@ -289,13 +392,15 @@ const productHandler = (category, tableName, transformData) => ({
                 personaId: passengerData.personaId,
                 esTitular: passengerData.esTitular,
                 asiento: passengerData.asiento,
+                asientoRegreso: passengerData.asientoRegreso,
                 nroReserva: passengerData.nroReserva,
                 nroTiquete: passengerData.nroTiquete
               }
             });
           }
         }
-        
+
+        await recalcularTotalesVenta(tx, venta.id);
         return prod;
       });
 
@@ -313,6 +418,7 @@ const productHandler = (category, tableName, transformData) => ({
       await prisma.$transaction(async (tx) => {
         await tx[tableName].delete({ where: { id } });
         await tx.detalleVenta.delete({ where: { id: product.detalleVentaId } });
+        await recalcularTotalesVenta(tx, parseInt(req.params.saleId));
       });
 
       success(res, { message: 'Producto eliminado' });
@@ -362,14 +468,18 @@ exports.deleteHotel = H(CATEGORIES.hotel, 'prodHoteleria').delete;
 // =========================================================
 // Seguros
 // =========================================================
+// `contactoEmergencia`, `telefonoEmergencia` y `direccionAsegurado` no existen en
+// ProdSeguros, asi que este endpoint reventaba con "Unknown argument" en todo intento:
+// nunca sirvio para crear un seguro suelto. Los nombres reales son los que ya usa el
+// transform de sales.controller.
 exports.createInsurance = H(CATEGORIES.insurance, 'prodSeguros', (d, detalleId) => ({
   detalleVentaId: detalleId,
   tipoSeguro: d.insuranceType || 'basico',
-  coberturaUsd: d.coverageAmount || 0,
-  diasCobertura: d.coverageDays || 0,
-  contactoEmergencia: d.contactName || null,
-  telefonoEmergencia: d.contactNumber || null,
-  direccionAsegurado: d.address || null
+  coberturaUsd: Number(d.coverageAmount) || 0,
+  diasCobertura: Number(d.coverageDays) || 0,
+  fechaInicioVigencia: d.startDate ? new Date(d.startDate) : null,
+  fechaFinVigencia: d.endDate ? new Date(d.endDate) : null,
+  telefonoContacto: d.phone || null
 })).create;
 
 exports.updateInsurance = H(CATEGORIES.insurance, 'prodSeguros').update;
@@ -385,11 +495,26 @@ exports.createPlan = H(CATEGORIES.plan, 'prodPlanes', (d, detalleId) => ({
   aerolineaId: d.airline ? parseInt(d.airline) : null,
   fechaViajeInicio: d.startDate ? new Date(d.startDate) : null,
   fechaViajeFin: d.endDate ? new Date(d.endDate) : null,
+  // Los dos tramos completos: salida, llegada y numero de vuelo de cada uno. Este
+  // transform es mas corto que el de sales.controller y no guardaba el numero de vuelo
+  // ni las llegadas, asi que un paquete creado por aca perdia la mitad del transporte.
   fechaSalidaVuelo: d.flightDepartureDate ? new Date(d.flightDepartureDate) : null,
+  fechaLlegadaVuelo: d.flightDepartureArrivalDate ? new Date(d.flightDepartureArrivalDate) : null,
   fechaRegresoVuelo: d.flightReturnDate ? new Date(d.flightReturnDate) : null,
+  fechaLlegadaRegresoVuelo: d.flightReturnArrivalDate ? new Date(d.flightReturnArrivalDate) : null,
   adultosCount: d.adultsCount || 0,
   menoresCount: d.childrenCount || 0,
+  nroVuelo: d.flightNumber || null,
+  nroVueloRegreso: d.flightReturnNumber || null,
   nroReservaVuelo: d.flightReservationNumber || null,
+  // Estos cuatro faltaban, asi que un paquete creado por este endpoint perdia el nombre
+  // del hotel —y el detalle y el voucher mostraban el bloque de hotel vacio— y caia en
+  // los valores por defecto de tipo de paquete y de transporte, que a su vez deciden las
+  // etiquetas de la interfaz y con que codigo se factura el transporte en Siigo.
+  nombreHotel: d.hotelName || null,
+  paqueteTarifaId: d.packageRateId ? parseInt(d.packageRateId) : null,
+  tipoPaquete: d.packageType || 'own',
+  tipoTransporte: d.transportType || 'Aéreo',
   referenciaHotel: d.hotelReference || d.confirmationNumber || null,
   observaciones: d.observations || null
 })).create;

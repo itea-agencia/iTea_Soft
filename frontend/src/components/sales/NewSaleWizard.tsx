@@ -61,6 +61,7 @@ import {
   INITIAL_VISA,
   INITIAL_PASSPORT,
   INITIAL_PET_SERVICE,
+  PRODUCTOS, vinculosReindexados, importesDe,
 } from "./wizardData";
 import { Step1Client } from "./steps/Step1Client";
 import { Step2Products } from "./steps/Step2Products";
@@ -315,23 +316,18 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     let calcTa = 0;
     let calcTaCre = 0;
 
-    (form.tickets || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
-    (form.hotels || []).forEach(h => { calcSupplierCost += Number(h.supplierCost) || 0; calcTa += Number(h.ta) || 0; calcTaCre += Number(h.taCre) || 0; });
-    (form.insurances || []).forEach(i => { calcSupplierCost += Number(i.supplierCost) || 0; calcTa += Number(i.ta) || 0; calcTaCre += Number(i.taCre) || 0; });
-    (form.plans || []).forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
-    (form.checkIns || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
-    (form.migrations || []).forEach(m => { calcSupplierCost += Number(m.supplierCost) || 0; calcTa += Number(m.ta) || 0; calcTaCre += Number(m.taCre) || 0; });
-    (form.simCards || []).forEach(sc => { calcSupplierCost += Number(sc.supplierCost) || 0; calcTa += Number(sc.ta) || 0; calcTaCre += Number(sc.taCre) || 0; });
-    (form.baggages || []).forEach(b => { calcSupplierCost += Number(b.supplierCost) || 0; calcTa += Number(b.ta) || 0; calcTaCre += Number(b.taCre) || 0; });
-    (form.carRentals || []).forEach(cr => { calcSupplierCost += Number(cr.supplierCost) || 0; calcTa += Number(cr.ta) || 0; calcTaCre += Number(cr.taCre) || 0; });
-    (form.landTravels || []).forEach(lt => { calcSupplierCost += Number(lt.supplierCost) || 0; calcTa += Number(lt.ta) || 0; calcTaCre += Number(lt.taCre) || 0; });
-    (form.fincas || []).forEach(f => { calcSupplierCost += Number(f.supplierCost) || 0; calcTa += Number(f.ta) || 0; calcTaCre += Number(f.taCre) || 0; });
-    (form.tours || []).forEach(t => { calcSupplierCost += Number(t.supplierCost) || 0; calcTa += Number(t.ta) || 0; calcTaCre += Number(t.taCre) || 0; });
-    (form.conventions || []).forEach(c => { calcSupplierCost += Number(c.supplierCost) || 0; calcTa += Number(c.ta) || 0; calcTaCre += Number(c.taCre) || 0; });
-    (form.restaurants || []).forEach(r => { calcSupplierCost += Number(r.supplierCost) || 0; calcTa += Number(r.ta) || 0; calcTaCre += Number(r.taCre) || 0; });
-    (form.visas || []).forEach(v => { calcSupplierCost += Number(v.supplierCost) || 0; calcTa += Number(v.ta) || 0; calcTaCre += Number(v.taCre) || 0; });
-    (form.passports || []).forEach(p => { calcSupplierCost += Number(p.supplierCost) || 0; calcTa += Number(p.ta) || 0; calcTaCre += Number(p.taCre) || 0; });
-    (form.petServices || []).forEach(ps => { calcSupplierCost += Number(ps.supplierCost) || 0; calcTa += Number(ps.ta) || 0; calcTaCre += Number(ps.taCre) || 0; });
+    // Se recorre PRODUCTOS y no una linea por producto escrita a mano: eran diecisiete
+    // lineas casi identicas, y cuando la plata de un paquete se movio a
+    // `supplierPayments` habia que acertarle a todas. `importesDe` lo responde en un
+    // solo lugar.
+    for (const { key } of Object.values(PRODUCTOS)) {
+      for (const item of (((form as any)[key] || []) as any[])) {
+        const imp = importesDe(item);
+        calcSupplierCost += imp.supplierCost;
+        calcTa += imp.ta;
+        calcTaCre += imp.taCre;
+      }
+    }
 
     const calcTotal = calcSupplierCost + calcTa + calcTaCre;
 
@@ -598,9 +594,17 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 }
                 if (plan.flightNumber && plan.transportType !== 'Terrestre') {
                   if (plan.flightNumber.length > 12) {
-                    errors.push("Número de Vuelo (máx 12 caracteres)");
+                    errors.push("Número de Vuelo de ida (máx 12 caracteres)");
                   } else if (!/^[A-Z0-9-]+$/.test(plan.flightNumber)) {
-                    errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
+                    errors.push("Número de Vuelo de ida (debe ser alfanumérico en mayúsculas)");
+                  }
+                }
+                // El vuelo de regreso es opcional: un paquete de solo ida no tiene.
+                if (plan.flightReturnNumber && plan.transportType !== 'Terrestre') {
+                  if (plan.flightReturnNumber.length > 12) {
+                    errors.push("Número de Vuelo de regreso (máx 12 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.flightReturnNumber)) {
+                    errors.push("Número de Vuelo de regreso (debe ser alfanumérico en mayúsculas)");
                   }
                 }
                 // La referencia es del hotel, asi que no depende del tipo de transporte.
@@ -1285,9 +1289,15 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
           nextItems.splice(activeIdx, 1);
           
           setForm(prev => {
-            const updatedForm = { ...prev, [targetKey!]: nextItems };
+            // Borrar un paquete desplaza a los que venian despues, y los servicios
+            // vinculados apuntan por posicion: sin esto quedarian en el paquete de al lado.
+            const updatedForm: any = {
+              ...prev,
+              [targetKey!]: nextItems,
+              ...(targetKey === 'plans' ? vinculosReindexados({ ...prev, plans: nextItems }, activeIdx) : {}),
+            };
             if (nextItems.length === 0) {
-              updatedForm.selectedProducts = prev.selectedProducts.filter(p => p !== activeForm);
+              updatedForm.selectedProducts = prev.selectedProducts.filter((p: any) => p !== activeForm);
             }
             return updatedForm;
           });
@@ -1321,12 +1331,23 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 if (plan.childrenCount === undefined || plan.childrenCount < 0 || plan.childrenCount > 999) errors.push("Menores (0-999)");
                 
                 if (!plan.flightNumber || plan.flightNumber.trim().length === 0) {
-                  errors.push(plan.transportType === 'Terrestre' ? "Placa / Vehículo (requerido)" : "Número de Vuelo (requerido)");
+                  errors.push(plan.transportType === 'Terrestre' ? "Placa del Vehículo de ida (requerido)" : "Número de Vuelo de ida (requerido)");
                 } else if (plan.transportType !== 'Terrestre') {
                   if (plan.flightNumber.length > 12) {
-                    errors.push("Número de Vuelo (máx 12 caracteres)");
+                    errors.push("Número de Vuelo de ida (máx 12 caracteres)");
                   } else if (!/^[A-Z0-9-]+$/.test(plan.flightNumber)) {
-                    errors.push("Número de Vuelo (debe ser alfanumérico en mayúsculas)");
+                    errors.push("Número de Vuelo de ida (debe ser alfanumérico en mayúsculas)");
+                  }
+                }
+
+                // El vuelo de regreso no se exige aunque haya fecha de regreso: el numero
+                // puede llegar despues, igual que el booking y el tiquete. Solo se valida
+                // el formato si viene.
+                if (plan.flightReturnNumber && plan.transportType !== 'Terrestre') {
+                  if (plan.flightReturnNumber.length > 12) {
+                    errors.push("Número de Vuelo de regreso (máx 12 caracteres)");
+                  } else if (!/^[A-Z0-9-]+$/.test(plan.flightReturnNumber)) {
+                    errors.push("Número de Vuelo de regreso (debe ser alfanumérico en mayúsculas)");
                   }
                 }
                 
@@ -1372,8 +1393,28 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                 // Voucher is optional now
               }
 
-              if (plan.supplierCost === undefined || plan.supplierCost < 0) errors.push("Costo Proveedor (>= $0)");
-              if (plan.ta === undefined || plan.ta < 0) errors.push("Valor TA (>= $0)");
+              const pagosDelPlan = plan.supplierPayments || [];
+              if (pagosDelPlan.length > 0) {
+                // Con pagos, el costo del paquete es su suma. Lo que hay que exigir es que
+                // cada pago con dinero tenga proveedor: la linea IT de Siigo lleva el
+                // Tercero y sin el la factura se rechaza. Mejor avisarlo al guardar que
+                // descubrirlo al facturar.
+                pagosDelPlan.forEach((pg, i) => {
+                  const monto = (Number(pg.supplierCost) || 0) + (Number(pg.ta) || 0) + (Number(pg.taCre) || 0);
+                  if (monto > 0 && !pg.supplier?.trim()) {
+                    errors.push(`Pago a proveedor #${i + 1}: falta el proveedor`);
+                  }
+                  if ((Number(pg.supplierCost) || 0) < 0 || (Number(pg.ta) || 0) < 0 || (Number(pg.taCre) || 0) < 0) {
+                    errors.push(`Pago a proveedor #${i + 1}: los valores no pueden ser negativos`);
+                  }
+                });
+              } else if (!(Number(plan.supplierCost) > 0 || Number(plan.ta) > 0 || Number(plan.taCre) > 0)) {
+                // El bloque de un solo proveedor se retiro del formulario: el costo del
+                // paquete son sus pagos. Un paquete sin ninguno no tiene costo, que
+                // practicamente siempre es un olvido. Un paquete viejo que trae el costo
+                // de la forma anterior sigue pasando, para no bloquear su edicion.
+                errors.push("Pagos a proveedores (agregá al menos uno)");
+              }
 
               if (plan.guests && plan.guests.length > 0) {
                 plan.guests.forEach((g, gIdx) => {

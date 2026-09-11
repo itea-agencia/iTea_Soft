@@ -205,6 +205,29 @@ class SiigoService {
    *   ta              -> codigo IP de la categoria, IVA 19%
    *   ta_cre (TA SAE) -> codigo 004, IVA 19%
    */
+  /**
+   * Categoria del catalogo que le corresponde a un concepto de pago de paquete.
+   *
+   * Decidido con contabilidad: cada pago se factura con el codigo de su concepto, no
+   * todos como Paquetes. Asi el hotel del paquete sale como IT Hoteleria y los vuelos
+   * como IT Tiquetes Aereos, y contabilidad ve la composicion real. La contrapartida es
+   * que al mezclar categorias el cost_center pasa al comodin Varios Servicios, porque en
+   * Siigo es uno por factura.
+   *
+   * `transporte` se resuelve con `tipoTransporte` del paquete, que es donde vive ese dato.
+   */
+  static categoriaDeConcepto(concepto, detalle) {
+    if (concepto === 'paquete') return 'planes';
+    if (concepto === 'hotel') return 'hoteleria';
+    if (concepto === 'seguro') return 'seguros_viaje';
+    if (concepto === 'transporte') {
+      return detalle.prodPlanes?.tipoTransporte === 'Terrestre' ? 'viajes_terrestres' : 'tiqueteria';
+    }
+    // Un concepto que no se reconoce se factura como lo que es el servicio, en vez de
+    // reventar la factura entera.
+    return detalle.categoria;
+  }
+
   buildInvoicePayload(venta, customerSiigo) {
     const detalles = venta.detalleVentas || [];
     const advertencias = [];
@@ -219,21 +242,44 @@ class SiigoService {
     const items = [];
     let sumaLineas = 0;
 
-    // Se guarda la cobertura de cada detalle: la necesita tanto la linea como el
-    // cost_center del documento.
-    const servicios = detalles.map((detalle) => ({
-      detalle,
-      categoria: detalle.categoria,
-      cobertura: catalogo.distingueCobertura(detalle.categoria)
-        ? SiigoService.resolverCobertura(detalle, advertencias)
-        : undefined,
-    }));
+    // Las lineas a facturar. Normalmente una por detalle, pero un servicio pagado a
+    // varios proveedores aporta una por pago: la linea IT de Siigo lleva un solo Tercero,
+    // asi que tres proveedores son tres lineas IT, cada una con el codigo del catalogo
+    // que corresponde a su concepto. Los importes del detalle son la suma de sus pagos,
+    // asi que facturar el detalle ademas de sus pagos duplicaria el total.
+    const servicios = detalles.flatMap((detalle) => {
+      const pagos = detalle.pagosProveedor || [];
 
-    for (const { detalle, cobertura } of servicios) {
-      const mapeo = catalogo.resolverCategoria(detalle.categoria, cobertura);
-      const costoProveedor = Number(detalle.costoProveedor) || 0;
-      const ta = Number(detalle.ta) || 0;
-      const taCre = Number(detalle.taCre) || 0;
+      const conCobertura = (categoria) => ({
+        categoria,
+        cobertura: catalogo.distingueCobertura(categoria)
+          ? SiigoService.resolverCobertura(detalle, advertencias)
+          : undefined,
+      });
+
+      if (pagos.length === 0) {
+        return [{
+          detalle,
+          proveedor: detalle.proveedor,
+          costoProveedor: Number(detalle.costoProveedor) || 0,
+          ta: Number(detalle.ta) || 0,
+          taCre: Number(detalle.taCre) || 0,
+          ...conCobertura(detalle.categoria),
+        }];
+      }
+
+      return pagos.map((pago) => ({
+        detalle,
+        proveedor: pago.proveedor,
+        costoProveedor: Number(pago.costoProveedor) || 0,
+        ta: Number(pago.ta) || 0,
+        taCre: Number(pago.taCre) || 0,
+        ...conCobertura(SiigoService.categoriaDeConcepto(pago.concepto, detalle)),
+      }));
+    });
+
+    for (const { detalle, categoria, cobertura, proveedor, costoProveedor, ta, taCre } of servicios) {
+      const mapeo = catalogo.resolverCategoria(categoria, cobertura);
 
       // Linea IT: lo que se le paga al proveedor. Va sin impuestos y lleva Tercero.
       if (costoProveedor > 0) {
@@ -248,21 +294,21 @@ class SiigoService {
         // El Tercero es obligatorio en la linea IT: es el ingreso que se le atribuye al
         // proveedor. Sin el, la factura queda contablemente mal imputada, asi que se corta
         // aqui en vez de emitirla incompleta.
-        if (!detalle.proveedor) {
+        if (!proveedor) {
           throw Object.assign(
             new Error(`El servicio de ${mapeo.nombre} no tiene proveedor asignado y su costo debe facturarse a nombre del Tercero`),
             { statusCode: 422, code: 'SIIGO_DETALLE_SIN_PROVEEDOR' },
           );
         }
-        if (!detalle.proveedor.documento) {
+        if (!proveedor.documento) {
           throw Object.assign(
-            new Error(`El proveedor "${detalle.proveedor.nombre}" no tiene documento registrado. Cargalo en Configuracion > Proveedores para poder facturar.`),
+            new Error(`El proveedor "${proveedor.nombre}" no tiene documento registrado. Cargalo en Configuracion > Proveedores para poder facturar.`),
             { statusCode: 422, code: 'SIIGO_PROVEEDOR_SIN_DOCUMENTO' },
           );
         }
 
         item.customer = {
-          identification: catalogo.normalizarIdentificacion(detalle.proveedor.documento),
+          identification: catalogo.normalizarIdentificacion(proveedor.documento),
           branch_office: 0,
         };
 

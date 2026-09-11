@@ -2,10 +2,26 @@ import { useId } from "react";
 import { Package, Plane, Bus, Building2, Users, Briefcase, Trash2, PlusCircle, ArrowRight, ArrowLeft } from "lucide-react";
 import { FormField, Input, Combobox, Select , CurrencyInput} from "../../ui/Form";
 import { Button } from "../../ui/Button";
-import { PlanData, PlanGuestInfo } from "../../../types";
+import { PlanData, PlanGuestInfo, SupplierPayment, ConceptoPago } from "../../../types";
 import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
 import { DateTimePicker } from "./TicketForm";
 import { VoucherField } from "./VoucherField";
+
+/**
+ * Los conceptos de pago de un paquete, con el nombre que ve el usuario.
+ *
+ * `transporte` se muestra como Aereo o Terrestre segun el tipo de transporte del paquete,
+ * que es donde vive ese dato: guardar dos conceptos distintos lo duplicaria y permitiria
+ * que se contradigan.
+ */
+const CONCEPTOS: Array<{ id: ConceptoPago; label: (esTerrestre: boolean) => string }> = [
+  { id: 'transporte', label: (t) => (t ? 'Terrestre' : 'Aéreo') },
+  { id: 'hotel', label: () => 'Hotel' },
+  { id: 'seguro', label: () => 'Seguro de Viaje' },
+  // Para el paquete comprado armado a un operador: un solo proveedor por todo. Va al
+  // final porque en la practica excluye a los otros tres.
+  { id: 'paquete', label: () => 'Paquete completo' },
+];
 
 interface PlanFormProps {
   plan: PlanData;
@@ -30,9 +46,51 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
   // Derivado en render: si datos heredados no traen titular, se resalta el primero.
   const conTitular = hayTitular(guests);
 
+  const esTerrestre = plan.transportType === 'Terrestre';
+  // Ida y vuelta se deriva de la fecha de regreso: un paquete con regreso ES de ida y
+  // vuelta. Guardar una bandera aparte, como hace viajes terrestres, permite que la
+  // bandera y las fechas se contradigan.
+  const hayRegreso = Boolean(plan.flightReturnDate);
+
+  /**
+   * Los pagos a proveedores del paquete. Los importes del paquete son su suma, asi que
+   * cuando hay pagos los campos propios quedan de solo lectura: si se pudieran editar
+   * tambien, el mismo hotel se contaria dos veces y nada lo detectaria.
+   */
+  const pagos = plan.supplierPayments || [];
+  const conPagos = pagos.length > 0;
+
+  const propio = {
+    supplierCost: Number(plan.supplierCost) || 0,
+    ta: Number(plan.ta) || 0,
+    taCre: Number(plan.taCre) || 0,
+  };
+  const sumaPagos = pagos.reduce(
+    (acc, pg) => ({
+      supplierCost: acc.supplierCost + (Number(pg.supplierCost) || 0),
+      ta: acc.ta + (Number(pg.ta) || 0),
+      taCre: acc.taCre + (Number(pg.taCre) || 0),
+    }),
+    { supplierCost: 0, ta: 0, taCre: 0 },
+  );
+  const agregado = conPagos ? sumaPagos : propio;
+  const totalPaquete = agregado.supplierCost + agregado.ta + agregado.taCre;
+
+  const addPago = (concept: ConceptoPago) =>
+    onChange({ supplierPayments: [...pagos, { concept }] });
+
+  const removePago = (idx: number) =>
+    onChange({ supplierPayments: pagos.filter((_, i) => i !== idx) });
+
+  const updatePago = (idx: number, updates: Partial<SupplierPayment>) =>
+    onChange({ supplierPayments: pagos.map((pg, i) => (i === idx ? { ...pg, ...updates } : pg)) });
+
   const addGuest = () => {
     onChange({
-      guests: [...guests, { name: "", docType: "", docNumber: "", esTitular: false, nroReserva: "", nroTiquete: "" }],
+      guests: [
+        ...guests,
+        { name: "", docType: "", docNumber: "", esTitular: false, nroReserva: "", nroTiquete: "", asiento: "", asientoRegreso: "" },
+      ],
     });
   };
 
@@ -271,18 +329,13 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             {plan.transportType === 'Terrestre' ? <Bus size={14} /> : <Plane size={14} />}
             {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
           </h4>
+          {/* Arriba va solo lo que cubre los dos tramos. El numero de vuelo baja a su
+              tramo: un paquete de ida y vuelta son dos vuelos distintos, y las fechas ya
+              modelaban los dos tramos mientras el numero era uno solo para ambos. */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label={plan.transportType === 'Terrestre' ? 'Placa / Vehículo' : 'Número de Vuelo'}>
-              <Input
-                value={plan.flightNumber}
-                onChange={(e) => onChange({ flightNumber: sanearCodigo(e.target.value, 12) })}
-                placeholder={plan.transportType === 'Terrestre' ? 'Ej: SRG123' : 'Ej: AV9301'}
-                maxLength={12}
-              />
-            </FormField>
-            {/* El PNR del vuelo es uno por reserva. El Booking de cada integrante esta
-                abajo, en Integrantes, y son datos distintos. Opcional como los demas
-                codigos del paquete: llegan dias despues de vender. */}
+            {/* El PNR es uno por reserva y cubre los dos tramos. El Booking de cada
+                integrante esta abajo, en Integrantes, y son datos distintos. Opcional
+                como los demas codigos del paquete: llegan dias despues de vender. */}
             <FormField label={plan.transportType === 'Terrestre' ? 'Localizador' : 'N° de Reserva'}>
               <Input
                 value={plan.flightReservationNumber || ""}
@@ -297,7 +350,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             <p className="text-[10px] font-bold text-blue-700/80 dark:text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1">
               <ArrowRight size={11} /> Ida
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField label={esTerrestre ? 'Placa del Vehículo' : 'Número de Vuelo'}>
+                <Input
+                  value={plan.flightNumber}
+                  onChange={(e) => onChange({ flightNumber: sanearCodigo(e.target.value, 12) })}
+                  placeholder={esTerrestre ? 'Ej: SRG123' : 'Ej: AV9720'}
+                  maxLength={12}
+                />
+              </FormField>
               <FormField label={plan.transportType === 'Terrestre' ? 'Salida (Origen)' : 'Salida'}>
                 <DateTimePicker
                   value={plan.flightDepartureDate || ""}
@@ -323,7 +384,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
             <p className="text-[10px] font-bold text-blue-700/80 dark:text-blue-400/70 uppercase tracking-widest mb-2 flex items-center gap-1">
               <ArrowLeft size={11} /> Regreso
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <FormField label={esTerrestre ? 'Placa del Vehículo' : 'Número de Vuelo'}>
+                <Input
+                  value={plan.flightReturnNumber || ""}
+                  onChange={(e) => onChange({ flightReturnNumber: sanearCodigo(e.target.value, 12) })}
+                  placeholder={esTerrestre ? 'Ej: SRG455' : 'Ej: AV9721'}
+                  maxLength={12}
+                />
+              </FormField>
               <FormField label={plan.transportType === 'Terrestre' ? 'Regreso (Destino)' : 'Salida'}>
                 <DateTimePicker
                   value={plan.flightReturnDate || ""}
@@ -365,7 +434,6 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         <div className="space-y-4">
           {guests.map((guest, gIdx) => {
             const esTitular = guest.esTitular || (!conTitular && gIdx === 0);
-            const esTerrestre = plan.transportType === 'Terrestre';
 
             return (
               <div
@@ -471,7 +539,8 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                 {/* Los codigos son de cada integrante, no del paquete: el hotel entrega un
                     booking por persona y la aerolinea un tiquete por persona. Antes vivian
                     a nivel paquete y el backend los copiaba a todos por igual. */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Los codigos identifican la reserva de esta persona. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                   <FormField label="Booking (Opcional)">
                     <Input
                       value={guest.nroReserva || ""}
@@ -481,11 +550,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                       className="text-xs"
                     />
                   </FormField>
-                  <FormField label={esTerrestre ? "Tiquete / Puesto (Opcional)" : "N° Tiquete (Opcional)"}>
+                  {/* Antes esta etiqueta decia "Tiquete / Puesto" con placeholder
+                      "Ej: Asiento 12" en los paquetes terrestres: un parche por no tener
+                      campo de asiento, que metia el puesto dentro del numero de tiquete.
+                      Con asientos propios abajo, el tiquete vuelve a ser el tiquete. */}
+                  <FormField label="N° Tiquete (Opcional)">
                     <Input
                       value={guest.nroTiquete || ""}
                       onChange={(e) => updateGuest(gIdx, { nroTiquete: sanearCodigo(e.target.value) })}
-                      placeholder={esTerrestre ? "Ej: Asiento 12" : "Ej: 0000000127297"}
+                      placeholder={esTerrestre ? "Ej: 4587-221" : "Ej: 0000000127297"}
                       maxLength={20}
                       className="text-xs"
                     />
@@ -495,6 +568,34 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                       </p>
                     )}
                   </FormField>
+                </div>
+
+                {/* El asiento es de cada persona y de cada tramo: dos integrantes del
+                    mismo paquete van en asientos distintos, y cada uno puede ir en otro
+                    al regreso. Fila aparte de los codigos porque son dos clases de dato:
+                    el codigo identifica la reserva, el asiento dice donde va sentado.
+                    Sin regreso, la fila se reduce a un solo campo, como en terrestre. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField label={hayRegreso ? "Asiento Ida (Opcional)" : "Asiento (Opcional)"}>
+                    <Input
+                      value={guest.asiento || ""}
+                      onChange={(e) => updateGuest(gIdx, { asiento: sanearCodigo(e.target.value, 6) })}
+                      placeholder="Ej: 12A"
+                      maxLength={6}
+                      className="text-xs"
+                    />
+                  </FormField>
+                  {hayRegreso && (
+                    <FormField label="Asiento Regreso (Opcional)">
+                      <Input
+                        value={guest.asientoRegreso || ""}
+                        onChange={(e) => updateGuest(gIdx, { asientoRegreso: sanearCodigo(e.target.value, 6) })}
+                        placeholder="Ej: 4C"
+                        maxLength={6}
+                        className="text-xs"
+                      />
+                    </FormField>
+                  )}
                 </div>
               </div>
             );
@@ -516,46 +617,139 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         <h4 className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
           <Briefcase size={14} /> Finanzas
         </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Nombre del Proveedor">
-            <Combobox
-              value={plan.supplier}
-              onChange={(val) => onChange({ supplier: val })}
-              options={data.config.suppliers.map((s: any) => ({ value: s.name, label: s.name }))}
-              placeholder="Seleccionar proveedor..."
-            />
-          </FormField>
-          <FormField label="Costo Proveedor">
-            <CurrencyInput
-              value={plan.supplierCost ?? ""}
-              onChange={(val) =>
-                onChange({
-                  supplierCost: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Valor TA">
-            <CurrencyInput
-              value={plan.ta ?? ""}
-              onChange={(val) =>
-                onChange({
-                  ta: val === "" ? undefined : Number(val),
-                })
-              }
-            />
-          </FormField>
-          <FormField label="Método de Pago">
-            <Combobox
-              value={plan.supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
-              options={data.config.cards.map((m: any) => ({
-                value: m.name,
-                label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
-              }))}
-              placeholder="Seleccionar método..."
-            />
-          </FormField>
+        {/* El bloque de un solo proveedor que habia aca se retiro: con los pagos por
+            concepto no pertenecia a ningun servicio, y tener dos lugares donde cargar la
+            misma plata invita a contarla dos veces.
+            Un paquete comprado armado a un operador se registra como un pago de concepto
+            "Paquete completo", que se factura como IT/IP Paquetes. */}
+        {!conPagos && (propio.supplierCost > 0 || propio.ta > 0 || propio.taCre > 0) && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              Este paquete tiene un costo cargado de la forma anterior:{" "}
+              <strong>${propio.supplierCost.toLocaleString("es-CO")}</strong> de costo y{" "}
+              <strong>${(propio.ta + propio.taCre).toLocaleString("es-CO")}</strong> de TA
+              {plan.supplier ? `, a ${plan.supplier}` : ""}. Se sigue contando en el total.
+              Si agregás pagos por concepto, el total pasa a ser su suma y este valor deja
+              de usarse.
+            </p>
+          </div>
+        )}
+
+        {/* Pagos a proveedores del paquete.
+            Un paquete se le compra a varios proveedores a la vez y a cada uno se le paga
+            aparte. El hotel, los vuelos y los pasajeros ya estan arriba, asi que de cada
+            proveedor solo falta la plata: no hay que llenar el formulario del servicio
+            otra vez. Una tarjeta por concepto, para que se vea separado lo aereo, lo del
+            hotel y lo del seguro. */}
+        <div className="mt-4 pt-3 border-t border-dashed border-emerald-200 dark:border-emerald-500/30">
+          <p className="text-[10px] font-bold text-emerald-700/80 dark:text-emerald-400/70 uppercase tracking-widest mb-2">
+            Pagos a proveedores del paquete
+          </p>
+
+          {pagos.length === 0 && (
+            <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+              Si el paquete se le paga a varios proveedores, agregá uno por concepto. Cada
+              uno lleva su proveedor, su costo, su TA y su método de pago; el costo del
+              paquete pasa a ser la suma.
+            </p>
+          )}
+
+          <div className="space-y-3 mb-3">
+            {pagos.map((pago, idx) => {
+              const concepto = CONCEPTOS.find((c) => c.id === pago.concept);
+              return (
+                <div
+                  key={idx}
+                  className="p-3 border border-emerald-200/70 dark:border-emerald-500/30 rounded-lg bg-white dark:bg-slate-800 relative group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">
+                      {concepto ? concepto.label(esTerrestre) : pago.concept}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePago(idx)}
+                      className="text-red-400 hover:text-red-600 p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                      title="Quitar este pago"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <FormField label="Proveedor">
+                      <Combobox
+                        value={pago.supplier || ""}
+                        onChange={(val) => updatePago(idx, { supplier: val })}
+                        options={data.config.suppliers.map((sp: any) => ({ value: sp.name, label: sp.name }))}
+                        placeholder="Seleccionar..."
+                      />
+                    </FormField>
+                    <FormField label="Costo">
+                      <CurrencyInput
+                        value={pago.supplierCost ?? ""}
+                        onChange={(val) => updatePago(idx, { supplierCost: val === "" ? undefined : Number(val) })}
+                      />
+                    </FormField>
+                    <FormField label="Valor TA">
+                      <CurrencyInput
+                        value={pago.ta ?? ""}
+                        onChange={(val) => updatePago(idx, { ta: val === "" ? undefined : Number(val) })}
+                      />
+                    </FormField>
+                    <FormField label="Valor TA CRE">
+                      <CurrencyInput
+                        value={pago.taCre ?? ""}
+                        onChange={(val) => updatePago(idx, { taCre: val === "" ? undefined : Number(val) })}
+                      />
+                    </FormField>
+                    <FormField label="Método de Pago">
+                      <Combobox
+                        value={pago.paymentMethod || ""}
+                        onChange={(val) => updatePago(idx, { paymentMethod: val })}
+                        options={data.config.cards.map((m: any) => ({
+                          value: m.name,
+                          label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
+                        }))}
+                        placeholder="Seleccionar..."
+                      />
+                    </FormField>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+              Agregar pago
+            </span>
+            {CONCEPTOS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => addPago(c.id)}
+                className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/60 dark:hover:bg-emerald-500/10 transition-colors flex items-center gap-1"
+              >
+                <PlusCircle size={13} /> {c.label(esTerrestre)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between p-4 bg-emerald-100/50 dark:bg-emerald-500/20 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-tighter">
+              Total del Paquete
+            </span>
+            <span className="text-[9px] text-gray-500 dark:text-slate-400 font-medium">
+              Pagado a proveedores ${agregado.supplierCost.toLocaleString("es-CO")} + TA y TA CRE $
+              {(agregado.ta + agregado.taCre).toLocaleString("es-CO")}
+            </span>
+          </div>
+          <span className="text-lg font-black text-emerald-900 dark:text-emerald-300 leading-none">
+            ${totalPaquete.toLocaleString("es-CO")}
+          </span>
         </div>
       </div>
 

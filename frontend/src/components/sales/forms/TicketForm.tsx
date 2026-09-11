@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from "react";
 import Datepicker from "react-tailwindcss-datepicker";
 import dayjs from "dayjs";
 import { Plane, MapPin, User, Briefcase, Trash2, PlusCircle, ArrowRight, ArrowLeftRight, ArrowLeft, Calendar } from "lucide-react";
 import { FormField, Input, Combobox, Select, CurrencyInput } from "../../ui/Form";
 import { Button } from "../../ui/Button";
 import { TicketData, FlightLeg } from "../../../types";
+import { setTitular, hayTitular, idxTitular } from "./passengerHelpers";
 
 interface TicketFormProps {
   ticket: TicketData;
@@ -498,13 +499,61 @@ export function TicketForm({
   mainClient,
   triggerError,
 }: TicketFormProps & { mainClient?: any }) {
+  // Id estable para agrupar los radios de titular. Antes era `titular-${idx}`, un grupo
+  // distinto por fila, asi que se podian marcar varios titulares a la vez. Terrestre,
+  // paquetes y hoteleria ya lo corrigieron con useId().
+  const titularGroup = useId();
+
+  /**
+   * Lista de pasajeros del tiquete.
+   *
+   * Esta misma expresion estaba repetida diez veces en el bloque de pasajeros, y una de
+   * las copias hacia `rawPax[0].esTitular = true` durante el render: mutaba el estado en
+   * vez de derivar. Ahora se deriva una sola vez y el titular se resalta con
+   * `idxTitular`, que no escribe nada.
+   */
+  const pasajeros = (() => {
+    const base = ticket.passengers || ((ticket as any).passengerInfo
+      ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', asientoRegreso: '', nroReserva: '', nroTiquete: '' }]
+      : []);
+    if (base.length > 0) return base;
+    return [{
+      name: mainClient?.name || (mainClient ? `${mainClient.firstName} ${mainClient.lastName || ''}`.trim() : ''),
+      docType: mainClient?.docType || '',
+      docNumber: mainClient?.docNumber || '',
+      birthDate: mainClient?.birthDate ? mainClient.birthDate.split('T')[0] : '',
+      esTitular: true,
+      asiento: '',
+      asientoRegreso: '',
+      nroReserva: '',
+      nroTiquete: '',
+    }];
+  })();
+  const conTitular = hayTitular(pasajeros);
+  const idxDelTitular = idxTitular(pasajeros);
+
+  /**
+   * Actualiza un pasajero sin mutar el estado.
+   *
+   * Los handlers hacian `next[idx].asiento = valor` despues de un `[...pasajeros]`: la
+   * copia es superficial, asi que el objeto era el mismo y se escribia sobre el estado.
+   */
+  const updatePax = (idx: number, updates: Record<string, any>) => {
+    const next = pasajeros.map((p, i) => (i === idx ? { ...p, ...updates } : p));
+    onChange({ passengers: next });
+  };
+
+  // Un tiquete de ida y vuelta tiene dos asientos por pasajero. Se deriva del modo de
+  // vuelo, que es el dato que el formulario ya captura.
+  const esIdaYVuelta = ticket.flightMode === 'round_trip';
+
   const airportOptions = airports.map((a) => ({
     value: a.abbreviation,
     label: `${a.abbreviation} - ${a.name} (${a.location})`,
   }));
 
   React.useEffect(() => {
-    const pax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
+    const pax = pasajeros;
     const isFirstPaxEmpty = pax.length === 1 && !pax[0].name && !pax[0].docNumber;
     
     if (pax.length === 0 || isFirstPaxEmpty) {
@@ -936,21 +985,11 @@ export function TicketForm({
                       <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">⚠️ Mínimo 3 caracteres.</p>
                     )}
                   </FormField>
-                  <FormField label="Asiento">
-                    <Input
-                      maxLength={5}
-                      value={leg.seat}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
-                        updateLeg(lIdx, { seat: cleaned });
-                      }}
-                      placeholder="12A"
-                      className="text-xs"
-                    />
-                    {leg.seat?.length > 0 && leg.seat.length < 2 && (
-                      <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">⚠️ Mínimo 2 caracteres.</p>
-                    )}
-                  </FormField>
+                  {/* El asiento del tramo se retiro: este tramo ES la ida, y el asiento
+                      de la ida es de cada pasajero, abajo en Pasajeros. Un solo valor por
+                      tramo no distingue de quien es, y en produccion dejo dos pasajeros
+                      en el asiento 11A (venta 19). Las escalas si lo conservan, porque no
+                      tienen columna propia por pasajero. */}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField label="Aerolínea">
@@ -1046,7 +1085,7 @@ export function TicketForm({
               </h5>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <FormField label="Origen Vuelta">
+                  <FormField label="Origen Regreso">
                     <Combobox
                       value={ticket.returnLeg?.origin || ""}
                       onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, origin: val } })}
@@ -1055,7 +1094,7 @@ export function TicketForm({
                       className="text-xs"
                     />
                   </FormField>
-                  <FormField label="Destino Vuelta">
+                  <FormField label="Destino Regreso">
                     <Combobox
                       value={ticket.returnLeg?.destination || ""}
                       onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, destination: val } })}
@@ -1064,7 +1103,7 @@ export function TicketForm({
                       className="text-xs"
                     />
                   </FormField>
-                  <FormField label="N° Vuelo Vuelta">
+                  <FormField label="N° Vuelo Regreso">
                     <Input
                       required
                       maxLength={6}
@@ -1080,24 +1119,12 @@ export function TicketForm({
                       <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">⚠️ Mínimo 3 caracteres.</p>
                     ) : null}
                   </FormField>
-                  <FormField label="Asiento Vuelta">
-                    <Input
-                      maxLength={5}
-                      value={ticket.returnLeg?.seat || ""}
-                      onChange={(e) => {
-                        const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 5);
-                        onChange({ returnLeg: { ...ticket.returnLeg!, seat: cleaned } });
-                      }}
-                      placeholder="14C"
-                      className="text-xs"
-                    />
-                    {ticket.returnLeg?.seat && ticket.returnLeg.seat.length < 2 ? (
-                      <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">⚠️ Mínimo 2 caracteres.</p>
-                    ) : null}
-                  </FormField>
+                  {/* Idem: el asiento de regreso es de cada pasajero. Antes solo existia
+                      aca, asi que en las ventas 7 y 16 el asiento de regreso quedo
+                      guardado en el tramo y el pasajero no lo tenia. */}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField label="Aerolínea Vuelta">
+                  <FormField label="Aerolínea Regreso">
                     <Combobox
                       value={ticket.returnLeg?.airline || ticket.airline || ""}
                       onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, airline: val } })}
@@ -1105,7 +1132,7 @@ export function TicketForm({
                       placeholder="Ej: Avianca"
                     />
                   </FormField>
-                  <FormField label="Plan de Equipaje Vuelta">
+                  <FormField label="Plan de Equipaje Regreso">
                     <Combobox
                       value={ticket.returnLeg?.baggagePlan || ticket.baggagePlan || ""}
                       onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, baggagePlan: val } })}
@@ -1120,7 +1147,7 @@ export function TicketForm({
                   </FormField>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormField label="Salida Vuelta">
+                  <FormField label="Salida Regreso">
                     <DateTimePicker
                       value={ticket.returnLeg?.date || ""}
                       onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, date: val } })}
@@ -1129,7 +1156,7 @@ export function TicketForm({
                       fieldName="Salida de vuelta"
                     />
                   </FormField>
-                  <FormField label="Llegada Vuelta">
+                  <FormField label="Llegada Regreso">
                     <DateTimePicker
                       value={ticket.returnLeg?.arrivalDate || ""}
                       onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, arrivalDate: val } })}
@@ -1163,7 +1190,7 @@ export function TicketForm({
             variant="outline"
             size="sm"
             onClick={() => {
-              const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
+              const currentPax = pasajeros;
               onChange({ passengers: [...currentPax, { name: '', docType: '', docNumber: '', birthDate: '', esTitular: false, asiento: '', nroReserva: '', nroTiquete: '' }] });
             }}
           >
@@ -1174,34 +1201,19 @@ export function TicketForm({
 
         <div className="space-y-4">
           {(() => {
-            let rawPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
-            if (rawPax.length === 0) {
-              rawPax = [{
-                name: mainClient?.name || mainClient ? `${mainClient.firstName} ${mainClient.lastName || ''}`.trim() : '',
-                docType: mainClient?.docType || '',
-                docNumber: mainClient?.docNumber || '',
-                birthDate: mainClient?.birthDate ? mainClient.birthDate.split('T')[0] : '',
-                esTitular: true,
-                asiento: '',
-                nroReserva: '',
-                nroTiquete: ''
-              }];
-            }
-            // If no one is titular, make the first one titular
-            if (rawPax.length > 0 && !rawPax.some((p: any) => p.esTitular)) {
-              rawPax[0].esTitular = true;
-            }
-
-            return rawPax.map((pax, idx) => {
+            return pasajeros.map((pax, idx) => {
             const isNew = !pax.name && !pax.docNumber;
+            // Si datos heredados no traen titular, se resalta el primero. Derivado, no
+            // escribe estado: antes esto se hacia con `rawPax[0].esTitular = true`.
+            const esTitular = pax.esTitular || (!conTitular && idx === idxDelTitular);
 
             return (
               <div key={idx} className="p-4 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 relative group">
-                {!pax.esTitular && (
+                {!esTitular && (
                   <button
                     type="button"
                     onClick={() => {
-                      const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
+                      const currentPax = pasajeros;
                       const next = [...currentPax];
                       next.splice(idx, 1);
                       onChange({ passengers: next });
@@ -1221,7 +1233,7 @@ export function TicketForm({
                         if (!val) return;
                         const client = clients.find(c => String(c.id) === val);
                         if (client) {
-                          const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
+                          const currentPax = pasajeros;
                           const next = [...currentPax];
                           next[idx] = {
                             ...next[idx],
@@ -1244,18 +1256,14 @@ export function TicketForm({
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-gray-700 dark:text-slate-300">{idx + 1}. {pax.name || 'Sin Nombre'}</span>
-                        {pax.esTitular && <span className="text-[9px] bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Titular</span>}
+                        {esTitular && <span className="text-[9px] bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">Titular</span>}
                       </div>
                       <label className="flex items-center gap-1 cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700 p-1 rounded transition-colors">
                         <input 
                           type="radio" 
-                          name={`titular-${idx}`} 
-                          checked={pax.esTitular} 
-                          onChange={() => {
-                            const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
-                            const next = [...currentPax].map((p, i) => ({ ...p, esTitular: i === idx }));
-                            onChange({ passengers: next });
-                          }} 
+                          name={titularGroup} 
+                          checked={esTitular} 
+                          onChange={() => onChange({ passengers: setTitular(pasajeros, idx) })} 
                           className="w-3 h-3 text-blue-600 focus:ring-blue-500"
                         />
                         <span className="text-[10px] text-gray-600 dark:text-slate-400 font-bold uppercase">Es Titular</span>
@@ -1269,55 +1277,39 @@ export function TicketForm({
                       <FormField label="F. Nacimiento">
                         <Input type="date" value={pax.birthDate || ''} disabled className="bg-gray-50 dark:bg-slate-900/50 text-xs" />
                       </FormField>
-                      { !pax.esTitular && (
-                        <FormField label="Asiento (Opcional)">
-                          <Input 
-                            value={pax.asiento || ''} 
-                            onChange={e => {
-                            const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
-                            const next = [...currentPax];
-                            next[idx].asiento = e.target.value;
-                            onChange({ passengers: next });
-                            }} 
-                            placeholder="Ej. 14A" className="text-xs" />
-                        </FormField>
-                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      { !pax.esTitular && (
-                        <FormField label="Cód. Reserva (Opcional)">
-                          <Input 
-                            maxLength={6}
-                            value={pax.nroReserva || ''} 
-                            onChange={e => {
-                              const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6);
-                              const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
-                              const next = [...currentPax];
-                              next[idx].nroReserva = cleaned;
-                              onChange({ passengers: next });
-                            }} 
-                            placeholder="6 caracteres" className="text-xs" />
-                          {pax.nroReserva && pax.nroReserva.length > 0 && pax.nroReserva.length < 6 && (
-                            <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">
-                              ⚠️ Faltan {6 - pax.nroReserva.length} caracteres.
-                            </p>
-                          )}
-                        </FormField>
-                      )}
-                      <FormField label={pax.esTitular ? <span>N° Tiquete <span className="text-red-500">*</span></span> : "N° Tiquete (Opcional)"}>
-                        <Input 
-                          required={pax.esTitular}
+                    {/* Los codigos identifican la reserva de este pasajero. Antes el
+                        codigo de reserva se ocultaba al titular (`!pax.esTitular &&`), asi
+                        que el suyo se tomaba del codigo del tiquete y quedaba igual para
+                        todos.
+                        En tiqueteria el codigo se llama "Cod. Reserva": lo entrega la
+                        aerolinea. "Booking" es la palabra de hoteleria y paquetes, donde
+                        lo entrega el hotel, y no se traslada aca. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                      <FormField label="Cód. Reserva (Opcional)">
+                        <Input
+                          maxLength={6}
+                          value={pax.nroReserva || ''}
+                          onChange={e => updatePax(idx, {
+                            nroReserva: e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6),
+                          })}
+                          placeholder="6 caracteres" className="text-xs" />
+                        {pax.nroReserva && pax.nroReserva.length > 0 && pax.nroReserva.length < 6 && (
+                          <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">
+                            ⚠️ Faltan {6 - pax.nroReserva.length} caracteres.
+                          </p>
+                        )}
+                      </FormField>
+                      <FormField label={esTitular ? <span>N° Tiquete <span className="text-red-500">*</span></span> : "N° Tiquete (Opcional)"}>
+                        <Input
+                          required={esTitular}
                           minLength={8}
                           maxLength={16}
-                          value={pax.nroTiquete || ''} 
-                          onChange={e => {
-                            const cleaned = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-                            const currentPax = ticket.passengers || ((ticket as any).passengerInfo ? [{ ...(ticket as any).passengerInfo, esTitular: true, asiento: '', nroReserva: '', nroTiquete: '' }] : []);
-                            const next = [...currentPax];
-                            next[idx].nroTiquete = cleaned;
-                            onChange({ passengers: next });
-                          }} 
+                          value={pax.nroTiquete || ''}
+                          onChange={e => updatePax(idx, {
+                            nroTiquete: e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase(),
+                          })}
                           placeholder="Tiquete" className="text-xs" />
                         {pax.nroTiquete && pax.nroTiquete.length > 0 && pax.nroTiquete.length < 8 && (
                           <p className="text-[10px] text-amber-500 mt-1 font-medium animate-fade-in">
@@ -1325,6 +1317,28 @@ export function TicketForm({
                           </p>
                         )}
                       </FormField>
+                    </div>
+
+                    {/* El asiento es de cada persona y de cada tramo. Estaba oculto para el
+                        titular, y el asiento de regreso no existia: se acababa guardando
+                        en el tramo, donde es uno solo para todos los pasajeros. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <FormField label={esIdaYVuelta ? "Asiento Ida (Opcional)" : "Asiento (Opcional)"}>
+                        <Input
+                          value={pax.asiento || ''}
+                          onChange={e => updatePax(idx, { asiento: e.target.value.toUpperCase().slice(0, 6) })}
+                          maxLength={6}
+                          placeholder="Ej. 14A" className="text-xs" />
+                      </FormField>
+                      {esIdaYVuelta && (
+                        <FormField label="Asiento Regreso (Opcional)">
+                          <Input
+                            value={pax.asientoRegreso || ''}
+                            onChange={e => updatePax(idx, { asientoRegreso: e.target.value.toUpperCase().slice(0, 6) })}
+                            maxLength={6}
+                            placeholder="Ej. 6E" className="text-xs" />
+                        </FormField>
+                      )}
                     </div>
                   </>
                 )}

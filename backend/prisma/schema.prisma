@@ -23,6 +23,7 @@ model MetodosPago {
   id              Int                     @id @default(autoincrement())
   nombre          String                  @unique
   detalleVentas   DetalleVenta[]          @relation("metodo_pago_proveedor")
+  pagosProveedor  PagosProveedor[]        @relation("metodo_pago_pago_proveedor")
   liquidaciones   LiquidacionesComision[]
   pagosVenta      PagosVenta[]
   tarjetasAgencia TarjetasAgencia[]
@@ -93,6 +94,7 @@ model Proveedores {
   observaciones    String?            @map("observaciones")
   tipoDocumento    TiposDocumento?    @relation(fields: [tipoDocumentoId], references: [id])
   detalleVentas    DetalleVenta[]     @relation("proveedor_detalle")
+  pagosProveedor   PagosProveedor[]   @relation("proveedor_pago")
   paqueteProveedor PaqueteProveedor[]
 
   @@index([tipoDocumentoId])
@@ -286,6 +288,57 @@ model PagosVenta {
   @@map("pagos_venta")
 }
 
+/**
+ * Concepto de un pago a proveedor dentro de un paquete.
+ *
+ * `transporte` cubre lo aereo y lo terrestre: cual de los dos lo dice
+ * `prod_planes.tipo_transporte`, que ya distingue el resto del formulario. Guardar
+ * "aereo" y "terrestre" como conceptos distintos duplicaria ese dato y permitiria que se
+ * contradigan.
+ */
+enum ConceptoPago {
+  transporte
+  hotel
+  seguro
+  // El paquete comprado armado a un operador: un solo proveedor por todo. Se factura
+  // como IT/IP Paquetes, que es lo que corresponde.
+  paquete
+}
+
+/**
+ * Lo que se le paga a cada proveedor dentro de un mismo servicio, tipicamente un paquete.
+ *
+ * Un paquete se le compra a varios proveedores a la vez: los vuelos a uno, el hotel a
+ * otro, el seguro a un tercero, y a cada uno se le paga aparte y con su propio metodo.
+ *
+ * No se modela como `DetalleVenta` hijos porque el paquete no son tres servicios: es uno
+ * pagado a tres proveedores. Ademas cada transform de lectura aborta si falta su fila
+ * `Prod*`, asi que crear hijos sin producto romperia las lecturas, la ruta paginada, el
+ * voucher y las pestanas de detalle. Y sobre todo: el hotel, los vuelos y los pasajeros ya
+ * estan en el paquete, asi que un servicio hijo obligaria a escribirlos otra vez.
+ *
+ * `detalle_venta.costo_proveedor`, `ta` y `ta_cre` del paquete se mantienen iguales a la
+ * suma de estas filas, para que los totales de la venta, el agregado por paquete y la
+ * guarda de totales de Siigo sigan valiendo sin cambios.
+ */
+model PagosProveedor {
+  id                    String       @id @default(uuid())
+  detalleVentaId        String       @map("detalle_venta_id")
+  concepto              ConceptoPago
+  proveedorId           Int?         @map("proveedor_id")
+  costoProveedor        Float?       @default(0) @map("costo_proveedor")
+  ta                    Float?       @default(0)
+  taCre                 Float?       @default(0) @map("ta_cre")
+  metodoPagoProveedorId Int?         @map("metodo_pago_proveedor_id")
+  orden                 Int          @default(1)
+  detalleVenta          DetalleVenta @relation(fields: [detalleVentaId], references: [id])
+  proveedor             Proveedores? @relation("proveedor_pago", fields: [proveedorId], references: [id])
+  metodoPagoProveedor   MetodosPago? @relation("metodo_pago_pago_proveedor", fields: [metodoPagoProveedorId], references: [id])
+
+  @@index([detalleVentaId])
+  @@map("pagos_proveedor")
+}
+
 model DetalleVenta {
   id                    String             @id @default(uuid())
   ventaId               Int                @map("venta_id")
@@ -311,6 +364,7 @@ model DetalleVenta {
   proveedor             Proveedores?       @relation("proveedor_detalle", fields: [proveedorId], references: [id])
   venta                 Ventas             @relation(fields: [ventaId], references: [id])
   pasajerosDetalle      PasajerosDetalle[]
+  pagosProveedor        PagosProveedor[]
   prodAutos             ProdAutos?
   prodCheckins          ProdCheckins?
   prodEquipajes         ProdEquipajes?
@@ -562,10 +616,14 @@ model ProdPlanes {
   fechaLlegadaRegresoVuelo DateTime?       @map("fecha_llegada_regreso_vuelo")
   fechaLlegadaVuelo        DateTime?       @map("fecha_llegada_vuelo")
   nombreHotel              String?         @map("nombre_hotel")
+  // Numero de vuelo de cada tramo. Un paquete de ida y vuelta son dos vuelos distintos
+  // (AV9720 a la ida, AV9721 al regreso), y las fechas ya modelaban los dos tramos
+  // mientras el numero era uno solo para ambos. En un paquete terrestre son las placas.
   nroVuelo                 String?         @map("nro_vuelo")
-  // El PNR del vuelo del paquete: uno por reserva, no por integrante. En un paquete
-  // terrestre es el localizador del operador. Como `nroVuelo`, sirve a los dos tipos
-  // de transporte y la interfaz cambia solo la etiqueta.
+  nroVueloRegreso          String?         @map("nro_vuelo_regreso")
+  // El PNR es uno por reserva y cubre los dos tramos, a diferencia del numero de vuelo.
+  // El booking de cada integrante es otra cosa y vive en PasajerosDetalle.
+  // En un paquete terrestre es el localizador del operador.
   nroReservaVuelo          String?         @map("nro_reserva_vuelo")
   checkinStatusIda         CheckinStatus?  @default(pendiente) @map("checkin_status_ida")
   checkinStatusRegreso     CheckinStatus?  @default(pendiente) @map("checkin_status_regreso")

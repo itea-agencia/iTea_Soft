@@ -253,9 +253,16 @@ export interface HotelGuestInfo extends GuestInfo {
   nroReserva?: string;
 }
 
-/** Un integrante de paquete es un huésped con booking que además lleva su tiquete aéreo. */
+/**
+ * Un integrante de paquete es un huésped con booking que además lleva su tiquete y su
+ * asiento en cada tramo. El asiento vive en la persona, no en el producto: dos
+ * integrantes del mismo paquete van en asientos distintos, y cada uno puede ir en otro
+ * al regreso. Es el mismo modelo que ya usa viajes terrestres.
+ */
 export interface PlanGuestInfo extends HotelGuestInfo {
   nroTiquete?: string;
+  asiento?: string;
+  asientoRegreso?: string;
 }
 
 export interface HotelData {
@@ -275,8 +282,62 @@ export interface HotelData {
   guests: HotelGuestInfo[];
 }
 
+/**
+ * Una linea del desglose de proveedores de un paquete: un servicio, su proveedor y lo
+ * que se le paga. A cada proveedor se le paga aparte y con su propio metodo, y de cada
+ * uno sale una linea IT distinta en la factura de Siigo.
+ */
+export interface SupplierLine {
+  detalleVentaId: string;
+  category: string;
+  serviceName: string | null;
+  supplier: string | null;
+  paymentMethod: string | null;
+  supplierCost: number;
+  ta: number;
+  taCre: number;
+}
+
+/**
+ * Total pagado a proveedores de un paquete: su propia fila mas los servicios vinculados.
+ *
+ * Lo calcula el servidor a partir de las filas y NO se guarda en ninguna columna: un
+ * agregado almacenado se desincroniza de sus partes. Es de solo lectura para el cliente.
+ */
+export interface PackageTotals {
+  supplierCost: number;
+  ta: number;
+  taCre: number;
+  total: number;
+  bySupplier: SupplierLine[];
+}
+
+/** Concepto de un pago a proveedor dentro de un paquete. */
+export type ConceptoPago = 'transporte' | 'hotel' | 'seguro' | 'paquete';
+
+/**
+ * Lo que se le paga a un proveedor dentro de un paquete.
+ *
+ * Un paquete se le compra a varios a la vez: los vuelos a uno, el hotel a otro, el seguro
+ * a un tercero, y a cada uno se le paga aparte y con su propio metodo. El hotel, los
+ * vuelos y los pasajeros ya viven en el paquete, asi que de cada proveedor solo falta la
+ * plata: no hay que llenar el formulario del servicio otra vez.
+ */
+export interface SupplierPayment {
+  concept: ConceptoPago;
+  supplier?: string;
+  paymentMethod?: string;
+  supplierCost?: number;
+  ta?: number;
+  taCre?: number;
+}
+
 export interface PlanData {
+  /** Los pagos a proveedores del paquete. Sus importes suman el costo del paquete. */
+  supplierPayments?: SupplierPayment[];
   detalleVentaId?: string;
+  /** Derivado por el servidor. Solo viene en las lecturas; no se envia al guardar. */
+  totals?: PackageTotals;
   parentDetalleId?: string;
   linkedToPlanIndex?: number | null;
   planName: string;
@@ -284,8 +345,11 @@ export interface PlanData {
   supplierCost: number;
   ta: number;
   taCre?: number;
+  /** Número de vuelo de la ida. En un paquete terrestre, la placa. */
   flightNumber: string;
-  /** PNR del vuelo del paquete, uno por reserva. En un paquete terrestre, el localizador. */
+  /** Número de vuelo del regreso: un paquete de ida y vuelta son dos vuelos distintos. */
+  flightReturnNumber?: string;
+  /** PNR de la reserva, uno para los dos tramos. En un paquete terrestre, el localizador. */
   flightReservationNumber?: string;
   packageId?: number | string;
   packageName?: string;
@@ -346,6 +410,12 @@ export interface TicketData {
   returnStops?: FlightLeg[];
   legs: FlightLeg[];
   returnLeg?: FlightLeg;
+  // El asiento vive en el pasajero, no en el tramo: dos pasajeros del mismo tiquete van
+  // en asientos distintos, y cada uno puede ir en otro al regreso. `TramosVuelo.asiento`
+  // guardaba uno solo por tramo, compartido por todos, y en produccion dejo dos
+  // pasajeros en el asiento 11A (venta 19) y el asiento de regreso invisible para el
+  // pasajero (ventas 7 y 16). Sigue existiendo solo para las escalas, que no tienen
+  // columna propia por pasajero.
   passengers: {
     name: string;
     docType: string;
@@ -353,6 +423,7 @@ export interface TicketData {
     birthDate: string;
     esTitular?: boolean;
     asiento?: string;
+    asientoRegreso?: string;
     nroReserva?: string;
     nroTiquete?: string;
   }[];

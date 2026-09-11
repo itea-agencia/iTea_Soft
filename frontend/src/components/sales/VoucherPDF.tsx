@@ -110,6 +110,10 @@ const COLUMNAS_INTEGRANTES: PaxColumn[] = [
   { head: 'N° documento', get: (g) => g.docNumber },
   { head: 'Booking', get: (g) => g.nroReserva },
   { head: 'N° tiquete', get: (g) => g.nroTiquete },
+  // El asiento es de cada persona y de cada tramo. Si nadie tiene asiento de regreso la
+  // columna no se dibuja, asi que un paquete de solo ida no muestra una columna vacia.
+  { head: 'Asiento ida', get: (g) => g.asiento },
+  { head: 'Asiento regreso', get: (g) => g.asientoRegreso },
 ];
 
 /** Columnas de huespedes de un hotel: el booking lo entrega el hotel por persona. */
@@ -124,9 +128,17 @@ const COLUMNAS_HUESPEDES: PaxColumn[] = COLUMNAS_INTEGRANTES.filter(c => c.head 
  * redondo son dos filas con los mismos dos datos, asi que la tabla nombra el tramo una
  * vez y las etiquetas dejan de repetirlo. La fila de regreso solo aparece si hay regreso.
  */
-function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; llegada?: string }> }) {
-  const conDatos = legs.filter((l) => l.salida || l.llegada);
+function TripLegs({ legs, codigoLabel = 'Vuelo' }: {
+  legs: Array<{ nombre: string; codigo?: string; salida?: string; llegada?: string }>;
+  codigoLabel?: string;
+}) {
+  const conDatos = legs.filter((l) => l.codigo || l.salida || l.llegada);
   if (conDatos.length === 0) return null;
+
+  // Un paquete de ida y vuelta son dos vuelos distintos, asi que el numero va en la fila
+  // de su tramo y no arriba, donde antes era uno solo para ambos. Si ningun tramo lo
+  // trae, la columna no se dibuja.
+  const conCodigo = conDatos.some((l) => l.codigo);
 
   // Un valor sin hora sale de formatDateTime como "12:00 a. m.", que es una hora de
   // salida que nadie escribio. En un voucher impreso eso desinforma, asi que si no hay
@@ -141,6 +153,7 @@ function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; lle
       <thead>
         <tr>
           <th className="text-left">Tramo</th>
+          {conCodigo && <th className="text-center">{codigoLabel}</th>}
           <th className="text-center">Salida</th>
           <th className="text-center">Llegada</th>
         </tr>
@@ -149,6 +162,7 @@ function TripLegs({ legs }: { legs: Array<{ nombre: string; salida?: string; lle
         {conDatos.map((l) => (
           <tr key={l.nombre}>
             <td className="text-left"><div className="v-f-main">{l.nombre}</div></td>
+            {conCodigo && <td className="text-center"><div className="v-f-main">{l.codigo || '—'}</div></td>}
             <td className="text-center"><div className="v-f-main">{fechaHora(l.salida)}</div></td>
             <td className="text-center"><div className="v-f-main">{fechaHora(l.llegada)}</div></td>
           </tr>
@@ -273,10 +287,17 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
                   )}
                 </span>
               </div>
-              <div style={{ minWidth: '80px' }}>
-                <span className="v-fd-label">Asiento:</span>
-                <span className="v-fd-val">{leg.seat || ticket.seatNumber || '—'}</span>
-              </div>
+              {/* `ticket.seatNumber` era el asiento del PRIMER pasajero presentado como
+                  el del tiquete entero, asi que en un tiquete de varios se imprimia el
+                  asiento ajeno. Los asientos van en la tabla de pasajeros, uno por
+                  persona y por tramo. Aca solo queda el del tramo cuando existe, que es
+                  el caso de las escalas. */}
+              {leg.seat && (
+                <div style={{ minWidth: '80px' }}>
+                  <span className="v-fd-label">Asiento:</span>
+                  <span className="v-fd-val">{leg.seat}</span>
+                </div>
+              )}
               {(leg.ticketNumber || ticket.ticketNumber || (ticket.passengers && ticket.passengers[0]?.nroTiquete)) && (
                 <div style={{ minWidth: '100px' }}>
                   <span className="v-fd-label">N° Tiquete:</span>
@@ -301,7 +322,8 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
           { head: 'N° documento', get: (p) => p.docNumber },
           { head: 'N° reserva', get: (p) => p.nroReserva },
           { head: 'N° tiquete', get: (p) => p.nroTiquete },
-          { head: 'Asiento', get: (p) => p.asiento },
+          { head: ticket.flightMode === 'round_trip' ? 'Asiento ida' : 'Asiento', get: (p) => p.asiento },
+          { head: 'Asiento regreso', get: (p) => p.asientoRegreso },
         ]}
       />
     </div>
@@ -474,10 +496,9 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           <ProductCard emoji="📦" title="Paquetes">
             {plans.map((plan, i) => {
               const esTerrestre = plan.transportType === 'Terrestre';
-              const propio = plan.packageType !== 'supplier';
               const hayTransporte = Boolean(
                 (plan as any).airlineName || plan.airline || plan.flightNumber ||
-                plan.flightDepartureDate || plan.flightReturnDate,
+                plan.flightReturnNumber || plan.flightDepartureDate || plan.flightReturnDate,
               );
               return (
               <React.Fragment key={`plan-${i}`}>
@@ -485,15 +506,22 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
                 {/* Identidad del paquete: lo mismo para paquete propio y de proveedor. */}
                 <div className="v-data-grid">
+                  {/* Sin "Proveedor": el voucher lo ve el cliente, y su proveedor no es
+                      el mayorista de la agencia sino el hotel y la aerolinea, que salen
+                      abajo en sus bloques. Ademas un paquete ahora se le paga a varios y
+                      la celda quedaba vacia. Los costos por proveedor son informacion
+                      interna y viven en el ver detalle. */}
                   <DataCell label="Plan" value={plan.planName || plan.packageName} highlight />
-                  <DataCell label="Proveedor" value={plan.supplier} />
                   <DataCell label="Viajeros" value={describirViajeros(plan.adultsCount, plan.childrenCount)} />
                   <DataCell label="Inicio del viaje" value={plan.startDate ? formatDate(plan.startDate) : null} />
                   <DataCell label="Fin del viaje" value={plan.endDate ? formatDate(plan.endDate) : null} />
                 </div>
 
-                {/* Un paquete de proveedor no detalla hotel ni transporte: los presta el operador. */}
-                {propio && (plan.hotelName || plan.hotelReference) && (
+                {/* El bloque se dibuja si hay dato, no segun el tipo de paquete. Antes
+                    estaba condicionado a que el paquete fuera propio, asi que un paquete
+                    comprado a un operador escondia el hotel y su referencia aunque
+                    estuvieran cargados, y el cliente necesita saber donde se aloja. */}
+                {(plan.hotelName || plan.hotelReference) && (
                   <>
                     <SubHead>Hotel</SubHead>
                     <div className="v-data-grid cols-2">
@@ -503,18 +531,16 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   </>
                 )}
 
-                {propio && hayTransporte && (
+                {hayTransporte && (
                   <>
                     <SubHead>{esTerrestre ? 'Transporte terrestre' : 'Transporte aéreo'}</SubHead>
-                    <div className="v-data-grid">
+                    {/* Arriba va solo lo que cubre los dos tramos: la aerolinea y el
+                        PNR. El numero de vuelo bajo a la fila de su tramo. */}
+                    <div className="v-data-grid cols-2">
                       <DataCell
                         label={esTerrestre ? 'Empresa de transporte' : 'Aerolínea'}
                         value={(plan as any).airlineName || plan.airline}
                         highlight
-                      />
-                      <DataCell
-                        label={esTerrestre ? 'Placa del vehículo' : 'N° de vuelo'}
-                        value={plan.flightNumber}
                       />
                       <DataCell
                         label={esTerrestre ? 'Localizador' : 'N° de reserva'}
@@ -523,9 +549,10 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                       />
                     </div>
                     <TripLegs
+                      codigoLabel={esTerrestre ? 'Placa' : 'Vuelo'}
                       legs={[
-                        { nombre: 'Ida', salida: plan.flightDepartureDate, llegada: plan.flightDepartureArrivalDate },
-                        { nombre: 'Regreso', salida: plan.flightReturnDate, llegada: plan.flightReturnArrivalDate },
+                        { nombre: 'Ida', codigo: plan.flightNumber, salida: plan.flightDepartureDate, llegada: plan.flightDepartureArrivalDate },
+                        { nombre: 'Regreso', codigo: plan.flightReturnNumber, salida: plan.flightReturnDate, llegada: plan.flightReturnArrivalDate },
                       ]}
                     />
                   </>
