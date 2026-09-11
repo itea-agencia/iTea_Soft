@@ -248,7 +248,7 @@ Pendiente: correr el backfill en producción antes de desplegar el schema.
 Cada paso es verificable por separado.
 
 1. **Backfill (antes de tocar el schema).**
-   `backend/scripts/backfill_asientos_viajes_terrestres.js`: para cada
+   `backend/db-manual/backfill_asientos_viajes_terrestres.js`: para cada
    `prod_viajes_terrestres`, copiar `numero_asiento` a `pasajeros_detalle.asiento` donde
    esté vacío, y `numero_asiento_regreso` a `asiento_regreso`. Reportar filas afectadas.
    *Verificación:* correrlo en local, comprobar que las 5 filas quedan con asiento y que

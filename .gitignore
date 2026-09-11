@@ -56,6 +56,13 @@ backend/uploads/*
 *.tar
 *.bak
 
+# Excepcion angosta: los scripts de migracion manual SI se versionan. Son operaciones
+# que se corren a mano contra produccion y tienen que existir en cualquier maquina, no
+# solo en la que los escribio. La regla `*.sql` de arriba esta para los volcados de
+# base, que traen datos reales de clientes y no deben entrar nunca; por eso la
+# excepcion nombra una sola carpeta y no un patron amplio.
+!backend/db-manual/*.sql
+
 # ------------------------------------------
 # Archivos Temporales, Scripts y Desarrollo Local
 # ------------------------------------------
