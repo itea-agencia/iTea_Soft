@@ -74,8 +74,15 @@ exports.list = async (req, res, next) => {
           cp.nombres || ' ' || cp.apellidos as "clientName",
           cp.email as "clientEmail",
           up.nombres || ' ' || up.apellidos as "asesorName",
-          comp.nombres || ' ' || comp.apellidos as "commissionAgentName"
-          
+          comp.nombres || ' ' || comp.apellidos as "commissionAgentName",
+          -- Estado de la factura en Siigo, para distinguir en el listado las ventas ya
+          -- facturadas. venta_id es unico en facturas_siigo, asi que el join no multiplica
+          -- filas. La estampilla sale del JSON de la respuesta: Draft significa creada en
+          -- Siigo pero sin timbrar ante la DIAN, que es el estado normal hoy.
+          f.estado::text as "siigoEstado",
+          f.numero as "siigoNumero",
+          f.respuesta->'stamp'->>'status' as "siigoEstampilla"
+
         FROM ventas v
         JOIN clientes c ON v.cliente_id = c.id
         JOIN personas cp ON c.persona_id = cp.id
@@ -83,6 +90,7 @@ exports.list = async (req, res, next) => {
         JOIN personas up ON u.persona_id = up.id
         LEFT JOIN comisionistas com ON v.comisionista_id = com.id
         LEFT JOIN personas comp ON com.persona_id = comp.id
+        LEFT JOIN facturas_siigo f ON f.venta_id = v.id
         WHERE 1=1 ${searchCondition} ${statusCondition} ${asesorCondition} ${clientCondition} ${dateCondition}
         ORDER BY ${sqlOrderBy} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}
         LIMIT ${perPage} OFFSET ${skip}
@@ -106,6 +114,11 @@ exports.list = async (req, res, next) => {
         creditDueDate: v.fechaVenceCredito,
         creditPaidAmount: v.montoPagadoCredito,
         isReviewed: v.isReviewed,
+        // Misma forma que en la lectura de una venta, con menos campos: al listado le
+        // alcanza con el estado, el numero y si quedo en borrador.
+        siigoInvoice: v.siigoEstado
+          ? { estado: v.siigoEstado, numero: v.siigoNumero, estampilla: v.siigoEstampilla }
+          : null,
         commissionAgentId: v.comisionistaId,
         commissionAgentName: v.commissionAgentName,
         commissionAgentAmount: v.montoComisionBruto,
