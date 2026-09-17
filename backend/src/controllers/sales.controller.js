@@ -896,7 +896,17 @@ exports.getById = async (req, res, next) => {
           pagosVenta: { include: { metodoPago: true } },
           // El estado de la factura: sin esto la interfaz no puede saber si la venta ya
           // se facturo y el boton se queda en "Generar factura" para siempre.
-          facturaSiigo: true
+          //
+          // Se seleccionan campos en vez de traer la fila entera: `payload_enviado` es el
+          // JSON completo que se le mando a Siigo y no lo necesita nadie aca, pero viajaria
+          // en cada apertura del detalle. De `respuesta` solo interesa el estado ante la
+          // DIAN, y Prisma no sabe leer dentro de un Json, asi que esa si va completa.
+          facturaSiigo: {
+            select: {
+              estado: true, numero: true, publicUrl: true, emitidaAt: true,
+              intentos: true, ultimoError: true, respuesta: true
+            }
+          }
         }
       }),
       prisma.detalleVenta.findMany({
@@ -1037,6 +1047,12 @@ exports.getById = async (req, res, next) => {
             emitidaAt: venta.facturaSiigo.emitidaAt,
             intentos: venta.facturaSiigo.intentos,
             ultimoError: venta.facturaSiigo.ultimoError,
+            // Estado ante la DIAN, que es distinto de existir en Siigo. La factura se
+            // crea sin `stamp.send` a proposito, asi que queda en Draft: existe y se
+            // puede corregir o eliminar desde Siigo, mientras que una timbrada solo se
+            // anula con nota credito. Sin este dato la interfaz no puede distinguir un
+            // borrador de una factura ya timbrada.
+            estampilla: venta.facturaSiigo.respuesta?.stamp?.status || null,
           }
         : null,
       commissionAgentId: venta.comisionistaId,

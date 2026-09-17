@@ -215,11 +215,15 @@ export default function SaleDetailModal({
           estado: 'emitida',
           numero: invoiceInfo.numero,
           publicUrl: invoiceInfo.publicUrl,
+          estampilla: invoiceInfo.estampilla,
         }
       : sale.siigoInvoice ?? null;
 
   // `emitida` es el unico estado en el que la factura existe en Siigo.
   const yaFacturada = facturaSiigo?.estado === 'emitida';
+  // Existe en Siigo pero sin timbrar ante la DIAN: todavia se puede corregir o eliminar
+  // desde Siigo, y queda trabajo pendiente. Es el estado normal hoy.
+  const enBorrador = yaFacturada && facturaSiigo?.estampilla === 'Draft';
   const facturaFallida = facturaSiigo?.estado === 'fallida';
   // Hubo intentos que no crearon nada: dry-run, o una llamada que murio a mitad.
   const intentoSinFactura =
@@ -322,6 +326,17 @@ export default function SaleDetailModal({
                   {facturaSiigo.numero}
                 </span>
               )}
+              {/* El borrador no es un detalle menor: la factura existe en Siigo pero no
+                  se timbro, asi que todavia se puede corregir y queda trabajo por hacer.
+                  Por eso se marca al lado del numero y no solo en el aviso de abajo. */}
+              {enBorrador && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-200"
+                  title="Creada en Siigo, sin timbrar ante la DIAN"
+                >
+                  Borrador
+                </span>
+              )}
               {facturaSiigo?.publicUrl && (
                 <a
                   href={facturaSiigo.publicUrl}
@@ -391,6 +406,18 @@ export default function SaleDetailModal({
           {/* Lo que el servidor sabe de la factura, al abrir la venta.
               Antes esto no se veia: una venta cuya factura habia fallado se abria en
               silencio y el error solo aparecia si alguien volvia a intentar. */}
+          {sinMensajeReciente && enBorrador && (
+            <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <strong>
+                  Factura {facturaSiigo?.numero || ''} creada en Siigo, en borrador.
+                </strong>{' '}
+                Existe y todavía se puede corregir o eliminar desde Siigo. Falta timbrarla
+                ante la DIAN, que se hace a mano.
+              </div>
+            </div>
+          )}
           {sinMensajeReciente && facturaFallida && (
             <div className="flex items-start gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3">
               <AlertCircle size={18} className="mt-0.5 shrink-0" />
@@ -403,11 +430,13 @@ export default function SaleDetailModal({
           {sinMensajeReciente && intentoSinFactura && (
             <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
               <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              {/* `pendiente` no siempre es modo de prueba: tambien queda asi un intento
+                  que se registro y no llego a crear la factura. El aviso no da por
+                  sentado cual de los dos fue. */}
               <div>
                 <strong>Sin factura en Siigo todavía.</strong> Esta venta tiene{' '}
                 {facturaSiigo?.intentos === 1 ? 'un intento' : `${facturaSiigo?.intentos} intentos`}{' '}
-                registrados, pero ninguno creó la factura: con el modo de prueba activo el
-                envío se arma y se guarda sin mandarse.
+                registrados que no llegaron a crear la factura. Volvé a generarla.
               </div>
             </div>
           )}

@@ -739,6 +739,13 @@ export interface SiigoInvoice {
   emitidaAt?: string | null;
   intentos?: number;
   ultimoError?: string | null;
+  /**
+   * Estado ante la DIAN, distinto de existir en Siigo. La factura se crea sin
+   * `stamp.send` a propósito, así que queda en `Draft`: existe y todavía se puede
+   * corregir o eliminar desde Siigo, mientras que una timbrada solo se anula con nota
+   * crédito. El timbrado es manual.
+   */
+  estampilla?: string | null;
 }
 
 export interface Sale {
