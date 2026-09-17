@@ -2663,27 +2663,38 @@ exports.registerPayment = async (req, res, next) => {
     const id = parseInt(req.params.id);
     const { amount, isTotal, method, reference, currentPaidAmount, saleTotal } = req.body;
 
-    // If client sends totals, we can skip the findUnique — faster path
-    let newPaidAmount, newStatus;
+    // Lo abonado se suma desde `pagos_venta`, no de lo que diga el cliente.
+    //
+    // Habia un atajo que aceptaba `currentPaidAmount` y `saleTotal` del request para
+    // ahorrarse una consulta. En un campo de dinero eso es confiar la aritmetica al
+    // navegador: si el cliente manda un valor viejo, o cero porque nunca cargo los pagos
+    // —el listado no los devuelve—, el monto abonado se reescribe mal. Se sigue aceptando
+    // en el body por compatibilidad, pero ya no decide nada.
+    const venta = await prisma.ventas.findUnique({
+      where: { id },
+      select: { montoTotal: true }
+    });
+    if (!venta) return error(res, 'Venta no encontrada', 404);
+
     const metodoPagoId = await resolvePaymentMethodId(prisma, method);
+    let newPaidAmount, newStatus, newPayment;
 
-    if (saleTotal !== undefined && currentPaidAmount !== undefined) {
-      newPaidAmount = isTotal ? saleTotal : (currentPaidAmount || 0) + amount;
-      newStatus = (isTotal || newPaidAmount >= saleTotal) ? 'pagado' : 'abonado';
-    } else {
-      // Fallback: fetch the venta
-      const venta = await prisma.ventas.findUnique({ where: { id }, select: { montoTotal: true, montoPagadoCredito: true } });
-      if (!venta) return error(res, 'Venta no encontrada', 404);
-      const currentPaid = venta.montoPagadoCredito || 0;
-      newPaidAmount = isTotal ? venta.montoTotal : currentPaid + amount;
-      newStatus = (isTotal || newPaidAmount >= venta.montoTotal) ? 'pagado' : 'abonado';
-    }
-
-    let newPayment;
     await prisma.$transaction(async (tx) => {
       newPayment = await tx.pagosVenta.create({
         data: { ventaId: id, monto: amount, metodoPagoId, referencia: reference || null }
       });
+
+      const pagos = await tx.pagosVenta.findMany({
+        where: { ventaId: id },
+        select: { monto: true }
+      });
+      const suma = pagos.reduce((t, p) => t + (Number(p.monto) || 0), 0);
+
+      // `isTotal` salda la venta de una: el importe queda en el total sin importar que
+      // sumen las filas. Hoy la interfaz siempre manda false, pero el endpoint lo soporta.
+      newPaidAmount = isTotal ? venta.montoTotal : suma;
+      newStatus = newPaidAmount >= venta.montoTotal ? 'pagado' : 'abonado';
+
       await tx.ventas.update({
         where: { id },
         data: { montoPagadoCredito: newPaidAmount, status: newStatus }
@@ -2723,34 +2734,35 @@ exports.deletePayment = async (req, res, next) => {
     let newPaidAmount = 0;
     let newStatus = 'credito';
 
-    // If client sends current state, compute without extra DB query inside transaction
-    if (Array.isArray(currentPayments) && saleTotal !== undefined) {
-      newPaidAmount = currentPayments
-        .filter(p => p.id !== paymentId)
-        .reduce((sum, p) => sum + p.amount, 0);
-      newStatus = newPaidAmount >= saleTotal ? 'pagado' : newPaidAmount > 0 ? 'abonado' : 'credito';
+    // Lo que queda abonado se suma desde `pagos_venta`, no de lo que diga el cliente.
+    //
+    // Habia un atajo que aceptaba `currentPayments` del request. Ese arreglo era peor que
+    // el de registrar: si el arreglo llegaba VACIO —que es lo que pasa cuando la venta
+    // viene del listado, que no devuelve los pagos— el monto abonado se recalculaba en
+    // cero y el estado caia a credito, borrando un abono que si existia en la base.
+    // Se sigue aceptando en el body por compatibilidad, pero ya no decide nada.
+    await prisma.$transaction(async (tx) => {
+      await tx.pagosVenta.delete({ where: { id: paymentId } });
 
-      await prisma.$transaction([
-        prisma.pagosVenta.delete({ where: { id: paymentId } }),
-        prisma.ventas.update({
-          where: { id: saleId },
-          data: { montoPagadoCredito: newPaidAmount, status: newStatus }
-        })
-      ]);
-    } else {
-      // Fallback path
-      await prisma.$transaction(async (tx) => {
-        await tx.pagosVenta.delete({ where: { id: paymentId } });
-        const remainingPayments = await tx.pagosVenta.findMany({ where: { ventaId: saleId }, select: { monto: true } });
-        newPaidAmount = remainingPayments.reduce((sum, p) => sum + p.monto, 0);
-        const venta = await tx.ventas.findUnique({ where: { id: saleId }, select: { montoTotal: true } });
-        newStatus = newPaidAmount >= venta.montoTotal ? 'pagado' : newPaidAmount > 0 ? 'abonado' : 'credito';
-        await tx.ventas.update({
-          where: { id: saleId },
-          data: { montoPagadoCredito: newPaidAmount, status: newStatus }
-        });
+      const restantes = await tx.pagosVenta.findMany({
+        where: { ventaId: saleId },
+        select: { monto: true }
       });
-    }
+      newPaidAmount = restantes.reduce((t, p) => t + (Number(p.monto) || 0), 0);
+
+      const venta = await tx.ventas.findUnique({
+        where: { id: saleId },
+        select: { montoTotal: true }
+      });
+      newStatus = newPaidAmount >= venta.montoTotal
+        ? 'pagado'
+        : newPaidAmount > 0 ? 'abonado' : 'credito';
+
+      await tx.ventas.update({
+        where: { id: saleId },
+        data: { montoPagadoCredito: newPaidAmount, status: newStatus }
+      });
+    });
 
     success(res, { message: 'Pago eliminado', creditPaidAmount: newPaidAmount, status: newStatus });
   } catch (err) {

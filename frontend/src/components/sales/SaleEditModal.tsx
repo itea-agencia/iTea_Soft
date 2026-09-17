@@ -11,6 +11,7 @@ import { Badge } from "../ui/Badge";
 import { Input, Select, Combobox, FormField, CurrencyInput } from "../ui/Form";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { Sale, Client, User, PaymentRecord } from "../../types";
+import * as api from "../../api";
 
 interface SaleEditModalProps {
   isOpen: boolean;
@@ -114,21 +115,53 @@ export default function SaleEditModal({
   const [localCreditDueDate, setLocalCreditDueDate] = useState<string>("");
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [paymentsError, setPaymentsError] = useState("");
 
   const saleId = editingSale?.id ?? null;
 
-  // Sync payments, status and credit limits from pre-loaded sale data
+  /**
+   * Carga los abonos de la venta.
+   *
+   * La venta llega desde la fila de la tabla, y el listado NO devuelve `payments`: solo
+   * la lectura completa los trae. Por eso el modal arrancaba vacio aunque la venta
+   * estuviera abonada, y como el boton de guardar exige al menos un pago, tampoco se
+   * podia hacer nada. Si la venta ya viene con los pagos —por ejemplo recien creada— se
+   * usan esos y no se vuelve a pedir.
+   */
   useEffect(() => {
-    if (editingSale) {
-      setPayments((editingSale.payments as PaymentRecord[]) || []);
-      setLocalStatus(editingSale.status);
-      setLocalCreditDueDate(
-        editingSale.creditDueDate
-          ? new Date(editingSale.creditDueDate).toISOString().split("T")[0]
-          : ""
-      );
-      setLocalErrors({});
+    if (!editingSale) return;
+
+    setLocalStatus(editingSale.status);
+    setLocalCreditDueDate(
+      editingSale.creditDueDate
+        ? new Date(editingSale.creditDueDate).toISOString().split("T")[0]
+        : ""
+    );
+    setLocalErrors({});
+
+    if (editingSale.payments) {
+      setPayments(editingSale.payments as PaymentRecord[]);
+      return;
     }
+
+    // Se limpia antes de pedir para no mostrar los abonos de la venta anterior, y se
+    // descarta la respuesta si mientras tanto se abrio otra.
+    setPayments([]);
+    let vigente = true;
+    setLoadingPayments(true);
+    api.getSale(editingSale.id)
+      .then(completa => {
+        if (vigente) setPayments((completa.payments as PaymentRecord[]) || []);
+      })
+      .catch(() => {
+        if (vigente) setPaymentsError("No se pudieron cargar los abonos de esta venta.");
+      })
+      .finally(() => {
+        if (vigente) setLoadingPayments(false);
+      });
+
+    return () => { vigente = false; };
   }, [editingSale]);
 
   const totalSaleAmount = editingSale?.total || 0;
@@ -212,7 +245,9 @@ export default function SaleEditModal({
   };
 
   const handleUpdate = async () => {
-    if (payments.length === 0) return; // Do not allow update with 0 payments
+    // Sin abonos no hay nada que guardar. Se corta tambien mientras se estan cargando:
+    // guardar en ese momento tomaria la lista vacia por buena.
+    if (loadingPayments || payments.length === 0) return;
     setIsSaving(true);
     try {
       if (onUpdateSale) {
@@ -249,7 +284,7 @@ export default function SaleEditModal({
           <Button 
             onClick={handleUpdate} 
             className="px-8 font-medium bg-[#0b396b] hover:bg-[#072445] disabled:bg-slate-400 disabled:hover:bg-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSaving || payments.length === 0}
+            disabled={isSaving || loadingPayments || payments.length === 0}
           >
             {isSaving ? "Actualizando..." : "Actualizar"}
           </Button>
@@ -469,7 +504,15 @@ export default function SaleEditModal({
                 Historial de Pagos
               </h4>
               <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                {payments.length > 0 ? (
+                {/* Cargando no es lo mismo que no haber abonos: antes se mostraba el
+                    vacio mientras llegaban, y parecia que la venta no tenia ninguno. */}
+                {loadingPayments ? (
+                  <p className="text-sm text-gray-500 py-4 text-center animate-pulse">
+                    Cargando abonos...
+                  </p>
+                ) : paymentsError ? (
+                  <p className="text-sm text-rose-600 py-4 text-center">{paymentsError}</p>
+                ) : payments.length > 0 ? (
                   payments.map((p, i) => (
                     <div
                       key={i}
