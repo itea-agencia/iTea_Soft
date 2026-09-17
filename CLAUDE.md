@@ -14,12 +14,16 @@ montado. Un `git pull` no actualiza los contenedores. Después de cualquier camb
 backend: `docker compose up -d --build backend`. Esto ya produjo un diagnóstico falso
 —"los pasajeros no se guardan" cuando sí se guardaban— y varias horas perdidas.
 
-**La base está en el 5440 desde el host**, no en el 5432. Un `npx prisma db push` desde el
+**La base está en el 5440 desde el host**, no en el 5432. Un `npm run db:migrate` desde el
 host con el puerto equivocado no conecta.
 
-**`prisma db push --accept-data-loss` corre en el deploy.** No hay migraciones. Quitar una
-columna del schema la borra en producción sin aviso. Si tiene datos, hay que moverlos
-primero y dejar el script en `backend/db-manual/`.
+**Todo cambio de esquema va en una migración.** El deploy corre `prisma migrate deploy`,
+que solo aplica migraciones ya escritas. Editar el schema y no generar la migración deja la
+base atrás sin que nada avise: `npm run db:migrate -- --name lo_que_cambia`, y se commitea
+el schema junto con la migración. **`db:push` se retiró a propósito**: sincronizaba sin
+dejar historial. Si el cambio borra o mueve datos, primero se agrega lo nuevo, después se
+mueven los datos con un script de `backend/db-manual/`, y recién entonces se quita lo viejo
+en una segunda migración.
 
 **Antes de commitear, verificá la rama.** `git rev-parse --abbrev-ref HEAD`. Dos commits de
 este repo aterrizaron en `main` por no hacerlo, y el `git push origin feat-bayrol` no dio
@@ -57,6 +61,9 @@ Están desarrollados en [`docs/specs/`](docs/specs/README.md). En corto:
 
 5. **Cada cosa se llama igual en todo el flujo, y cosas distintas se llaman distinto.**
    Unificar "Booking" y "Cód. Reserva" fue un error que hubo que revertir.
+
+6. **El esquema solo cambia por una migración versionada.** Antes el deploy corría
+   `db push --accept-data-loss`, que borraba columnas sin preguntar y no dejaba rastro.
 
 ## Al escribir código
 

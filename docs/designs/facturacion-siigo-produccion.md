@@ -1,5 +1,9 @@
 # Facturación electrónica Siigo — camino a producción
 
+> **Nota del 2026-09-17.** Este documento describe el estado de entonces: el deploy
+> corría `prisma db push --accept-data-loss`. Desde esa fecha el esquema solo cambia
+> por migraciones versionadas. Ver [`docs/specs/2026-09-17-migraciones.md`](../specs/2026-09-17-migraciones.md).
+
 ## Problema
 
 El módulo de facturación existe y funciona contra la sandbox de Siigo, pero no puede emitir

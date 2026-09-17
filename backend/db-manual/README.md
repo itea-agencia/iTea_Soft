@@ -1,11 +1,12 @@
 # Operaciones manuales sobre la base
 
-Este proyecto **no tiene archivos de migración**: el `buildCommand` de Render corre
-`prisma db push --accept-data-loss`, así que el esquema se sincroniza solo y cualquier
-columna que desaparezca del `schema.prisma` se borra sin aviso.
+Los cambios de esquema viven en `backend/prisma/migrations/` y los aplica
+`prisma migrate deploy`. Pero una migración solo mueve la **estructura**: cuando además
+hay que **mover datos** —porque una columna cambia de tabla, o un valor se reparte entre
+filas— Prisma escribe el `DROP`, no el traslado.
 
-Eso deja un hueco: los cambios de esquema que además necesitan **mover datos** no tienen
-dónde vivir. Estos scripts son ese lugar. Se corren a mano, una vez, contra producción.
+Estos scripts son ese paso intermedio. Se corren a mano, una vez, contra producción, entre
+la migración que agrega lo nuevo y la que quita lo viejo.
 
 Están versionados a propósito, aunque `.gitignore` tenga una regla `*.sql`: esa regla
 existe para que los volcados de base no entren al repo, y la excepción nombra solo esta

@@ -20,7 +20,7 @@ docker compose up -d --build
 ```
 
 - Frontend en `http://localhost`, backend en `:3000`, PostgreSQL en `:5440`.
-- El backend corre `prisma db push` al arrancar, así que la base se sincroniza sola.
+- El backend corre `prisma migrate deploy` al arrancar, así que la base se pone al día sola.
 
 ### Dos cosas que muerden
 
@@ -34,21 +34,36 @@ docker exec -i itea_postgres psql -U postgres -d samtur-development \
   < backend/db-manual/verificar_schema_local.sql   # confirma que la base quedó al día
 ```
 
-Si algún objeto aparece como `FALTA`, el `db push` del arranque abortó: corre
-`docker exec itea_backend npx prisma db push --accept-data-loss` y reinicia.
+Si algún objeto aparece como `FALTA`, quedaron migraciones sin aplicar: corre
+`docker exec itea_backend npx prisma migrate deploy` y mirá `docker logs itea_backend`.
 
 **El puerto de la base es 5440 desde el host** (5440 → 5432 adentro). Los comandos que se
-corren fuera de Docker, como `npx prisma db push`, usan el `DATABASE_URL` de
+corren fuera de Docker, como `npm run db:migrate`, usan el `DATABASE_URL` de
 `backend/.env`, que debe apuntar a 5440.
 
-## No hay archivos de migración
+## Migraciones
 
-El `buildCommand` de Render corre `prisma db push --accept-data-loss`: el esquema se
-sincroniza solo desde `schema.prisma` y **cualquier columna que desaparezca del schema se
-borra sin aviso**. Antes de quitar una columna con datos hay que mover el dato primero.
+Todo cambio de esquema va en una migración versionada, en `backend/prisma/migrations/`. El
+deploy corre `prisma migrate deploy`, que **solo aplica migraciones ya escritas**: nunca
+genera una ni borra nada por su cuenta.
 
-Los cambios de esquema que además necesitan mover datos viven en
-[`backend/db-manual/`](backend/db-manual/README.md), con su estado y cómo correrlos.
+```bash
+# editar backend/prisma/schema.prisma, y despues:
+cd backend && npm run db:migrate -- --name lo_que_cambia
+git add prisma/schema.prisma prisma/migrations/     # los dos juntos
+```
+
+```bash
+npm run db:status    # dice si la base esta al dia
+```
+
+Una migración que borra o renombra una columna **pierde los datos**: Prisma escribe el
+`DROP`, no el traslado. Para eso el orden es agregar lo nuevo, mover los datos con un
+script de [`backend/db-manual/`](backend/db-manual/README.md), y recién entonces quitar lo
+viejo en una segunda migración.
+
+El detalle completo, incluida la línea base de un esquema que nació sin historial, está en
+[`docs/specs/2026-09-17-migraciones.md`](docs/specs/2026-09-17-migraciones.md).
 
 ## El modelo de una venta
 

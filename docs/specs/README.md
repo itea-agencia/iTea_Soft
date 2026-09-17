@@ -14,6 +14,7 @@ cómo comprobar que sigue viva.
 | [dinero-y-totales](2026-09-17-dinero-y-totales.md) | El servidor es la autoridad sobre el dinero; los agregados se derivan |
 | [facturacion-siigo](2026-09-17-facturacion-siigo.md) | La interfaz no afirma lo que no puede saber |
 | [vocabulario](2026-09-17-vocabulario.md) | Cada cosa se llama igual en todo el flujo, y cosas distintas se llaman distinto |
+| [migraciones](2026-09-17-migraciones.md) | El esquema solo cambia por una migración versionada |
 
 ## Otras carpetas de documentación
 
