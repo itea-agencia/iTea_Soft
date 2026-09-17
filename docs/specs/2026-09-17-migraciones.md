@@ -125,11 +125,20 @@ cd backend && npm run db:status
 Tiene que decir `Database schema is up to date!`. Si dice que hay migraciones pendientes,
 la base está atrás; si reporta deriva, alguien tocó el esquema fuera del historial.
 
+## La configuración
+
+La configuración vive en `backend/prisma.config.ts`, no en `package.json`: el bloque
+`prisma` queda obsoleto en Prisma 7 y con él se habría perdido el seed de `migrate reset`.
+
+**Efecto secundario que conviene saber:** en cuanto existe ese archivo, Prisma deja de
+cargar el `.env` por su cuenta —lo dice al arrancar: *"Prisma config detected, skipping
+environment variable loading"*— y todo comando de migración falla con `P1012` por no
+encontrar `DATABASE_URL`. Por eso la config empieza con `import 'dotenv/config'`. Dentro de
+Docker esa línea no hace nada, porque `.dockerignore` excluye el `.env` y las variables
+llegan por `env_file`; fuera de Docker es indispensable.
+
 ## Lo que queda abierto
 
 - **Las migraciones anteriores al 17 de septiembre de 2026 no existen.** `0_init` es una
   foto del esquema tal como quedó, no su historia. Lo anterior está en los mensajes de
   commit y en `docs/designs/`.
-- **Prisma 6.19 avisa que `package.json#prisma` queda obsoleto en Prisma 7.** Hay que
-  migrar a `prisma.config.ts` antes de actualizar, o el seed deja de ejecutarse en
-  `migrate reset`.
