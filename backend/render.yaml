@@ -46,6 +46,10 @@ services:
         value: "8872"
       - key: SIIGO_IVA_RATE
         value: "0.19"
-      # Mantener en true hasta que contabilidad valide el mapeo de la Fase 2.
+      # OJO: este valor NO es el que corre. El servicio ya existe en Render y su variable
+      # esta cargada en el dashboard, que tiene prioridad sobre el blueprint; hoy esta en
+      # "false" y por eso se estan creando facturas. Este "true" quedo como resto de la
+      # Fase 2 y confunde a quien lea el archivo para saber si se esta facturando.
+      # El valor real se consulta y se cambia en Render, no aca.
       - key: SIIGO_DRY_RUN
         value: "true"
