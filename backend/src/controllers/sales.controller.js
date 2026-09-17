@@ -3152,6 +3152,15 @@ exports.generateSiigoInvoice = async (req, res, next) => {
       });
     }
 
+    // Guardarrail, antes de tocar Siigo y antes de registrar el intento.
+    //
+    // Va aca y no solo en el servicio porque `getOrCreateCustomer` corre primero y, con el
+    // dry run apagado, CREA el tercero en Siigo si no existe. Un bloqueo que actuara
+    // recien al emitir la factura ya habria escrito un tercero en la cuenta real.
+    if (siigoService.emisionBloqueada) {
+      return error(res, siigoService.motivoBloqueo, 409, 'SIIGO_EMISION_BLOQUEADA');
+    }
+
     // Se registra el intento antes de llamar a Siigo: si la peticion muere a mitad de camino
     // queda rastro de que se intento.
     await prisma.facturasSiigo.upsert({

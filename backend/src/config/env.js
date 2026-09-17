@@ -31,6 +31,56 @@ const siigo = {
   dryRun: process.env.SIIGO_DRY_RUN !== 'false',
 };
 
+/**
+ * Guardarrail: no emitir facturas reales desde un entorno de pruebas.
+ *
+ * La sandbox y la cuenta real de Siigo comparten host, asi que lo unico que separa un
+ * entorno del otro son las credenciales. Con las de produccion cargadas y el dry run
+ * apagado, un local emite facturas reales en la cuenta de Samtur, y una factura
+ * electronica no se revierte: anularla exige nota credito.
+ *
+ * NODE_ENV no sirve para decidirlo. `.env.production` lo trae en "development", asi que
+ * copiar ese archivo se lo lleva puesto, y en Render el valor viene del blueprint. La
+ * senal confiable es la BASE DE DATOS: si las ventas salen de una base local, sus
+ * facturas no pueden ir a una cuenta real. Es tambien el invariante que importa de
+ * verdad, no emitir facturas reales a partir de datos de prueba.
+ *
+ * Se puede levantar a proposito con SIIGO_ALLOW_LOCAL_EMISION=true, que es lo que hay que
+ * poner para probar contra la sandbox con llamadas de verdad.
+ */
+const HOSTS_DE_BASE_LOCAL = ['localhost', '127.0.0.1', '::1', 'postgres'];
+
+function hostDeLaBase(url) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const hostBase = hostDeLaBase(process.env.DATABASE_URL);
+const baseEsLocal = HOSTS_DE_BASE_LOCAL.includes(hostBase || '');
+const emisionLocalPermitida = process.env.SIIGO_ALLOW_LOCAL_EMISION === 'true';
+
+siigo.emisionBloqueada = !siigo.dryRun && baseEsLocal && !emisionLocalPermitida;
+siigo.motivoBloqueo = siigo.emisionBloqueada
+  ? `La base de datos es local (${hostBase}) y SIIGO_DRY_RUN esta en false: eso emitiria ` +
+    `facturas reales en la cuenta ${siigo.username || '(sin usuario)'} a partir de datos de ` +
+    `prueba, y una factura electronica solo se revierte con nota credito. Deja ` +
+    `SIIGO_DRY_RUN en true, o pon SIIGO_ALLOW_LOCAL_EMISION=true si de verdad queres ` +
+    `emitir desde aca (por ejemplo contra la sandbox).`
+  : null;
+
+if (siigo.emisionBloqueada) {
+  console.warn(`Siigo: emision BLOQUEADA. ${siigo.motivoBloqueo}`);
+} else if (!siigo.dryRun && baseEsLocal) {
+  console.warn(
+    `Siigo: emision habilitada desde una base local (${hostBase}) por ` +
+    `SIIGO_ALLOW_LOCAL_EMISION. Las facturas se van a crear de verdad en ` +
+    `${siigo.username || '(sin usuario)'}.`,
+  );
+}
+
 const env = {
   port: parseInt(process.env.PORT, 10) || 3000,
   databaseUrl: process.env.DATABASE_URL,
