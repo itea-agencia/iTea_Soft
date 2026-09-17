@@ -893,7 +893,10 @@ exports.getById = async (req, res, next) => {
           comisionista: { include: { persona: true } },
           responsable: { include: { persona: true } },
           metodoPagoPrincipal: true,
-          pagosVenta: { include: { metodoPago: true } }
+          pagosVenta: { include: { metodoPago: true } },
+          // El estado de la factura: sin esto la interfaz no puede saber si la venta ya
+          // se facturo y el boton se queda en "Generar factura" para siempre.
+          facturaSiigo: true
         }
       }),
       prisma.detalleVenta.findMany({
@@ -1019,6 +1022,23 @@ exports.getById = async (req, res, next) => {
       creditDueDate: venta.fechaVenceCredito,
       creditPaidAmount: venta.montoPagadoCredito,
       isReviewed: venta.isReviewed,
+      // Estado de la factura de Siigo.
+      //
+      // `emitida` es el unico estado en el que la factura EXISTE en Siigo. `pendiente`
+      // cubre dos casos que no la crean: el dry-run, que arma y guarda el payload sin
+      // enviarlo, y el intento que se registro antes de llamar a Siigo y murio a mitad.
+      // Con SIIGO_DRY_RUN activo ninguna venta llega a `emitida`, asi que la interfaz no
+      // puede tratar "existe la fila" como "ya se facturo": diria que si en todas.
+      siigoInvoice: venta.facturaSiigo
+        ? {
+            estado: venta.facturaSiigo.estado,
+            numero: venta.facturaSiigo.numero,
+            publicUrl: venta.facturaSiigo.publicUrl,
+            emitidaAt: venta.facturaSiigo.emitidaAt,
+            intentos: venta.facturaSiigo.intentos,
+            ultimoError: venta.facturaSiigo.ultimoError,
+          }
+        : null,
       commissionAgentId: venta.comisionistaId,
       commissionAgentName: venta.comisionista ? `${venta.comisionista.persona.nombres} ${venta.comisionista.persona.apellidos}` : null,
       commissionAgentAmount: venta.montoComisionBruto,
