@@ -37,6 +37,16 @@ class SiigoService {
     return cfg.dryRun;
   }
 
+  /** true si este entorno no puede emitir facturas reales. Ver el guardarrail en env.js. */
+  get emisionBloqueada() {
+    return cfg.emisionBloqueada;
+  }
+
+  /** Por que esta bloqueado, con la variable que hay que tocar. */
+  get motivoBloqueo() {
+    return cfg.motivoBloqueo;
+  }
+
   async getAuthToken() {
     if (this.token && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
       return this.token;
@@ -427,6 +437,20 @@ class SiigoService {
    * Emite la factura. En modo dry-run devuelve el payload y no llama a Siigo.
    */
   async createInvoice(venta, customerSiigo) {
+    // Guardarrail, antes que nada: emitir de verdad desde una base local crea facturas
+    // reales a partir de datos de prueba. Va primero y no despues de armar el payload
+    // para que el motivo que se ve sea la configuracion y no un error del payload, que
+    // en un entorno bloqueado no se puede corregir igual.
+    //
+    // Se corta en el punto de accion y no al arrancar: un backend de desarrollo tiene que
+    // poder levantar aunque su configuracion de Siigo no sirva para emitir.
+    if (cfg.emisionBloqueada) {
+      throw Object.assign(new Error(cfg.motivoBloqueo), {
+        statusCode: 409,
+        code: 'SIIGO_EMISION_BLOQUEADA',
+      });
+    }
+
     const { payload, advertencias } = this.buildInvoicePayload(venta, customerSiigo);
 
     if (cfg.dryRun) {

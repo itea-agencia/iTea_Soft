@@ -63,6 +63,11 @@ backend/uploads/*
 # excepcion nombra una sola carpeta y no un patron amplio.
 !backend/db-manual/*.sql
 
+# Las migraciones de Prisma SON el historial del esquema: sin sus .sql la carpeta viaja
+# vacia y `migrate deploy` no aplica nada. La regla `*.sql` de arriba esta para los
+# volcados de base; estas dos excepciones nombran carpetas concretas y no aflojan el patron.
+!backend/prisma/migrations/**/*.sql
+
 # ------------------------------------------
 # Archivos Temporales, Scripts y Desarrollo Local
 # ------------------------------------------

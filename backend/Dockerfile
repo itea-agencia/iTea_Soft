@@ -29,4 +29,6 @@ COPY --from=builder /app /app
 EXPOSE 3000
 
 # Script de arranque: Ejecuta migraciones / push / seed y luego inicia la app
-CMD ["sh", "-c", "npx prisma db push && npm start"]
+# `migrate deploy` solo aplica migraciones pendientes: nunca genera una ni borra
+# nada por su cuenta. Es idempotente, asi que correrlo en cada arranque no molesta.
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]

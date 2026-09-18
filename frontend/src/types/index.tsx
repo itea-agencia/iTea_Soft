@@ -723,8 +723,35 @@ export interface PaymentRecord {
   reference?: string;
 }
 
+/**
+ * Estado de la factura de una venta en Siigo.
+ *
+ * `emitida` es el único estado en el que la factura EXISTE en Siigo. `pendiente` cubre
+ * dos casos que no la crean: el dry-run, que arma y guarda el payload sin enviarlo, y el
+ * intento que se registró antes de llamar a Siigo y murió a mitad de camino. Con
+ * `SIIGO_DRY_RUN` activo ninguna venta llega a `emitida`, así que la interfaz no puede
+ * tratar "existe el registro" como "ya se facturó".
+ */
+export interface SiigoInvoice {
+  estado: 'pendiente' | 'emitida' | 'fallida' | 'anulada';
+  numero?: string | null;
+  publicUrl?: string | null;
+  emitidaAt?: string | null;
+  intentos?: number;
+  ultimoError?: string | null;
+  /**
+   * Estado ante la DIAN, distinto de existir en Siigo. La factura se crea sin
+   * `stamp.send` a propósito, así que queda en `Draft`: existe y todavía se puede
+   * corregir o eliminar desde Siigo, mientras que una timbrada solo se anula con nota
+   * crédito. El timbrado es manual.
+   */
+  estampilla?: string | null;
+}
+
 export interface Sale {
   id: number;
+  /** Solo viene en la lectura de una venta completa; en el listado no. */
+  siigoInvoice?: SiigoInvoice | null;
   clientId: number;
   clientName: string;
   clientEmail?: string;

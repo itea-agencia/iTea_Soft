@@ -74,8 +74,15 @@ exports.list = async (req, res, next) => {
           cp.nombres || ' ' || cp.apellidos as "clientName",
           cp.email as "clientEmail",
           up.nombres || ' ' || up.apellidos as "asesorName",
-          comp.nombres || ' ' || comp.apellidos as "commissionAgentName"
-          
+          comp.nombres || ' ' || comp.apellidos as "commissionAgentName",
+          -- Estado de la factura en Siigo, para distinguir en el listado las ventas ya
+          -- facturadas. venta_id es unico en facturas_siigo, asi que el join no multiplica
+          -- filas. La estampilla sale del JSON de la respuesta: Draft significa creada en
+          -- Siigo pero sin timbrar ante la DIAN, que es el estado normal hoy.
+          f.estado::text as "siigoEstado",
+          f.numero as "siigoNumero",
+          f.respuesta->'stamp'->>'status' as "siigoEstampilla"
+
         FROM ventas v
         JOIN clientes c ON v.cliente_id = c.id
         JOIN personas cp ON c.persona_id = cp.id
@@ -83,6 +90,7 @@ exports.list = async (req, res, next) => {
         JOIN personas up ON u.persona_id = up.id
         LEFT JOIN comisionistas com ON v.comisionista_id = com.id
         LEFT JOIN personas comp ON com.persona_id = comp.id
+        LEFT JOIN facturas_siigo f ON f.venta_id = v.id
         WHERE 1=1 ${searchCondition} ${statusCondition} ${asesorCondition} ${clientCondition} ${dateCondition}
         ORDER BY ${sqlOrderBy} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}
         LIMIT ${perPage} OFFSET ${skip}
@@ -106,6 +114,11 @@ exports.list = async (req, res, next) => {
         creditDueDate: v.fechaVenceCredito,
         creditPaidAmount: v.montoPagadoCredito,
         isReviewed: v.isReviewed,
+        // Misma forma que en la lectura de una venta, con menos campos: al listado le
+        // alcanza con el estado, el numero y si quedo en borrador.
+        siigoInvoice: v.siigoEstado
+          ? { estado: v.siigoEstado, numero: v.siigoNumero, estampilla: v.siigoEstampilla }
+          : null,
         commissionAgentId: v.comisionistaId,
         commissionAgentName: v.commissionAgentName,
         commissionAgentAmount: v.montoComisionBruto,
@@ -893,7 +906,20 @@ exports.getById = async (req, res, next) => {
           comisionista: { include: { persona: true } },
           responsable: { include: { persona: true } },
           metodoPagoPrincipal: true,
-          pagosVenta: { include: { metodoPago: true } }
+          pagosVenta: { include: { metodoPago: true } },
+          // El estado de la factura: sin esto la interfaz no puede saber si la venta ya
+          // se facturo y el boton se queda en "Generar factura" para siempre.
+          //
+          // Se seleccionan campos en vez de traer la fila entera: `payload_enviado` es el
+          // JSON completo que se le mando a Siigo y no lo necesita nadie aca, pero viajaria
+          // en cada apertura del detalle. De `respuesta` solo interesa el estado ante la
+          // DIAN, y Prisma no sabe leer dentro de un Json, asi que esa si va completa.
+          facturaSiigo: {
+            select: {
+              estado: true, numero: true, publicUrl: true, emitidaAt: true,
+              intentos: true, ultimoError: true, respuesta: true
+            }
+          }
         }
       }),
       prisma.detalleVenta.findMany({
@@ -1019,6 +1045,29 @@ exports.getById = async (req, res, next) => {
       creditDueDate: venta.fechaVenceCredito,
       creditPaidAmount: venta.montoPagadoCredito,
       isReviewed: venta.isReviewed,
+      // Estado de la factura de Siigo.
+      //
+      // `emitida` es el unico estado en el que la factura EXISTE en Siigo. `pendiente`
+      // cubre dos casos que no la crean: el dry-run, que arma y guarda el payload sin
+      // enviarlo, y el intento que se registro antes de llamar a Siigo y murio a mitad.
+      // Con SIIGO_DRY_RUN activo ninguna venta llega a `emitida`, asi que la interfaz no
+      // puede tratar "existe la fila" como "ya se facturo": diria que si en todas.
+      siigoInvoice: venta.facturaSiigo
+        ? {
+            estado: venta.facturaSiigo.estado,
+            numero: venta.facturaSiigo.numero,
+            publicUrl: venta.facturaSiigo.publicUrl,
+            emitidaAt: venta.facturaSiigo.emitidaAt,
+            intentos: venta.facturaSiigo.intentos,
+            ultimoError: venta.facturaSiigo.ultimoError,
+            // Estado ante la DIAN, que es distinto de existir en Siigo. La factura se
+            // crea sin `stamp.send` a proposito, asi que queda en Draft: existe y se
+            // puede corregir o eliminar desde Siigo, mientras que una timbrada solo se
+            // anula con nota credito. Sin este dato la interfaz no puede distinguir un
+            // borrador de una factura ya timbrada.
+            estampilla: venta.facturaSiigo.respuesta?.stamp?.status || null,
+          }
+        : null,
       commissionAgentId: venta.comisionistaId,
       commissionAgentName: venta.comisionista ? `${venta.comisionista.persona.nombres} ${venta.comisionista.persona.apellidos}` : null,
       commissionAgentAmount: venta.montoComisionBruto,
@@ -2614,27 +2663,38 @@ exports.registerPayment = async (req, res, next) => {
     const id = parseInt(req.params.id);
     const { amount, isTotal, method, reference, currentPaidAmount, saleTotal } = req.body;
 
-    // If client sends totals, we can skip the findUnique — faster path
-    let newPaidAmount, newStatus;
+    // Lo abonado se suma desde `pagos_venta`, no de lo que diga el cliente.
+    //
+    // Habia un atajo que aceptaba `currentPaidAmount` y `saleTotal` del request para
+    // ahorrarse una consulta. En un campo de dinero eso es confiar la aritmetica al
+    // navegador: si el cliente manda un valor viejo, o cero porque nunca cargo los pagos
+    // —el listado no los devuelve—, el monto abonado se reescribe mal. Se sigue aceptando
+    // en el body por compatibilidad, pero ya no decide nada.
+    const venta = await prisma.ventas.findUnique({
+      where: { id },
+      select: { montoTotal: true }
+    });
+    if (!venta) return error(res, 'Venta no encontrada', 404);
+
     const metodoPagoId = await resolvePaymentMethodId(prisma, method);
+    let newPaidAmount, newStatus, newPayment;
 
-    if (saleTotal !== undefined && currentPaidAmount !== undefined) {
-      newPaidAmount = isTotal ? saleTotal : (currentPaidAmount || 0) + amount;
-      newStatus = (isTotal || newPaidAmount >= saleTotal) ? 'pagado' : 'abonado';
-    } else {
-      // Fallback: fetch the venta
-      const venta = await prisma.ventas.findUnique({ where: { id }, select: { montoTotal: true, montoPagadoCredito: true } });
-      if (!venta) return error(res, 'Venta no encontrada', 404);
-      const currentPaid = venta.montoPagadoCredito || 0;
-      newPaidAmount = isTotal ? venta.montoTotal : currentPaid + amount;
-      newStatus = (isTotal || newPaidAmount >= venta.montoTotal) ? 'pagado' : 'abonado';
-    }
-
-    let newPayment;
     await prisma.$transaction(async (tx) => {
       newPayment = await tx.pagosVenta.create({
         data: { ventaId: id, monto: amount, metodoPagoId, referencia: reference || null }
       });
+
+      const pagos = await tx.pagosVenta.findMany({
+        where: { ventaId: id },
+        select: { monto: true }
+      });
+      const suma = pagos.reduce((t, p) => t + (Number(p.monto) || 0), 0);
+
+      // `isTotal` salda la venta de una: el importe queda en el total sin importar que
+      // sumen las filas. Hoy la interfaz siempre manda false, pero el endpoint lo soporta.
+      newPaidAmount = isTotal ? venta.montoTotal : suma;
+      newStatus = newPaidAmount >= venta.montoTotal ? 'pagado' : 'abonado';
+
       await tx.ventas.update({
         where: { id },
         data: { montoPagadoCredito: newPaidAmount, status: newStatus }
@@ -2674,34 +2734,35 @@ exports.deletePayment = async (req, res, next) => {
     let newPaidAmount = 0;
     let newStatus = 'credito';
 
-    // If client sends current state, compute without extra DB query inside transaction
-    if (Array.isArray(currentPayments) && saleTotal !== undefined) {
-      newPaidAmount = currentPayments
-        .filter(p => p.id !== paymentId)
-        .reduce((sum, p) => sum + p.amount, 0);
-      newStatus = newPaidAmount >= saleTotal ? 'pagado' : newPaidAmount > 0 ? 'abonado' : 'credito';
+    // Lo que queda abonado se suma desde `pagos_venta`, no de lo que diga el cliente.
+    //
+    // Habia un atajo que aceptaba `currentPayments` del request. Ese arreglo era peor que
+    // el de registrar: si el arreglo llegaba VACIO —que es lo que pasa cuando la venta
+    // viene del listado, que no devuelve los pagos— el monto abonado se recalculaba en
+    // cero y el estado caia a credito, borrando un abono que si existia en la base.
+    // Se sigue aceptando en el body por compatibilidad, pero ya no decide nada.
+    await prisma.$transaction(async (tx) => {
+      await tx.pagosVenta.delete({ where: { id: paymentId } });
 
-      await prisma.$transaction([
-        prisma.pagosVenta.delete({ where: { id: paymentId } }),
-        prisma.ventas.update({
-          where: { id: saleId },
-          data: { montoPagadoCredito: newPaidAmount, status: newStatus }
-        })
-      ]);
-    } else {
-      // Fallback path
-      await prisma.$transaction(async (tx) => {
-        await tx.pagosVenta.delete({ where: { id: paymentId } });
-        const remainingPayments = await tx.pagosVenta.findMany({ where: { ventaId: saleId }, select: { monto: true } });
-        newPaidAmount = remainingPayments.reduce((sum, p) => sum + p.monto, 0);
-        const venta = await tx.ventas.findUnique({ where: { id: saleId }, select: { montoTotal: true } });
-        newStatus = newPaidAmount >= venta.montoTotal ? 'pagado' : newPaidAmount > 0 ? 'abonado' : 'credito';
-        await tx.ventas.update({
-          where: { id: saleId },
-          data: { montoPagadoCredito: newPaidAmount, status: newStatus }
-        });
+      const restantes = await tx.pagosVenta.findMany({
+        where: { ventaId: saleId },
+        select: { monto: true }
       });
-    }
+      newPaidAmount = restantes.reduce((t, p) => t + (Number(p.monto) || 0), 0);
+
+      const venta = await tx.ventas.findUnique({
+        where: { id: saleId },
+        select: { montoTotal: true }
+      });
+      newStatus = newPaidAmount >= venta.montoTotal
+        ? 'pagado'
+        : newPaidAmount > 0 ? 'abonado' : 'credito';
+
+      await tx.ventas.update({
+        where: { id: saleId },
+        data: { montoPagadoCredito: newPaidAmount, status: newStatus }
+      });
+    });
 
     success(res, { message: 'Pago eliminado', creditPaidAmount: newPaidAmount, status: newStatus });
   } catch (err) {
@@ -3101,6 +3162,15 @@ exports.generateSiigoInvoice = async (req, res, next) => {
         publicUrl: venta.facturaSiigo.publicUrl,
         emitidaAt: venta.facturaSiigo.emitidaAt
       });
+    }
+
+    // Guardarrail, antes de tocar Siigo y antes de registrar el intento.
+    //
+    // Va aca y no solo en el servicio porque `getOrCreateCustomer` corre primero y, con el
+    // dry run apagado, CREA el tercero en Siigo si no existe. Un bloqueo que actuara
+    // recien al emitir la factura ya habria escrito un tercero en la cuenta real.
+    if (siigoService.emisionBloqueada) {
+      return error(res, siigoService.motivoBloqueo, 409, 'SIIGO_EMISION_BLOQUEADA');
     }
 
     // Se registra el intento antes de llamar a Siigo: si la peticion muere a mitad de camino

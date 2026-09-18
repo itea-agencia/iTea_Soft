@@ -10,6 +10,55 @@ import { Sale, Client, User } from "../../types";
 // Valor centinela del select. Separado de la etiqueta a proposito.
 const MARCAR_FACTURADO = 'marcar-facturado';
 
+/**
+ * Cómo se ve la factura de Siigo de una venta en el listado.
+ *
+ * Va en columna propia y no junto al estado de cobro: la marca "Facturado" que ya está
+ * ahí es una anotación manual del asesor y significa otra cosa. Dos ejes distintos en una
+ * misma celda se leen como si fueran lo mismo.
+ *
+ * El color dice en qué punto está, y el texto lo repite para que no dependa del color.
+ */
+function marcaSiigo(sale: Sale) {
+  const f = sale.siigoInvoice;
+  if (!f) return null;
+
+  if (f.estado === 'emitida') {
+    return {
+      texto: f.numero || 'Generada',
+      detalle: null,
+      titulo: 'Factura generada en Siigo',
+      clases: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    };
+  }
+
+  if (f.estado === 'fallida') {
+    return {
+      texto: 'Falló',
+      detalle: null,
+      titulo: 'El último intento de facturar fue rechazado. Abrí el detalle para ver el motivo.',
+      clases: 'bg-rose-50 text-rose-700 border-rose-200',
+    };
+  }
+
+  if (f.estado === 'anulada') {
+    return {
+      texto: 'Anulada',
+      detalle: null,
+      titulo: 'La factura fue anulada en Siigo',
+      clases: 'bg-gray-100 text-gray-600 border-gray-200',
+    };
+  }
+
+  // `pendiente`: hubo intentos que no crearon la factura.
+  return {
+    texto: 'Sin emitir',
+    detalle: null,
+    titulo: 'Se intentó facturar y la factura no llegó a crearse en Siigo',
+    clases: 'bg-gray-100 text-gray-500 border-gray-200',
+  };
+}
+
 interface SalesTableProps {
   sales: Sale[];
   clients: Client[];
@@ -61,7 +110,8 @@ export default function SalesTable({
         "Total",
         "Fecha",
         "Estado",
-        "Acciones",
+        "Siigo",
+        <span className="block text-right">Acciones</span>,
       ]}
     >
       {currentSales.map((sale) => {
@@ -158,6 +208,25 @@ export default function SalesTable({
                   </span>
                 )}
               </div>
+            </TableCell>
+            <TableCell>
+              {(() => {
+                const marca = marcaSiigo(sale);
+                if (!marca) {
+                  return <span className="text-xs text-gray-300 dark:text-slate-600">—</span>;
+                }
+                return (
+                  <span
+                    title={marca.titulo}
+                    className={`inline-flex items-baseline gap-1 px-2 py-0.5 rounded border text-[11px] font-semibold whitespace-nowrap ${marca.clases}`}
+                  >
+                    {marca.texto}
+                    {marca.detalle && (
+                      <span className="font-normal opacity-80">· {marca.detalle}</span>
+                    )}
+                  </span>
+                );
+              })()}
             </TableCell>
             <TableCell>
               <div className="flex items-center justify-end gap-2">

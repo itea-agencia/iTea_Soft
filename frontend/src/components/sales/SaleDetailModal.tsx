@@ -24,7 +24,7 @@ import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
-import { Sale, Client, Responsable } from "../../types";
+import { Sale, Client, Responsable, SiigoInvoice } from "../../types";
 import PaginatedProductTab from "./tabs/PaginatedProductTab";
 
 const PRODUCT_ICONS: Record<string, React.ReactNode> = {
@@ -62,6 +62,10 @@ interface SaleDetailModalProps {
 
 const isAlreadyFull = (sale: Sale | null): boolean => {
   if (!sale) return false;
+  // `siigoInvoice` solo lo devuelve la lectura completa, y siempre lo devuelve: el
+  // registro o null. Si llega `undefined`, esta venta no vino de ahi por mas productos
+  // que traiga, y sin ese dato el pie mostraria "Generar factura" en una ya facturada.
+  if (sale.siigoInvoice === undefined) return false;
   return (
     sale.ticketData !== undefined ||
     sale.hotelData !== undefined ||
@@ -196,6 +200,38 @@ export default function SaleDetailModal({
   const ivaAmount = (ta + taCre) * 0.19;
   const gananciaNeta = sale.total - supplierCost - commissionAmount;
 
+  /**
+   * Estado de la factura de esta venta.
+   *
+   * Manda lo que dice el servidor, para que al reabrir la venta el pie siga mostrando que
+   * ya se facturó. Si se acaba de generar en esta sesión, manda ese resultado, así el pie
+   * cambia sin volver a pedir la venta entera.
+   *
+   * El dry-run no cuenta: arma el payload y lo guarda, pero no crea nada en Siigo.
+   */
+  const facturaSiigo: SiigoInvoice | null =
+    invoiceSuccess && !invoiceInfo.dryRun
+      ? {
+          estado: 'emitida',
+          numero: invoiceInfo.numero,
+          publicUrl: invoiceInfo.publicUrl,
+          estampilla: invoiceInfo.estampilla,
+        }
+      : sale.siigoInvoice ?? null;
+
+  // `emitida` es el unico estado en el que la factura existe en Siigo.
+  const yaFacturada = facturaSiigo?.estado === 'emitida';
+  // Existe en Siigo pero sin timbrar ante la DIAN: todavia se puede corregir o eliminar
+  // desde Siigo, y queda trabajo pendiente. Es el estado normal hoy.
+  const enBorrador = yaFacturada && facturaSiigo?.estampilla === 'Draft';
+  const facturaFallida = facturaSiigo?.estado === 'fallida';
+  // Hubo intentos que no crearon nada: dry-run, o una llamada que murio a mitad.
+  const intentoSinFactura =
+    facturaSiigo?.estado === 'pendiente' && (facturaSiigo.intentos ?? 0) > 0;
+  // Los avisos del servidor solo aparecen cuando no hay un resultado recien hecho, para
+  // no mostrar dos mensajes sobre lo mismo.
+  const sinMensajeReciente = !invoiceSuccess && !invoiceError;
+
   const productSections = [
     { key: "ticketData", label: "Tiquetería", summaryType: "tiqueteria" },
     { key: "hotelData", label: "Hotelería", summaryType: "hoteleria" },
@@ -275,16 +311,58 @@ export default function SaleDetailModal({
       title={`Detalle de Venta #${formatSaleId(sale.id)}`}
       size="lg"
       footer={
-        <div className="flex items-center justify-between w-full">
-          <Button
-            variant="primary"
-            className="flex items-center gap-2"
-            onClick={handleGenerateInvoice}
-            disabled={isInvoicing}
-          >
-            <Receipt size={16} />
-            {isInvoicing ? 'Generando factura...' : 'Generar factura en Siigo'}
-          </Button>
+        <div className="flex items-center justify-between w-full gap-3">
+          {/* Cuando la factura existe, el control deja de ser un boton.
+              Un boton deshabilitado se lee como "todavia no podes", no como "ya esta
+              hecho": lo que cambia no es la etiqueta, es la naturaleza del control. */}
+          {yaFacturada ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm min-w-0">
+              <span className="flex items-center gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                <ShieldCheck size={16} className="shrink-0" />
+                Factura generada
+              </span>
+              {facturaSiigo?.numero && (
+                <span className="font-semibold text-gray-700 dark:text-slate-300">
+                  {facturaSiigo.numero}
+                </span>
+              )}
+              {/* El borrador no es un detalle menor: la factura existe en Siigo pero no
+                  se timbro, asi que todavia se puede corregir y queda trabajo por hacer.
+                  Por eso se marca al lado del numero y no solo en el aviso de abajo. */}
+              {enBorrador && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-200"
+                  title="Creada en Siigo, sin timbrar ante la DIAN"
+                >
+                  Borrador
+                </span>
+              )}
+              {facturaSiigo?.publicUrl && (
+                <a
+                  href={facturaSiigo.publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline font-semibold"
+                >
+                  Verla en Siigo
+                </a>
+              )}
+            </div>
+          ) : (
+            <Button
+              variant="primary"
+              className="flex items-center gap-2"
+              onClick={handleGenerateInvoice}
+              disabled={isInvoicing}
+            >
+              <Receipt size={16} />
+              {isInvoicing
+                ? 'Generando factura...'
+                : facturaFallida
+                  ? 'Reintentar factura en Siigo'
+                  : 'Generar factura en Siigo'}
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>
             Cerrar
           </Button>
@@ -322,6 +400,44 @@ export default function SaleDetailModal({
             <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               <AlertCircle size={14} />
               {error}
+            </div>
+          )}
+
+          {/* Lo que el servidor sabe de la factura, al abrir la venta.
+              Antes esto no se veia: una venta cuya factura habia fallado se abria en
+              silencio y el error solo aparecia si alguien volvia a intentar. */}
+          {sinMensajeReciente && enBorrador && (
+            <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <strong>
+                  Factura {facturaSiigo?.numero || ''} creada en Siigo, en borrador.
+                </strong>{' '}
+                Existe y todavía se puede corregir o eliminar desde Siigo. Falta timbrarla
+                ante la DIAN, que se hace a mano.
+              </div>
+            </div>
+          )}
+          {sinMensajeReciente && facturaFallida && (
+            <div className="flex items-start gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <div>
+                <strong>La última factura falló.</strong>{' '}
+                {facturaSiigo?.ultimoError || 'Siigo no informó el motivo.'}
+              </div>
+            </div>
+          )}
+          {sinMensajeReciente && intentoSinFactura && (
+            <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              {/* `pendiente` no siempre es modo de prueba: tambien queda asi un intento
+                  que se registro y no llego a crear la factura. El aviso no da por
+                  sentado cual de los dos fue. */}
+              <div>
+                <strong>Sin factura en Siigo todavía.</strong> Esta venta tiene{' '}
+                {facturaSiigo?.intentos === 1 ? 'un intento' : `${facturaSiigo?.intentos} intentos`}{' '}
+                registrados que no llegaron a crear la factura. Volvé a generarla.
+              </div>
             </div>
           )}
 
