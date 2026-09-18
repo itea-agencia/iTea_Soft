@@ -10,10 +10,11 @@ async function auth(req, res, next) {
   try {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
-      // BYPASS PARA PRUEBAS
-      req.user = { id: 1, role: 'admin' };
-      req.permissionScope = 'all';
-      return next();
+      // Un ERP en produccion con facturacion real. Sin token, no hay identidad: cualquier
+      // request a /api/sales (o a cualquier otra ruta protegida, todas pasan por aca) sin
+      // Authorization quedaba con rol admin y scope 'all'. Quedo asi de una prueba y nadie
+      // lo noto porque el sintoma es "todo funciona".
+      return error(res, 'No autenticado', 401, 'NO_TOKEN');
     }
 
     const token = header.split(' ')[1];
