@@ -84,6 +84,21 @@ tienen transforms paralelos para los mismos productos, y divergieron: campos que
 y el otro no, un método de pago que uno resuelve por nombre y el otro espera como id, un
 endpoint de seguros que nunca funcionó. Al tocar uno, revisá el otro.
 
+## Gasto de tokens
+
+**El prompt caching es obligatorio**, tanto al trabajar en este repo con un agente como en
+cualquier código que este proyecto llegue a escribir contra la API de Anthropic. Un prefijo
+de prompt que cambia de un llamado a otro invalida el caché y multiplica el costo sin
+necesidad.
+
+- No reformules ni repitas en cada mensaje contenido que ya está en contexto (CLAUDE.md,
+  archivos ya leídos, resultados de herramientas previos). Si no cambió, no se vuelve a leer.
+- Agrupá llamadas a herramientas independientes en un mismo turno en lugar de una por una:
+  cada ida y vuelta de más es contexto repetido.
+- Si se implementa una integración propia con la API de Anthropic, el contenido estable del
+  prompt (system prompt, instrucciones, pocos-shots) va marcado con `cache_control` y antes
+  del contenido variable, nunca al revés.
+
 ## En el frontend
 
 - Estado derivado se calcula en el render, no en un `useEffect` que escribe estado.
