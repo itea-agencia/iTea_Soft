@@ -24,18 +24,11 @@ function marcaSiigo(sale: Sale) {
   if (!f) return null;
 
   if (f.estado === 'emitida') {
-    // Draft: existe en Siigo y todavía no se timbró ante la DIAN. Es lo normal hoy, y es
-    // el trabajo que queda pendiente, así que se distingue de una ya timbrada.
-    const borrador = f.estampilla === 'Draft';
     return {
       texto: f.numero || 'Generada',
-      detalle: borrador ? 'Borrador' : null,
-      titulo: borrador
-        ? 'Creada en Siigo, sin timbrar ante la DIAN'
-        : 'Timbrada ante la DIAN',
-      clases: borrador
-        ? 'bg-amber-50 text-amber-800 border-amber-200'
-        : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      detalle: null,
+      titulo: 'Factura generada en Siigo',
+      clases: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     };
   }
 
@@ -118,7 +111,7 @@ export default function SalesTable({
         "Fecha",
         "Estado",
         "Siigo",
-        "Acciones",
+        <span className="block text-right">Acciones</span>,
       ]}
     >
       {currentSales.map((sale) => {
