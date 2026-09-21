@@ -12,10 +12,7 @@ const { error } = require('../utils/apiResponse');
 //   - una accion sin fila caia al default y quedaba permitida aunque el admin no la diera.
 // Ahora, sin fila no hay permiso.
 
-// Vista y edicion son jerarquicas (all/own/none) solo en estos modulos; el resto es booleano.
-// Debe coincidir con roles.controller.js, que es quien escribe estas filas.
-const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
-const SCOPED_EDIT_MODULES = ['sales', 'clients', 'responsables', 'itineraries'];
+const { normalizarValor } = require('../utils/permisosValor');
 
 const ADMIN_PERMISSIONS = {
   dashboard: { view: 'all' },
@@ -27,23 +24,6 @@ const ADMIN_PERMISSIONS = {
   users: { view: true, create: true, edit: true, delete: true },
   config: { view: true, create: true, edit: true },
 };
-
-function normalizarValor(modulo, accion, valor) {
-  if (accion === 'view' && SCOPED_VIEW_MODULES.includes(modulo)) {
-    if (valor === 'all') return modulo === 'dashboard' ? 'own' : 'all';
-    if (valor === 'own') return 'own';
-    if (valor === 'true' || valor === true) return modulo === 'dashboard' ? 'own' : 'all';
-    return 'none';
-  }
-  if (accion === 'edit' && SCOPED_EDIT_MODULES.includes(modulo)) {
-    if (valor === 'all') return 'all';
-    // 'true' viene de filas antiguas (seed, esquema por defecto): se lee como lo mas
-    // restrictivo que sigue dejando editar.
-    if (valor === 'own' || valor === 'true' || valor === true) return 'own';
-    return 'none';
-  }
-  return valor === 'true' || valor === true;
-}
 
 function getEffectivePermissions(user) {
   if (user.role === 'admin') {

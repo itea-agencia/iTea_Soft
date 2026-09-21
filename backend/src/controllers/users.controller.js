@@ -5,6 +5,7 @@ const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
 const { AUTH_CACHE } = require('../middleware/auth');
+const { normalizarValor } = require('../utils/permisosValor');
 const { formatName } = require('../utils/stringUtils');
 
 exports.list = async (req, res, next) => {
@@ -111,11 +112,7 @@ exports.getById = async (req, res, next) => {
       
       customPermissions: usuario.permisosUsuario.length > 0 ? usuario.permisosUsuario.reduce((acc, pu) => {
         if (!acc[pu.permiso.modulo]) acc[pu.permiso.modulo] = {};
-        const val = pu.valor || 'true';
-        const isScopedView = pu.permiso.accion === 'view' && ['dashboard','sales','clients'].includes(pu.permiso.modulo);
-        acc[pu.permiso.modulo][pu.permiso.accion] = isScopedView
-          ? (val === 'own' || val === 'all' || val === 'none' ? val : 'all')
-          : (val === 'true' || val === true);
+        acc[pu.permiso.modulo][pu.permiso.accion] = normalizarValor(pu.permiso.modulo, pu.permiso.accion, pu.valor || 'true');
         return acc;
       }, {}) : undefined
     });

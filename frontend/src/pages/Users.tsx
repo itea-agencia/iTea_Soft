@@ -43,6 +43,7 @@ import SortIcon from "../components/ui/SortIcon";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
 
+import { getUser } from "../api";
 import { capitalizeName, formatId, todayStr } from "../utils/formatters";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 
@@ -65,6 +66,8 @@ export default function Users() {
     updateUserPermissions,
     fetchUsers,
     fetchSales,
+    rolePermissionsReady,
+    fetchRolePermissions,
   } = useData();
   const { user: currentUser } = useAuth();
 
@@ -205,11 +208,22 @@ export default function Users() {
 
   const [selectedUserForPermissions, setSelectedUserForPermissions] =
     useState<User | null>(null);
+  // Permisos del modal de UN usuario. Se rellenan al abrirlo, con los del rol del servidor
+  // mas los propios del usuario; el valor inicial es solo relleno.
   const [editingUserPermissions, setEditingUserPermissions] =
-    useState<RolePermissions>(
-      data.config.rolePermissions?.asesor || DEFAULT_ASESOR_PERMISSIONS,
-    );
+    useState<RolePermissions>(DEFAULT_ASESOR_PERMISSIONS);
   const [editingRole, setEditingRole] = useState<'asesor' | 'freelancer'>('asesor');
+  // Lo que el admin ha cambiado en la pestana de roles y aun no guarda. Lo que se muestra es
+  // `roleDraft ?? lo del servidor`, calculado en el render: antes se copiaba el valor a un
+  // estado al pulsar la pestana, y si los permisos del servidor aun no habian llegado (o no
+  // se habian pedido) se copiaban los defaults del codigo, y "Guardar" los escribia en la BD.
+  const [roleDraft, setRoleDraft] = useState<RolePermissions | null>(null);
+  const rolePerms = roleDraft ?? data.config.rolePermissions[editingRole];
+
+  // Cada vez que se entra a esta pantalla, los permisos del servidor, no los que quedaron.
+  useEffect(() => {
+    fetchRolePermissions();
+  }, [fetchRolePermissions]);
 
   // Eliminación
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -503,24 +517,47 @@ export default function Users() {
     }
   };
 
-  const handleOpenPermissions = (user: User) => {
-    setSelectedUserForPermissions(user);
+  const handleOpenPermissions = async (user: User) => {
+    if (user.role !== "admin" && !rolePermissionsReady) {
+      triggerError("Los permisos del rol aún no se cargan. Espera un momento e inténtalo de nuevo.");
+      return;
+    }
     const defaultPerms =
       user.role === "admin"
         ? ADMIN_PERMISSIONS
         : user.role === "freelancer"
           ? data.config.rolePermissions.freelancer
           : data.config.rolePermissions.asesor;
+
+    // El listado de usuarios NO trae los permisos propios (`customPermissions` viene vacio
+    // para que la tabla cargue rapido). Sin pedirlos, el modal mostraba solo los del rol, y
+    // al guardar se borraban los permisos propios del usuario y se escribia solo la
+    // diferencia contra el rol: abrir y guardar sin tocar nada reiniciaba al usuario.
+    let custom = user.customPermissions;
+    if (user.role !== "admin") {
+      try {
+        custom = (await getUser(user.id)).customPermissions;
+      } catch {
+        triggerError("No se pudieron cargar los permisos del usuario.");
+        return;
+      }
+    }
+
+    setSelectedUserForPermissions(user);
     setEditingUserPermissions(
-      user.customPermissions
-        ? normalizeRolePermissions(user.customPermissions, defaultPerms)
-        : defaultPerms
+      custom ? normalizeRolePermissions(custom, defaultPerms) : defaultPerms
     );
     setIsPermissionsModalOpen(true);
   };
 
   const handleSaveUserPermissions = async () => {
     if (!selectedUserForPermissions) return;
+    // Se guarda la diferencia contra el rol: con el rol sin cargar, la base de la
+    // comparacion serian los defaults del codigo y se escribirian excepciones falsas.
+    if (selectedUserForPermissions.role !== "admin" && !rolePermissionsReady) {
+      triggerError("Los permisos del rol aún no se cargan. No se guardó nada.");
+      return;
+    }
     setIsSaving(true);
     try {
       const defaultPerms =
@@ -557,9 +594,14 @@ export default function Users() {
   };
 
   const handleSaveRolePermissions = async () => {
+    if (!rolePermissionsReady) {
+      triggerError("Los permisos del servidor aún no se cargan. No se guardó nada.");
+      return;
+    }
     setIsSaving(true);
     try {
-      await updateRolePermissions(editingRole, editingUserPermissions);
+      await updateRolePermissions(editingRole, rolePerms);
+      setRoleDraft(null);
       setSuccessMessage(`Permisos globales del rol ${editingRole === "asesor" ? "Asesor" : "Freelancer"} actualizados`);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -672,7 +714,7 @@ export default function Users() {
           onClick={() => {
             setActiveTab("permissions");
             setEditingRole('asesor');
-            setEditingUserPermissions(data.config.rolePermissions.asesor);
+            setRoleDraft(null);
           }}
           className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === "permissions" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-primary"}`}
         >
@@ -880,7 +922,7 @@ export default function Users() {
         <Card className="animate-fade-in">
           <CardHeader
             actions={
-              <Button onClick={handleSaveRolePermissions} disabled={isSaving}>
+              <Button onClick={handleSaveRolePermissions} disabled={isSaving || !rolePermissionsReady}>
                 <ShieldCheck size={18} /> {isSaving ? "Guardando..." : "Guardar Cambios Globales"}
               </Button>
             }
@@ -905,7 +947,7 @@ export default function Users() {
                 }
                 onClick={() => {
                   setEditingRole('asesor');
-                  setEditingUserPermissions(data.config.rolePermissions.asesor);
+                  setRoleDraft(null);
                 }}
               >
                 Rol Asesor
@@ -918,18 +960,25 @@ export default function Users() {
                 }
                 onClick={() => {
                   setEditingRole('freelancer');
-                  setEditingUserPermissions(
-                    data.config.rolePermissions.freelancer,
-                  );
+                  setRoleDraft(null);
                 }}
               >
                 Rol Freelancer
               </Button>
             </div>
-            <PermissionsGrid
-              permissions={editingUserPermissions}
-              onChange={setEditingUserPermissions}
-            />
+            {rolePermissionsReady ? (
+              <PermissionsGrid
+                permissions={rolePerms}
+                onChange={setRoleDraft}
+              />
+            ) : (
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <span>Cargando los permisos del servidor…</span>
+                <Button variant="outline" onClick={() => fetchRolePermissions()}>
+                  Reintentar
+                </Button>
+              </div>
+            )}
           </CardBody>
         </Card>
       )}

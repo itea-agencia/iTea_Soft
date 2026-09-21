@@ -75,8 +75,12 @@ export function PermissionsProvider({
     if (user.role === 'admin') return ADMIN_PERMISSIONS;
 
     // Check for API-style permisos (from login response)
+    // El servidor manda la lista de permisos del usuario (rol + propios). Una lista VACIA
+    // significa "sin permisos": el backend deniega todo lo que no tiene fila. Antes, con
+    // `length > 0`, una lista vacia caia a los defaults del codigo y la interfaz ofrecia
+    // acciones que el servidor iba a rechazar.
     const apiPermisos = (user as any).permisos;
-    if (apiPermisos && Array.isArray(apiPermisos) && apiPermisos.length > 0) {
+    if (Array.isArray(apiPermisos)) {
       return buildPermissionsFromApiPermisos(apiPermisos);
     }
 

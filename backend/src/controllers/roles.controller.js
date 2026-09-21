@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const { success, error } = require('../utils/apiResponse');
 const { AUTH_CACHE } = require('../middleware/auth');
+const { normalizarValor } = require('../utils/permisosValor');
 
 const MODULE_ACTIONS = {
   dashboard: ['view'],
@@ -11,31 +12,6 @@ const MODULE_ACTIONS = {
   commissions: ['view', 'create', 'edit', 'delete'],
   config: ['view', 'create', 'edit'],
 };
-
-const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
-const SCOPED_EDIT_MODULES = ['sales', 'clients', 'responsables', 'itineraries'];
-
-function parseValor(accion, modulo, valor, role) {
-  // Módulos con vista jerárquica (all/own/none)
-  if (accion === 'view' && SCOPED_VIEW_MODULES.includes(modulo)) {
-    if (valor === 'all') {
-      if (modulo === 'dashboard' && role !== 'admin') return 'own';
-      return 'all';
-    }
-    if (valor === 'own') return 'own';
-    if (valor === 'true') return modulo === 'dashboard' ? 'own' : 'all';
-    return 'none';
-  }
-  // Módulos con edición jerárquica (all/own/none)
-  if (accion === 'edit' && SCOPED_EDIT_MODULES.includes(modulo)) {
-    if (valor === 'all') return 'all';
-    if (valor === 'own') return 'own';
-    if (valor === 'true') return 'own';
-    return 'none';
-  }
-  // boolean value (create, delete, view en commissions/config, edit en commissions/config)
-  return valor === 'true' || valor === true;
-}
 
 function encodeValor(value) {
   if (value === 'all' || value === 'own' || value === 'none') return value;
@@ -67,7 +43,7 @@ exports.getPermissions = async (req, res, next) => {
       for (const act of actions) {
         // Sin fila en la BD no hay permiso: es lo mismo que aplica authorize.js. Mostrar
         // un default del codigo aqui haria que la pantalla dijera una cosa y el servidor otra.
-        grouped[mod][act] = parseValor(act, mod, 'false', role);
+        grouped[mod][act] = normalizarValor(mod, act, 'false');
       }
     }
 
@@ -77,7 +53,7 @@ exports.getPermissions = async (req, res, next) => {
       const a = pr.permiso.accion;
       const v = pr.valor != null ? pr.valor : 'true';
       if (!grouped[m]) grouped[m] = {};
-      grouped[m][a] = parseValor(a, m, v, role);
+      grouped[m][a] = normalizarValor(m, a, v);
     }
 
     success(res, grouped);
