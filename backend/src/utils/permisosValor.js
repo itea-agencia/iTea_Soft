@@ -1,9 +1,7 @@
-// Como se lee el `valor` guardado en permisos_rol / permisos_usuario. Una sola definicion:
-// authorize.js (lo que se aplica), roles.controller.js (lo que muestra la pantalla de roles)
-// y users.controller.js (lo que muestra el modal de un usuario) tenian cada uno su copia, y
-// la de users.controller.js solo conocia tres modulos con vista jerarquica y trataba `edit`
-// como booleano: un `sales.edit = 'own'` se mostraba como false, y guardar desde ese modal
-// lo escribia como false.
+// Como se lee el `valor` guardado en permisos_rol. Una sola definicion: authorize.js (lo que
+// se aplica) y roles.controller.js (lo que muestra la pantalla de roles) tenian cada uno su
+// copia, y podian diverger: un `sales.edit = 'own'` se leia como false en una y como 'own' en
+// la otra.
 
 // Vista y edicion son jerarquicas (all/own/none) solo en estos modulos; el resto es booleano.
 const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];

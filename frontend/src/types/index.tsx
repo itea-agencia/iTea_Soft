@@ -16,7 +16,6 @@ export interface User {
   status: "active" | "inactive";
   createdAt?: string;
   lastLogin?: string;
-  customPermissions?: RolePermissions;
   permisos?: { modulo: string; accion: string }[];
 }
 

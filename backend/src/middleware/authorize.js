@@ -1,7 +1,8 @@
 const { error } = require('../utils/apiResponse');
 
-// La base de datos es la unica fuente de los permisos de un rol no-admin: filas de
-// `permisos_rol`, y encima las de `permisos_usuario`. Aqui NO hay valores por defecto.
+// La base de datos es la unica fuente de los permisos de un rol no-admin: las filas de
+// `permisos_rol`. Los permisos son GLOBALES por rol: no hay permisos propios por usuario.
+// Aqui NO hay valores por defecto.
 //
 // Antes habia una tabla de defaults en el codigo que se usaba como base y la BD solo la
 // sobrescribia parcialmente. Eso rompia lo que el admin configuraba:
@@ -31,8 +32,7 @@ function getEffectivePermissions(user) {
   }
 
   const permissions = {};
-  // Rol primero, usuario despues: lo puesto a un usuario concreto gana sobre su rol.
-  for (const fila of [...(user.permisosRol || []), ...(user.permisosUsuario || [])]) {
+  for (const fila of user.permisosRol || []) {
     if (!permissions[fila.modulo]) permissions[fila.modulo] = {};
     permissions[fila.modulo][fila.accion] = normalizarValor(fila.modulo, fila.accion, fila.valor);
   }

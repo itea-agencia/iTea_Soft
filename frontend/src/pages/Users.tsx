@@ -13,7 +13,6 @@ import {
   EyeOff,
   ShieldCheck,
   Briefcase,
-  Key,
   Trash2,
   AlertTriangle,
   Pencil,
@@ -32,9 +31,6 @@ import { Input, Select, FormField } from "../components/ui/Form";
 import {
   User,
   RolePermissions,
-  DEFAULT_ASESOR_PERMISSIONS,
-  ADMIN_PERMISSIONS,
-  normalizeRolePermissions,
 } from "../types";
 import StatCard from "../components/ui/StatCard";
 import PermissionsGrid from "../components/users/PermissionsGrid";
@@ -43,7 +39,6 @@ import SortIcon from "../components/ui/SortIcon";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
 
-import { getUser } from "../api";
 import { capitalizeName, formatId, todayStr } from "../utils/formatters";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 
@@ -63,7 +58,6 @@ export default function Users() {
     updateUser,
     deleteUser,
     updateRolePermissions,
-    updateUserPermissions,
     fetchUsers,
     fetchSales,
     rolePermissionsReady,
@@ -75,7 +69,6 @@ export default function Users() {
   const [activeTab, setActiveTab] = useState<"users" | "permissions">("users");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
@@ -206,12 +199,6 @@ export default function Users() {
     setIsDetailOpen(true);
   };
 
-  const [selectedUserForPermissions, setSelectedUserForPermissions] =
-    useState<User | null>(null);
-  // Permisos del modal de UN usuario. Se rellenan al abrirlo, con los del rol del servidor
-  // mas los propios del usuario; el valor inicial es solo relleno.
-  const [editingUserPermissions, setEditingUserPermissions] =
-    useState<RolePermissions>(DEFAULT_ASESOR_PERMISSIONS);
   const [editingRole, setEditingRole] = useState<'asesor' | 'freelancer'>('asesor');
   // Lo que el admin ha cambiado en la pestana de roles y aun no guarda. Lo que se muestra es
   // `roleDraft ?? lo del servidor`, calculado en el render: antes se copiaba el valor a un
@@ -517,82 +504,6 @@ export default function Users() {
     }
   };
 
-  const handleOpenPermissions = async (user: User) => {
-    if (user.role !== "admin" && !rolePermissionsReady) {
-      triggerError("Los permisos del rol aún no se cargan. Espera un momento e inténtalo de nuevo.");
-      return;
-    }
-    const defaultPerms =
-      user.role === "admin"
-        ? ADMIN_PERMISSIONS
-        : user.role === "freelancer"
-          ? data.config.rolePermissions.freelancer
-          : data.config.rolePermissions.asesor;
-
-    // El listado de usuarios NO trae los permisos propios (`customPermissions` viene vacio
-    // para que la tabla cargue rapido). Sin pedirlos, el modal mostraba solo los del rol, y
-    // al guardar se borraban los permisos propios del usuario y se escribia solo la
-    // diferencia contra el rol: abrir y guardar sin tocar nada reiniciaba al usuario.
-    let custom = user.customPermissions;
-    if (user.role !== "admin") {
-      try {
-        custom = (await getUser(user.id)).customPermissions;
-      } catch {
-        triggerError("No se pudieron cargar los permisos del usuario.");
-        return;
-      }
-    }
-
-    setSelectedUserForPermissions(user);
-    setEditingUserPermissions(
-      custom ? normalizeRolePermissions(custom, defaultPerms) : defaultPerms
-    );
-    setIsPermissionsModalOpen(true);
-  };
-
-  const handleSaveUserPermissions = async () => {
-    if (!selectedUserForPermissions) return;
-    // Se guarda la diferencia contra el rol: con el rol sin cargar, la base de la
-    // comparacion serian los defaults del codigo y se escribirian excepciones falsas.
-    if (selectedUserForPermissions.role !== "admin" && !rolePermissionsReady) {
-      triggerError("Los permisos del rol aún no se cargan. No se guardó nada.");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const defaultPerms =
-        selectedUserForPermissions.role === "admin"
-          ? ADMIN_PERMISSIONS
-          : selectedUserForPermissions.role === "freelancer"
-            ? data.config.rolePermissions.freelancer
-            : data.config.rolePermissions.asesor;
-
-      const diffPermissions: any = {};
-      for (const mod in editingUserPermissions) {
-        for (const act in (editingUserPermissions as any)[mod]) {
-          const editedVal = (editingUserPermissions as any)[mod][act];
-          const defaultVal = (defaultPerms as any)[mod][act];
-          if (editedVal !== defaultVal) {
-            if (!diffPermissions[mod]) diffPermissions[mod] = {};
-            diffPermissions[mod][act] = editedVal;
-          }
-        }
-      }
-
-      await updateUserPermissions(selectedUserForPermissions.id, diffPermissions);
-      setSuccessMessage(`Permisos de ${selectedUserForPermissions.name} actualizados`);
-      setShowSuccess(true);
-      setIsPermissionsModalOpen(false);
-      setTimeout(() => setShowSuccess(false), 3000);
-    } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al guardar permisos");
-      setShowError(true);
-      setTimeout(() => setShowError(false), 3000);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleSaveRolePermissions = async () => {
     if (!rolePermissionsReady) {
       triggerError("Los permisos del servidor aún no se cargan. No se guardó nada.");
@@ -848,14 +759,6 @@ export default function Users() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleOpenPermissions(user)}
-                      title="Permisos"
-                    >
-                      <Key size={14} />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
                       onClick={() => handleToggleStatus(user)}
                       title={
                         user.status === "active" ? "Desactivar" : "Activar"
@@ -927,15 +830,14 @@ export default function Users() {
               </Button>
             }
           >
-            Configuración de Permisos por Defecto
+            Permisos globales por rol
           </CardHeader>
           <CardBody>
             <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl mb-6 flex gap-3">
               <AlertCircle className="text-amber-500 dark:text-amber-400 shrink-0" size={20} />
               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                Aquí defines los permisos predeterminados. Los cambios aplicarán
-                a todos los usuarios del rol seleccionado que no tengan permisos
-                personalizados.
+                Estos permisos aplican a todos los usuarios del rol seleccionado.
+                Los cambios surten efecto en su siguiente petición.
               </p>
             </div>
             <div className="flex gap-4 mb-6">
@@ -1166,44 +1068,6 @@ export default function Users() {
             />
           </FormField>
         </div>
-      </Modal>
-
-      <Modal
-        isOpen={isPermissionsModalOpen}
-        onClose={() => setIsPermissionsModalOpen(false)}
-        title={`Permisos: ${selectedUserForPermissions?.name}`}
-        size="lg"
-        footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setIsPermissionsModalOpen(false)}
-              disabled={isSaving}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveUserPermissions} disabled={isSaving}>
-              {isSaving ? "Guardando..." : "Actualizar Permisos"}
-            </Button>
-          </>
-        }
-      >
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3">
-          <ShieldCheck className="text-blue-500 shrink-0" size={24} />
-          <div>
-            <p className="text-sm font-bold text-blue-900">
-              Configuración Personalizada
-            </p>
-            <p className="text-xs text-blue-700">
-              Estos permisos sobrescriben la configuración global para este
-              usuario específico.
-            </p>
-          </div>
-        </div>
-        <PermissionsGrid
-          permissions={editingUserPermissions}
-          onChange={setEditingUserPermissions}
-        />
       </Modal>
 
       <Modal

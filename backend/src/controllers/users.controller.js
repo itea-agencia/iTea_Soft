@@ -4,8 +4,6 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
-const { AUTH_CACHE } = require('../middleware/auth');
-const { normalizarValor } = require('../utils/permisosValor');
 const { formatName } = require('../utils/stringUtils');
 
 exports.list = async (req, res, next) => {
@@ -75,7 +73,6 @@ exports.list = async (req, res, next) => {
       birthDate: u.birthDate,
       lastLogin: u.ultimoLogin,
       createdAt: u.creadoAt,
-      customPermissions: undefined // Se omiten para la tabla general para maximizar la velocidad
     }));
 
     success(res, data, buildMeta(total, page, perPage));
@@ -90,8 +87,7 @@ exports.getById = async (req, res, next) => {
       where: { id: parseInt(req.params.id) },
       include: {
         persona: { include: { tipoDocumento: true } },
-        rol: true,
-        permisosUsuario: { include: { permiso: true }, where: { permitido: true } }
+        rol: true
       }
     });
     if (!usuario) return error(res, 'Usuario no encontrado', 404);
@@ -109,12 +105,6 @@ exports.getById = async (req, res, next) => {
       birthDate: usuario.persona.birthDate,
       lastLogin: usuario.ultimoLogin,
       createdAt: usuario.creadoAt,
-      
-      customPermissions: usuario.permisosUsuario.length > 0 ? usuario.permisosUsuario.reduce((acc, pu) => {
-        if (!acc[pu.permiso.modulo]) acc[pu.permiso.modulo] = {};
-        acc[pu.permiso.modulo][pu.permiso.accion] = normalizarValor(pu.permiso.modulo, pu.permiso.accion, pu.valor || 'true');
-        return acc;
-      }, {}) : undefined
     });
   } catch (err) {
     next(err);
@@ -365,46 +355,3 @@ exports.remove = async (req, res, next) => {
     next(err);
   }
 };
-
-exports.updatePermissions = async (req, res, next) => {
-  try {
-    const id = parseInt(req.params.id);
-    const { permissions } = req.body;
-
-    // Todo o nada: ver la nota en roles.controller.js. Un guardado a medias dejaria al
-    // usuario con parte de sus permisos y sin el resto.
-    await prisma.$transaction(async (tx) => {
-      await tx.permisosUsuario.deleteMany({ where: { usuarioId: id } });
-
-      for (const [modulo, accs] of Object.entries(permissions)) {
-        for (const [accion, value] of Object.entries(accs)) {
-          const encoded = value === 'all' || value === 'own' || value === 'none' ? value
-            : value === true || value === 'true' ? 'true'
-            : value === false || value === 'false' ? 'false'
-            : String(value);
-
-          // Buscar o crear el registro en el catálogo de permisos
-          let permiso = await tx.permisos.findFirst({ where: { modulo, accion } });
-          if (!permiso) {
-            permiso = await tx.permisos.create({
-              data: { modulo, accion, descripcion: `${modulo} - ${accion}` }
-            });
-          }
-
-          await tx.permisosUsuario.create({
-            data: { usuarioId: id, permisoId: permiso.id, permitido: true, valor: encoded }
-          });
-        }
-      }
-    });
-
-    // Invalidar caché de autenticación del usuario para que en la próxima petición
-    // se recarguen sus permisos actualizados desde la BD
-    AUTH_CACHE.delete(id);
-
-    success(res, { message: 'Permisos actualizados' });
-  } catch (err) {
-    next(err);
-  }
-};
-
