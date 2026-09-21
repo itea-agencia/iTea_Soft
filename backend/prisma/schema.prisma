@@ -161,6 +161,10 @@ model Sesiones {
   userAgent String?  @map("user_agent")
   usuario   Usuarios @relation(fields: [usuarioId], references: [id])
 
+  // auth.js busca la sesion por el hash del token en cada peticion que no esta en cache.
+  // No es unico a proposito: dos logins del mismo usuario en el mismo segundo producen el
+  // mismo JWT (mismo payload y mismo `iat`).
+  @@index([tokenHash])
   @@map("sesiones")
 }
 

@@ -1,6 +1,6 @@
 const prisma = require('../config/db');
 const { success, error } = require('../utils/apiResponse');
-const { AUTH_CACHE } = require('../middleware/auth');
+const sesiones = require('../services/sesiones.service');
 const { normalizarValor } = require('../utils/permisosValor');
 
 const MODULE_ACTIONS = {
@@ -102,7 +102,7 @@ exports.updatePermissions = async (req, res, next) => {
 
     // Limpiar toda la caché de autenticación en RAM para que todos los usuarios
     // del rol recarguen sus permisos en la próxima petición
-    AUTH_CACHE.clear();
+    sesiones.limpiarCache();
 
     success(res, { message: 'Permisos de rol actualizados' });
   } catch (err) {

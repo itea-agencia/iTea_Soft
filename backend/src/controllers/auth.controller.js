@@ -4,6 +4,7 @@ const { generateToken, getExpiryTime } = require('../utils/tokenUtils');
 const { success, error } = require('../utils/apiResponse');
 const crypto = require('crypto');
 const emailService = require('../utils/emailService');
+const sesiones = require('../services/sesiones.service');
 const { validarPassword } = require('../utils/passwordPolicy');
 
 // key: email (lowercase), value: { code, expiresAt, attempts, sentAt }
@@ -81,10 +82,13 @@ exports.login = async (req, res, next) => {
     const token = generateToken({ userId: usuario.id, role: usuario.rol.nombre }, remember);
     const expiresAt = new Date(getExpiryTime(remember));
 
+    // Las filas vencidas no las borra nadie mas.
+    await prisma.sesiones.deleteMany({ where: { usuarioId: usuario.id, expiresAt: { lt: new Date() } } });
+
     await prisma.sesiones.create({
       data: {
         usuarioId: usuario.id,
-        tokenHash: token,
+        tokenHash: sesiones.hashToken(token),
         expiresAt,
         userAgent: req.headers['user-agent'] || null
       }
@@ -133,11 +137,8 @@ exports.login = async (req, res, next) => {
 
 exports.logout = async (req, res, next) => {
   try {
-    const header = req.headers.authorization;
-    if (header && header.startsWith('Bearer ')) {
-      const token = header.split(' ')[1];
-      await prisma.sesiones.deleteMany({ where: { tokenHash: token } });
-    }
+    // Solo la sesion de este token: las de los otros dispositivos siguen.
+    if (req.tokenHash) await sesiones.revocarSesion(req.tokenHash);
     
     res.clearCookie('token', {
       httpOnly: true,
@@ -306,11 +307,9 @@ exports.resetPassword = async (req, res, next) => {
     // Un codigo sirve una sola vez.
     resetCodes.delete(email.toLowerCase());
 
-    // Se limpian las sesiones registradas, pero OJO: esto NO cierra las sesiones abiertas.
-    // auth.js valida el JWT y nunca consulta la tabla `sesiones`, asi que un token ya emitido
-    // sigue valiendo hasta que venza (1 dia, o 7 con "recordarme"). Lo mismo pasa con el
-    // logout. Revocar de verdad exige que auth.js compruebe la sesion.
-    await prisma.sesiones.deleteMany({ where: { usuarioId: usuario.id } });
+    // Quien recupera la contrasena porque sospecha de la cuenta espera que las sesiones
+    // abiertas dejen de valer: aqui si, porque auth.js exige la sesion registrada.
+    await sesiones.revocarSesionesDeUsuario(usuario.id);
 
     success(res, { message: 'Contraseña restablecida exitosamente' });
   } catch (err) {
