@@ -19,10 +19,18 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Un 401 con estos codigos es la sesion, no una contrasena mala (el login fallido no lleva
+    // codigo). Al desactivar o eliminar a alguien, o cerrar su sesion en otro sitio, el
+    // servidor la revoca; sin avisar al contexto, la pantalla seguia abierta y cada accion
+    // fallaba hasta que el usuario recargaba.
+    const CODIGOS_DE_SESION = ['NO_TOKEN', 'INVALID_TOKEN', 'SESSION_REVOKED', 'USER_INACTIVE'];
     if (error.response?.status === 401) {
       localStorage.removeItem('itea_token');
       localStorage.removeItem('itea_user');
       localStorage.removeItem('itea_session_expiry');
+      if (CODIGOS_DE_SESION.includes(error.response?.data?.error?.code)) {
+        window.dispatchEvent(new Event('itea:sesion-expirada'));
+      }
     }
     return Promise.reject(error);
   }

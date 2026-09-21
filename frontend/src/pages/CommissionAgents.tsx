@@ -30,6 +30,7 @@ import { usePermissions } from "../context/PermissionsContext";
 import { formatCurrency, capitalizeName, todayStr } from "../utils/formatters";
 import StatCard from "../components/ui/StatCard";
 import LoadingScreen from "../components/ui/LoadingScreen";
+import { mensajeDeError } from "../utils/errors";
 
 export default function CommissionAgents() {
   const { data, addCommissionAgent, updateCommissionAgent, deleteCommissionAgent, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
@@ -89,7 +90,7 @@ export default function CommissionAgents() {
       setAgentDetails(res.data.data);
     } catch (error: any) {
       console.error("Error fetching agent details:", error);
-      setErrorMessage(error.response?.data?.message || "Error al cargar los detalles.");
+      setErrorMessage(mensajeDeError(error, "Error al cargar los detalles."));
       setShowError(true);
       setDetailsModalOpen(false);
     } finally {
@@ -202,7 +203,7 @@ export default function CommissionAgents() {
       }
       setIsModalOpen(false);
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al guardar el comisionista");
+      setErrorMessage(mensajeDeError(err, "Error al guardar el comisionista"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     } finally {
@@ -218,7 +219,7 @@ export default function CommissionAgents() {
       notifySuccess("Comisionista eliminado correctamente");
       setDeleteConfirm(null);
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al eliminar el comisionista");
+      setErrorMessage(mensajeDeError(err, "Error al eliminar el comisionista"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     } finally {
@@ -249,7 +250,7 @@ export default function CommissionAgents() {
       setIsSettleModalOpen(false);
       setActiveTab("history");
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al procesar la liquidación");
+      setErrorMessage(mensajeDeError(err, "Error al procesar la liquidación"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     } finally {

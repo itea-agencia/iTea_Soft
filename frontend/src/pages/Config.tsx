@@ -35,6 +35,7 @@ import ConfigForms from '../components/config/ConfigForms';
 import ConfigGrids from '../components/config/ConfigGrids';
 import { formatCurrency } from '../utils/formatters';
 import LoadingScreen from '../components/ui/LoadingScreen';
+import { mensajeDeError } from "../utils/errors";
 
 type ConfigSection = 'cards' | 'paymentMethods' | 'documentTypes' | 'airlines' | 'suppliers' | 'airports' | 'baggage' | 'packages';
 
@@ -291,7 +292,7 @@ export default function Config() {
       setIsModalOpen(false);
     } catch (error: any) {
       console.error("Error al guardar la configuración:", error);
-      notifyError(`Error al guardar: ${error.response?.data?.message || error.message || 'Error desconocido'}`);
+      notifyError(`Error al guardar: ${mensajeDeError(error, error.message || 'Error desconocido')}`);
     } finally {
       setIsSaving(false);
     }

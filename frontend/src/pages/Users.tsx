@@ -40,6 +40,7 @@ import LoadingScreen from "../components/ui/LoadingScreen";
 
 
 import { capitalizeName, formatId, todayStr } from "../utils/formatters";
+import { mensajeDeError } from "../utils/errors";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -422,11 +423,16 @@ export default function Users() {
         });
         setSuccessMessage("Usuario actualizado exitosamente");
       } else {
-        await addUser({
+        const creado: any = await addUser({
           ...sanitizedData,
           name: `${capitalizeName(formData.firstName)} ${capitalizeName(formData.lastName)}`.trim(),
         } as any);
-        setSuccessMessage("Nuevo usuario registrado correctamente");
+        // Con la cedula de alguien eliminado el servidor reactiva SU fila, no crea otra.
+        setSuccessMessage(
+          creado?.reactivated
+            ? "Usuario reingresado: recuperó sus ventas y sus datos anteriores"
+            : "Nuevo usuario registrado correctamente",
+        );
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       }
@@ -434,13 +440,22 @@ export default function Users() {
       setIsModalOpen(false);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al guardar el usuario");
+      setErrorMessage(mensajeDeError(err, "Error al guardar el usuario"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Las reglas de admin las aplica el servidor; esto solo evita ofrecer un boton que va a fallar
+  // y dice por que.
+  const motivoBloqueo = (u: User, accion: "desactivar" | "eliminar"): string | null =>
+    u.id === currentUser?.id
+      ? `No puedes ${accion} tu propia cuenta`
+      : u.role === "admin"
+        ? `Un administrador no se puede ${accion} desde la aplicación`
+        : null;
 
   const handleToggleStatus = async (user: User) => {
     try {
@@ -452,7 +467,7 @@ export default function Users() {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al cambiar estado");
+      setErrorMessage(mensajeDeError(err, "Error al cambiar estado"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     }
@@ -466,28 +481,6 @@ export default function Users() {
   const confirmDelete = async () => {
     if (!userToDelete) return;
 
-    const isFreelancerOrAsesor = userToDelete.role === "freelancer" || userToDelete.role === "asesor";
-    if (isFreelancerOrAsesor) {
-      const hasSales = (data.sales || []).some(s => Number(s.asesorId) === Number(userToDelete.id));
-      if (hasSales) {
-        setIsSaving(true);
-        try {
-          await updateUser(userToDelete.id, { status: "inactive" });
-          setErrorMessage("No se puede eliminar un usuario con ventas registradas. El usuario ha sido desactivado automáticamente retirando su acceso.");
-          setShowError(true);
-          setIsDeleteModalOpen(false);
-          setTimeout(() => setShowError(false), 5000);
-        } catch (err: any) {
-          setErrorMessage(err?.response?.data?.message || "Error al desactivar el usuario");
-          setShowError(true);
-          setTimeout(() => setShowError(false), 3000);
-        } finally {
-          setIsSaving(false);
-        }
-        return;
-      }
-    }
-
     setIsSaving(true);
     try {
       await deleteUser(userToDelete.id);
@@ -496,7 +489,7 @@ export default function Users() {
       setIsDeleteModalOpen(false);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al eliminar el usuario");
+      setErrorMessage(mensajeDeError(err, "Error al eliminar el usuario"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     } finally {
@@ -517,7 +510,7 @@ export default function Users() {
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Error al guardar permisos globales");
+      setErrorMessage(mensajeDeError(err, "Error al guardar permisos globales"));
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     } finally {
@@ -760,8 +753,11 @@ export default function Users() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleStatus(user)}
+                      disabled={user.status === "active" && motivoBloqueo(user, "desactivar") !== null}
                       title={
-                        user.status === "active" ? "Desactivar" : "Activar"
+                        user.status === "active"
+                          ? motivoBloqueo(user, "desactivar") ?? "Desactivar: cierra su sesión y bloquea su acceso hasta que lo actives"
+                          : "Activar"
                       }
                     >
                       {user.status === "active" ? (
@@ -774,7 +770,8 @@ export default function Users() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteRequest(user)}
-                      title="Eliminar"
+                      disabled={motivoBloqueo(user, "eliminar") !== null}
+                      title={motivoBloqueo(user, "eliminar") ?? "Eliminar: baja definitiva"}
                     >
                       <Trash2 size={14} className="text-red-400" />
                     </Button>
@@ -970,12 +967,18 @@ export default function Users() {
                   role: e.target.value as "admin" | "asesor" | "freelancer",
                 })
               }
+              disabled={editingUser?.role === "admin"}
               options={[
                 { value: "admin", label: "Administrador" },
                 { value: "asesor", label: "Asesor" },
                 { value: "freelancer", label: "Freelancer" },
               ]}
             />
+            {editingUser?.role === "admin" && (
+              <p className="mt-1 text-xs text-gray-500">
+                El rol de un administrador no se puede cambiar desde la aplicación.
+              </p>
+            )}
           </FormField>
           <FormField label="Tipo Doc" error={errors.docType}>
             <Select
@@ -1055,6 +1058,7 @@ export default function Users() {
           <FormField label="Estado">
             <Select
               value={formData.status}
+              disabled={editingUser?.role === "admin"}
               onChange={(e) =>
                 setFormData({
                   ...formData,
@@ -1085,7 +1089,7 @@ export default function Users() {
               Cancelar
             </Button>
             <Button variant="danger" onClick={confirmDelete} disabled={isSaving}>
-              {isSaving ? "Eliminando..." : "Confirmar Eliminación"}
+              {isSaving ? "Eliminando..." : "Eliminar usuario"}
             </Button>
           </>
         }
@@ -1094,10 +1098,15 @@ export default function Users() {
           <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle size={32} />
           </div>
-          <h3 className="text-lg font-bold text-gray-900">¿Estás seguro?</h3>
+          <h3 className="text-lg font-bold text-gray-900">
+            ¿Eliminar a {userToDelete?.name}?
+          </h3>
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            Esta acción eliminará permanentemente al usuario{" "}
-            <b>{userToDelete?.name}</b>. Esta acción no se puede deshacer.
+            Es una baja definitiva: pierde el acceso y su correo queda libre para
+            otra persona. Sus ventas se conservan a su nombre.
+          </p>
+          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+            Si solo quieres suspender su acceso por un tiempo, usa Desactivar.
           </p>
         </div>
       </Modal>
