@@ -415,9 +415,12 @@ exports.topClients = async (req, res, next) => {
 exports.categoryDistribution = async (req, res, next) => {
   try {
     const { dateFrom, dateTo } = req.query;
-    const where = {};
+    // `where.venta` existe siempre. Antes solo se creaba si venian fechas, y el alcance 'own'
+    // escribia sobre un `undefined`: un asesor sin filtro de fechas recibia un 500. Estaba
+    // oculto porque la ruta no pasaba por `authorize`, asi que 'own' nunca llegaba.
+    const where = { venta: { deletedAt: null } };
     if (dateFrom || dateTo) {
-      where.venta = { deletedAt: null, creadoAt: {} };
+      where.venta.creadoAt = {};
       if (dateFrom) where.venta.creadoAt.gte = new Date(dateFrom);
       if (dateTo) where.venta.creadoAt.lte = new Date(dateTo);
     }
