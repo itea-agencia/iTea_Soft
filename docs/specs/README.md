@@ -15,6 +15,7 @@ cómo comprobar que sigue viva.
 | [facturacion-siigo](2026-09-17-facturacion-siigo.md) | La interfaz no afirma lo que no puede saber |
 | [vocabulario](2026-09-17-vocabulario.md) | Cada cosa se llama igual en todo el flujo, y cosas distintas se llaman distinto |
 | [migraciones](2026-09-17-migraciones.md) | El esquema solo cambia por una migración versionada |
+| [bajas-y-sesiones](2026-09-21-bajas-y-sesiones.md) | Una baja no pierde ventas, y una sesión revocada no vale |
 
 ## Otras carpetas de documentación
 
