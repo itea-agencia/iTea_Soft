@@ -2,16 +2,60 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
 const { generateToken, getExpiryTime } = require('../utils/tokenUtils');
 const { success, error } = require('../utils/apiResponse');
+const crypto = require('crypto');
 const emailService = require('../utils/emailService');
+const { validarPassword } = require('../utils/passwordPolicy');
 
-const resetCodes = new Map(); // key: email (lowercase), value: { code, expiresAt }
+// key: email (lowercase), value: { code, expiresAt, attempts, sentAt }
+const resetCodes = new Map();
+
+// Un codigo de 6 digitos son un millon de combinaciones: sin limite de intentos se agota en
+// minutos. Con 5 intentos por codigo, y un codigo nuevo cada 60 s como minimo, no.
+const RESET_MAX_ATTEMPTS = 5;
+const RESET_RESEND_MS = 60 * 1000;
+const RESET_TTL_MS = 15 * 60 * 1000;
+const CODIGO_INVALIDO = 'Código inválido o expirado. Solicita uno nuevo';
+
+// Hash de relleno para que login tarde lo mismo exista o no el correo: sin esto, la
+// respuesta rapida delata que el usuario no existe. Costo 12, el de las contrasenas que
+// crea este backend. Se calcula al arrancar: hacerlo en el primer login lo volvia lento
+// justo para el primer correo inexistente, que es el que se quiere disimular.
+const dummyHash = bcrypt.hash('relleno-para-igualar-tiempos', 12);
+
+// Devuelve el registro si el codigo es correcto. Si no, cuenta el intento y, al agotarlos,
+// borra el codigo. Las tres salidas de error son el mismo mensaje a proposito: distinguir
+// "no hay codigo" de "codigo incorrecto" le dice a un atacante si el correo existe.
+function comprobarCodigo(email, code) {
+  const key = String(email).toLowerCase();
+  const record = resetCodes.get(key);
+  if (!record) return null;
+
+  if (Date.now() > record.expiresAt) {
+    resetCodes.delete(key);
+    return null;
+  }
+
+  // Agotados los intentos el registro SE QUEDA (bloqueado) en vez de borrarse: borrarlo
+  // tambien borraba `sentAt`, y con el pedir un codigo nuevo dejaba de esperar los 60 s, asi
+  // que se podian encadenar rondas de 5 intentos sin pausa.
+  if (record.attempts >= RESET_MAX_ATTEMPTS) return null;
+
+  const dado = Buffer.from(String(code).trim());
+  const real = Buffer.from(record.code);
+  const coincide = dado.length === real.length && crypto.timingSafeEqual(dado, real);
+  if (!coincide) {
+    record.attempts += 1;
+    return null;
+  }
+  return record;
+}
 
 
 exports.login = async (req, res, next) => {
   try {
     const { email, password, remember } = req.body;
 
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return error(res, 'Correo y contraseña requeridos', 400);
     }
 
@@ -24,13 +68,11 @@ exports.login = async (req, res, next) => {
       }
     });
 
-    if (!usuario) {
-      return error(res, 'Usuario no encontrado', 401);
-    }
-
-    const validPassword = await bcrypt.compare(password, usuario.passwordHash);
-    if (!validPassword) {
-      return error(res, 'Contraseña incorrecta', 401);
+    // Mismo mensaje y mismo tiempo para "no existe" y "contrasena incorrecta": si no, el
+    // login sirve para averiguar que correos estan registrados.
+    const validPassword = await bcrypt.compare(password, usuario?.passwordHash || (await dummyHash));
+    if (!usuario || !validPassword) {
+      return error(res, 'Correo o contraseña incorrectos', 401);
     }
 
     if (usuario.status === 'inactive') {
@@ -156,31 +198,38 @@ exports.me = async (req, res, next) => {
 exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
-    if (!email) {
+    if (typeof email !== 'string' || !email) {
       return error(res, 'El correo electrónico es requerido', 400);
     }
 
+    const key = email.toLowerCase();
+    // Respuesta identica exista o no el correo (y este activo o no): antes decia "no existe
+    // ningun usuario con este correo", con lo que cualquiera podia listar los registrados.
+    const respuesta = () => success(res, {
+      message: 'Si el correo está registrado, enviamos un código de recuperación'
+    });
+
     const usuario = await prisma.usuarios.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: key },
       include: { persona: true }
     });
 
-    if (!usuario) {
-      return error(res, 'No existe ningún usuario registrado con este correo', 404);
+    if (!usuario || usuario.status === 'inactive') {
+      return respuesta();
     }
 
-    if (usuario.status === 'inactive') {
-      return error(res, 'Usuario inactivo. Contacte al administrador', 400);
+    // Sin esto, repetir la peticion manda un correo por cada una a la bandeja de la victima.
+    const previo = resetCodes.get(key);
+    if (previo && Date.now() - previo.sentAt < RESET_RESEND_MS) {
+      return respuesta();
     }
 
-    // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 15 * 60 * 1000; // Valid for 15 minutes
-
-    resetCodes.set(email.toLowerCase(), { code, expiresAt });
+    // randomInt es criptograficamente seguro; Math.random es predecible.
+    const code = crypto.randomInt(100000, 1000000).toString();
+    resetCodes.set(key, { code, expiresAt: Date.now() + RESET_TTL_MS, attempts: 0, sentAt: Date.now() });
 
     // Send email using emailService
-    await emailService.sendEmail({
+    const enviado = await emailService.sendEmail({
       to: email.toLowerCase(),
       subject: 'iTea Travel - Código de recuperación de contraseña',
       html: `
@@ -202,7 +251,12 @@ exports.forgotPassword = async (req, res, next) => {
       `
     });
 
-    success(res, { message: 'Código de recuperación enviado al correo' });
+    if (!enviado.success) {
+      // No se le dice al cliente (seria la misma fuga de "el correo existe"), pero queda en
+      // el log: antes se respondia "enviado" aunque Resend hubiera fallado.
+      console.error('[forgotPassword] no se pudo enviar el correo de recuperacion');
+    }
+    respuesta();
   } catch (err) {
     next(err);
   }
@@ -212,22 +266,12 @@ exports.verifyCode = async (req, res, next) => {
   try {
     const { email, code } = req.body;
 
-    if (!email || !code) {
+    if (typeof email !== 'string' || typeof code !== 'string' || !email || !code) {
       return error(res, 'Correo y código son requeridos', 400);
     }
 
-    const record = resetCodes.get(email.toLowerCase());
-    if (!record) {
-      return error(res, 'No se ha solicitado una recuperación de contraseña para este correo', 400);
-    }
-
-    if (Date.now() > record.expiresAt) {
-      resetCodes.delete(email.toLowerCase());
-      return error(res, 'El código ha expirado. Por favor, solicita uno nuevo', 400);
-    }
-
-    if (record.code !== code.trim()) {
-      return error(res, 'Código de recuperación incorrecto', 400);
+    if (!comprobarCodigo(email, code)) {
+      return error(res, CODIGO_INVALIDO, 400);
     }
 
     success(res, { message: 'Código verificado correctamente' });
@@ -240,25 +284,20 @@ exports.resetPassword = async (req, res, next) => {
   try {
     const { email, code, newPassword } = req.body;
 
-    if (!email || !code || !newPassword) {
+    if (typeof email !== 'string' || typeof code !== 'string' || !email || !code || !newPassword) {
       return error(res, 'Todos los campos son requeridos', 400);
     }
 
-    const record = resetCodes.get(email.toLowerCase());
-    if (!record) {
-      return error(res, 'No se ha solicitado una recuperación de contraseña para este correo', 400);
+    // Antes que el codigo: una contrasena floja no debe gastar un intento del codigo.
+    const problema = validarPassword(newPassword);
+    if (problema) {
+      return error(res, problema, 400, 'WEAK_PASSWORD');
     }
 
-    if (Date.now() > record.expiresAt) {
-      resetCodes.delete(email.toLowerCase());
-      return error(res, 'El código ha expirado. Por favor, solicita uno nuevo', 400);
+    if (!comprobarCodigo(email, code)) {
+      return error(res, CODIGO_INVALIDO, 400);
     }
 
-    if (record.code !== code.trim()) {
-      return error(res, 'Código de recuperación incorrecto', 400);
-    }
-
-    // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 12);
 
     const usuario = await prisma.usuarios.findUnique({
@@ -266,21 +305,25 @@ exports.resetPassword = async (req, res, next) => {
     });
 
     if (!usuario) {
-      return error(res, 'Usuario no encontrado', 404);
+      return error(res, CODIGO_INVALIDO, 400);
     }
 
-    // Update password
     await prisma.usuarios.update({
       where: { id: usuario.id },
       data: { passwordHash }
     });
 
-    // Remove code from cache
+    // Un codigo sirve una sola vez.
     resetCodes.delete(email.toLowerCase());
+
+    // Se limpian las sesiones registradas, pero OJO: esto NO cierra las sesiones abiertas.
+    // auth.js valida el JWT y nunca consulta la tabla `sesiones`, asi que un token ya emitido
+    // sigue valiendo hasta que venza (1 dia, o 7 con "recordarme"). Lo mismo pasa con el
+    // logout. Revocar de verdad exige que auth.js compruebe la sesion.
+    await prisma.sesiones.deleteMany({ where: { usuarioId: usuario.id } });
 
     success(res, { message: 'Contraseña restablecida exitosamente' });
   } catch (err) {
     next(err);
   }
 };
-

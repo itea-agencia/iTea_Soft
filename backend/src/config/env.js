@@ -81,10 +81,24 @@ if (siigo.emisionBloqueada) {
   );
 }
 
+// El secreto firma los JWT: con un valor por defecto conocido (estaba en este archivo y en
+// .env.example) cualquiera puede fabricar un token de admin. Sin secreto el backend no
+// arranca, en vez de arrancar con uno que todo el mundo conoce.
+const JWT_SECRETOS_DE_EJEMPLO = ['itea-jwt-secret-change-in-production', 'your-secret-key-change-in-production'];
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET no está definido. Sin él no se pueden firmar ni verificar tokens.');
+}
+if (JWT_SECRETOS_DE_EJEMPLO.includes(process.env.JWT_SECRET)) {
+  const msg = 'JWT_SECRET tiene el valor de ejemplo de .env.example: cualquiera puede fabricar tokens.';
+  // Solo se aborta en produccion: el .env local que sale de copiar .env.example lo trae.
+  if (process.env.NODE_ENV === 'production') throw new Error(msg);
+  console.warn(`Advertencia: ${msg}`);
+}
+
 const env = {
   port: parseInt(process.env.PORT, 10) || 3000,
   databaseUrl: process.env.DATABASE_URL,
-  jwtSecret: process.env.JWT_SECRET || 'itea-jwt-secret-change-in-production',
+  jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: '1d',
   jwtRememberExpiresIn: '7d',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
