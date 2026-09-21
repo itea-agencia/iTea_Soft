@@ -2,9 +2,11 @@ const { Router } = require('express');
 const router = Router();
 const siigoService = require('../services/siigo.service');
 const auth = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/authorize');
 
-// Proteger con JWT (opcional, pero recomendado)
-router.use(auth);
+// Son herramientas para buscar identificadores en la cuenta de Siigo, con las credenciales
+// del servidor: solo el admin, no cualquier usuario autenticado.
+router.use(auth, requireAdmin);
 
 // 1. Ver Tipos de Documentos (Para buscar el ID de la Factura de Venta)
 router.get('/documents', async (req, res) => {

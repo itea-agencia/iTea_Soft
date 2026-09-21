@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/db');
+const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
@@ -12,16 +13,13 @@ exports.list = async (req, res, next) => {
     const { search, sortBy, sortOrder } = req;
     const { role, status } = req.query;
 
-    let searchCondition = '';
-    if (search) {
-      searchCondition = `AND (p.nombres ILIKE '%${search}%' OR p.apellidos ILIKE '%${search}%' OR u.email ILIKE '%${search}%')`;
-    }
-    
-    let roleCondition = '';
-    if (role) roleCondition = `AND r.nombre = '${role}'`;
-    
-    let statusCondition = '';
-    if (status) statusCondition = `AND u.status = '${status}'`;
+    // Parametros, no interpolacion: vienen del request.
+    const like = `%${search}%`;
+    const searchCondition = search
+      ? Prisma.sql`AND (p.nombres ILIKE ${like} OR p.apellidos ILIKE ${like} OR u.email ILIKE ${like})`
+      : Prisma.empty;
+    const roleCondition = role ? Prisma.sql`AND r.nombre = ${String(role)}` : Prisma.empty;
+    const statusCondition = status ? Prisma.sql`AND u.status::text = ${String(status)}` : Prisma.empty;
 
     const where = {};
     if (search) {
@@ -38,7 +36,7 @@ exports.list = async (req, res, next) => {
     // Ejecución paralela: Conteo (Prisma) y Búsqueda (SQL Puro)
     const [total, usuariosRaw] = await Promise.all([
       prisma.usuarios.count({ where }),
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw(Prisma.sql`
         SELECT 
           u.id, 
           u.email, 
@@ -376,28 +374,32 @@ exports.updatePermissions = async (req, res, next) => {
     const id = parseInt(req.params.id);
     const { permissions } = req.body;
 
-    await prisma.permisosUsuario.deleteMany({ where: { usuarioId: id } });
+    // Todo o nada: ver la nota en roles.controller.js. Un guardado a medias dejaria al
+    // usuario con parte de sus permisos y sin el resto.
+    await prisma.$transaction(async (tx) => {
+      await tx.permisosUsuario.deleteMany({ where: { usuarioId: id } });
 
-    for (const [modulo, accs] of Object.entries(permissions)) {
-      for (const [accion, value] of Object.entries(accs)) {
-        const encoded = value === 'all' || value === 'own' || value === 'none' ? value
-          : value === true || value === 'true' ? 'true'
-          : value === false || value === 'false' ? 'false'
-          : String(value);
+      for (const [modulo, accs] of Object.entries(permissions)) {
+        for (const [accion, value] of Object.entries(accs)) {
+          const encoded = value === 'all' || value === 'own' || value === 'none' ? value
+            : value === true || value === 'true' ? 'true'
+            : value === false || value === 'false' ? 'false'
+            : String(value);
 
-        // Buscar o crear el registro en el catálogo de permisos
-        let permiso = await prisma.permisos.findFirst({ where: { modulo, accion } });
-        if (!permiso) {
-          permiso = await prisma.permisos.create({
-            data: { modulo, accion, descripcion: `${modulo} - ${accion}` }
+          // Buscar o crear el registro en el catálogo de permisos
+          let permiso = await tx.permisos.findFirst({ where: { modulo, accion } });
+          if (!permiso) {
+            permiso = await tx.permisos.create({
+              data: { modulo, accion, descripcion: `${modulo} - ${accion}` }
+            });
+          }
+
+          await tx.permisosUsuario.create({
+            data: { usuarioId: id, permisoId: permiso.id, permitido: true, valor: encoded }
           });
         }
-
-        await prisma.permisosUsuario.create({
-          data: { usuarioId: id, permisoId: permiso.id, permitido: true, valor: encoded }
-        });
       }
-    }
+    });
 
     // Invalidar caché de autenticación del usuario para que en la próxima petición
     // se recarguen sus permisos actualizados desde la BD
