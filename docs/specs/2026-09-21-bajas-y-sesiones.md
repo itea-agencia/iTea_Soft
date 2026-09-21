@@ -97,6 +97,21 @@ Y por la API, con un usuario de prueba:
 - Crear un usuario con el correo de un eliminado da `201`; con el de uno activo o desactivado,
   `409 EMAIL_EN_USO`.
 
+## Decisiones que no son huecos
+
+- **Un admin puede cambiar el correo y la contraseña de otro admin.** Es deliberado. La regla de
+  arriba solo cubre desactivar, eliminar y cambiar el rol. Cambiar la contraseña de alguien
+  cierra sus demás sesiones.
+- **El correo de bienvenida lleva la contraseña en texto plano.** Es deliberado: es la
+  credencial temporal que el usuario necesita para entrar. Va escapada en la parte HTML y
+  **exacta** en la parte `text/plain`: antes se insertaba sin escapar, y una contraseña como
+  `Ab<c>1!x` llegaba como `Ab1!x` (el cliente de correo la leía como una etiqueta).
+- **No se hashea la contraseña "para viajar".** En el navegador → servidor ya va cifrada por
+  HTTPS, y hashearla en el cliente no protege nada (el hash pasaría a ser la contraseña) y
+  haría imposible mandarla por correo, porque el servidor necesita el texto para enviarlo. En
+  la base se guarda con bcrypt y en ningún log aparece. Si algún día no debe pasar por el
+  navegador del admin, la salida es que el servidor genere la temporal; hoy no se hace.
+
 ## Lo que queda abierto
 
 - **Una sola instancia del backend.** La caché es en memoria: revocar en una instancia no se ve
@@ -104,12 +119,9 @@ Y por la API, con un usuario de prueba:
   base en cada petición.
 - **El script de baja de admin no limpia la caché.** Un cambio hecho directamente en la base
   surte efecto en hasta 5 minutos, o al reiniciar el backend. Está dicho en el propio script.
-- **Un admin puede cambiar el correo y la contraseña de OTRO admin.** Equivale a tomar su cuenta.
-  La regla acordada solo cubre desactivar, eliminar y cambiar el rol.
 - **Filas de sesión antiguas.** Las creadas antes de este cambio guardan el token completo, no
   el hash: no coinciden, así que esas sesiones dejan de valer (todos inician sesión una vez) y
   sus filas se van al vencer. La última consulta de arriba dará filas hasta entonces.
-- **El correo de bienvenida envía la contraseña en texto plano.** Es anterior a esto.
 - **Sin auditoría de bajas.** `logs_usuarios` existe y no se usa: no queda registro de quién dio
   de baja a quién.
 - **En producción, dos migraciones destruyen o mueven datos.** `quitar_permisos_por_usuario`

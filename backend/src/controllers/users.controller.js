@@ -4,7 +4,7 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
-const { formatName } = require('../utils/stringUtils');
+const { formatName, escaparHtml } = require('../utils/stringUtils');
 const { normalizarEmail, correoDeEliminado } = require('../utils/emailUtils');
 const sesiones = require('../services/sesiones.service');
 
@@ -243,17 +243,30 @@ exports.create = async (req, res, next) => {
               <h1 style="color: #ffffff; margin: 0; font-size: 24px;">¡Bienvenido a Samtur Travel!</h1>
             </div>
             <div style="padding: 30px;">
-              <p style="font-size: 16px;">Hola <strong>${usuario.persona.nombres}</strong>,</p>
+              <p style="font-size: 16px;">Hola <strong>${escaparHtml(usuario.persona.nombres)}</strong>,</p>
               <p style="font-size: 16px;">Tu cuenta ha sido creada exitosamente en nuestro sistema.</p>
               <p style="font-size: 16px;"><strong>Tus credenciales de acceso temporal son:</strong></p>
               <ul style="font-size: 16px; background: #f8fafc; padding: 15px 30px; border-radius: 6px;">
-                <li><strong>Correo:</strong> ${email}</li>
-                <li><strong>Contraseña:</strong> ${data.password}</li>
+                <li><strong>Correo:</strong> ${escaparHtml(email)}</li>
+                <li><strong>Contraseña:</strong> ${escaparHtml(data.password)}</li>
               </ul>
               <p style="font-size: 16px; margin-top: 20px;">Te recomendamos cambiar tu contraseña una vez inicies sesión por motivos de seguridad.</p>
             </div>
           </div>
-        `
+        `,
+        // La contrasena llega tal cual se escribio, sin pasar por HTML.
+        text: [
+          '¡Bienvenido a Samtur Travel!',
+          '',
+          `Hola ${usuario.persona.nombres},`,
+          'Tu cuenta ha sido creada exitosamente en nuestro sistema.',
+          '',
+          'Tus credenciales de acceso temporal son:',
+          `Correo: ${email}`,
+          `Contraseña: ${data.password}`,
+          '',
+          'Te recomendamos cambiar tu contraseña una vez inicies sesión por motivos de seguridad.',
+        ].join('\n'),
       });
       console.log(`[USER CREATE] Welcome email sent successfully to ${email}`);
     } catch (emailErr) {

@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const emailService = require('../utils/emailService');
 const sesiones = require('../services/sesiones.service');
 const { validarPassword } = require('../utils/passwordPolicy');
+const { escaparHtml } = require('../utils/stringUtils');
 
 // key: email (lowercase), value: { code, expiresAt, attempts, sentAt }
 const resetCodes = new Map();
@@ -229,7 +230,7 @@ exports.forgotPassword = async (req, res, next) => {
             <h1 style="color: #ffffff; margin: 0; font-size: 24px;">iTea Travel</h1>
           </div>
           <div style="padding: 30px;">
-            <p style="font-size: 16px;">Hola <strong>${usuario.persona.nombres}</strong>,</p>
+            <p style="font-size: 16px;">Hola <strong>${escaparHtml(usuario.persona.nombres)}</strong>,</p>
             <p style="font-size: 16px;">Has solicitado restablecer tu contraseña. Utiliza el siguiente código para completar el proceso:</p>
             <div style="text-align: center; margin: 30px 0;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; background-color: #f1f5f9; padding: 15px 30px; border-radius: 8px; border: 1px dashed #cbd5e1; display: inline-block;">
