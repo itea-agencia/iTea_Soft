@@ -141,6 +141,9 @@ model Usuarios {
   status          UserStatus        @default(active)
   ultimoLogin     DateTime?         @map("ultimo_login")
   creadoAt        DateTime          @default(now()) @map("creado_at")
+  // Baja definitiva. Distinta de `status = inactive`, que es una suspension: el eliminado
+  // libera su correo (ver users.controller.js) y solo vuelve reingresando por su cedula.
+  deletedAt       DateTime?         @map("deleted_at")
   clientesCreados Clientes[]        @relation("cliente_creado_por")
   logs            LogsUsuarios[]
   paquetesCreados Paquetes[]        @relation("paquete_creado_por")
