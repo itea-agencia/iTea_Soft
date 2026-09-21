@@ -10,10 +10,10 @@ async function auth(req, res, next) {
   try {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
-      // BYPASS PARA PRUEBAS
-      req.user = { id: 1, role: 'admin' };
-      req.permissionScope = 'all';
-      return next();
+      // Sin token no hay identidad. Aqui hubo un bypass de pruebas que asignaba
+      // `{ id: 1, role: 'admin' }` a cualquier request sin cabecera, y dejaba TODAS las
+      // rutas (ventas, facturas de Siigo, usuarios) abiertas a quien no se autenticara.
+      return error(res, 'Autenticación requerida', 401, 'NO_TOKEN');
     }
 
     const token = header.split(' ')[1];

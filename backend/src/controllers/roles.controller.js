@@ -15,27 +15,6 @@ const MODULE_ACTIONS = {
 const SCOPED_VIEW_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
 const SCOPED_EDIT_MODULES = ['sales', 'clients', 'responsables', 'itineraries'];
 
-const DEFAULT_ROLE_VALUES = {
-  asesor: {
-    dashboard: { view: 'own' },
-    sales: { view: 'own', create: 'true', edit: 'own' },
-    clients: { view: 'own', create: 'true', edit: 'own' },
-    responsables: { view: 'own', create: 'true', edit: 'own', delete: 'false' },
-    itineraries: { view: 'own', edit: 'own' },
-    commissions: { view: 'false', create: 'false', edit: 'false', delete: 'false' },
-    config: { view: 'false', create: 'false', edit: 'false' },
-  },
-  freelancer: {
-    dashboard: { view: 'own' },
-    sales: { view: 'own', create: 'true', edit: 'own' },
-    clients: { view: 'own', create: 'true', edit: 'own' },
-    responsables: { view: 'own', create: 'true', edit: 'own', delete: 'false' },
-    itineraries: { view: 'own', edit: 'own' },
-    commissions: { view: 'false', create: 'false', edit: 'false', delete: 'false' },
-    config: { view: 'false', create: 'false', edit: 'false' },
-  },
-};
-
 function parseValor(accion, modulo, valor, role) {
   // Módulos con vista jerárquica (all/own/none)
   if (accion === 'view' && SCOPED_VIEW_MODULES.includes(modulo)) {
@@ -80,15 +59,15 @@ exports.getPermissions = async (req, res, next) => {
 
     // Build structure for ALL configurable modules
     const MODULES = Object.keys(MODULE_ACTIONS);
-    const defaults = DEFAULT_ROLE_VALUES[role] || DEFAULT_ROLE_VALUES.asesor;
     const grouped = {};
 
     for (const mod of MODULES) {
       grouped[mod] = {};
       const actions = MODULE_ACTIONS[mod] || [];
       for (const act of actions) {
-        const defVal = defaults[mod]?.[act];
-        grouped[mod][act] = parseValor(act, mod, defVal ?? 'false', role);
+        // Sin fila en la BD no hay permiso: es lo mismo que aplica authorize.js. Mostrar
+        // un default del codigo aqui haria que la pantalla dijera una cosa y el servidor otra.
+        grouped[mod][act] = parseValor(act, mod, 'false', role);
       }
     }
 
@@ -112,28 +91,38 @@ exports.updatePermissions = async (req, res, next) => {
     const { role } = req.params;
     const { permissions } = req.body;
 
+    if (!['asesor', 'freelancer'].includes(role)) {
+      return error(res, 'Rol inválido. Use: asesor, freelancer', 400);
+    }
+    if (!permissions || typeof permissions !== 'object') {
+      return error(res, 'Faltan los permisos a guardar', 400);
+    }
+
     const rol = await prisma.roles.findUnique({ where: { nombre: role } });
     if (!rol) return error(res, 'Rol no encontrado', 404);
 
-    await prisma.permisosRol.deleteMany({ where: { rolId: rol.id } });
+    // Todo o nada. Los permisos de un rol se reemplazan borrando y recreando, y como la BD
+    // es la unica fuente (sin permiso no hay acceso), un fallo a medias dejaba al rol con
+    // solo una parte de sus permisos y al resto de sus usuarios sin acceso.
+    await prisma.$transaction(async (tx) => {
+      await tx.permisosRol.deleteMany({ where: { rolId: rol.id } });
 
-    for (const [modulo, accs] of Object.entries(permissions)) {
-      for (const [accion, value] of Object.entries(accs)) {
-        const encoded = encodeValor(value);
+      for (const [modulo, accs] of Object.entries(permissions)) {
+        for (const [accion, value] of Object.entries(accs)) {
+          // Buscar o crear el registro en el catálogo de permisos
+          let permiso = await tx.permisos.findFirst({ where: { modulo, accion } });
+          if (!permiso) {
+            permiso = await tx.permisos.create({
+              data: { modulo, accion, descripcion: `${modulo} - ${accion}` }
+            });
+          }
 
-        // Buscar o crear el registro en el catálogo de permisos
-        let permiso = await prisma.permisos.findFirst({ where: { modulo, accion } });
-        if (!permiso) {
-          permiso = await prisma.permisos.create({
-            data: { modulo, accion, descripcion: `${modulo} - ${accion}` }
+          await tx.permisosRol.create({
+            data: { rolId: rol.id, permisoId: permiso.id, valor: encodeValor(value) }
           });
         }
-
-        await prisma.permisosRol.create({
-          data: { rolId: rol.id, permisoId: permiso.id, valor: encoded }
-        });
       }
-    }
+    });
 
     // Limpiar toda la caché de autenticación en RAM para que todos los usuarios
     // del rol recarguen sus permisos en la próxima petición
