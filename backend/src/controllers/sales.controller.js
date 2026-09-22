@@ -2653,6 +2653,10 @@ exports.remove = async (req, res, next) => {
   }
 };
 
+// Una venta en pesos colombianos no maneja centavos: un peso de margen absorbe el redondeo
+// de un `Float` sin dejar pasar un sobrepago real.
+const TOLERANCIA_PAGO = 1;
+
 exports.registerPayment = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
@@ -2671,23 +2675,59 @@ exports.registerPayment = async (req, res, next) => {
     });
     if (!venta) return error(res, 'Venta no encontrada', 404);
 
+    const montoInput = Number(amount);
+    if (!isTotal && (!Number.isFinite(montoInput) || montoInput <= 0)) {
+      return error(res, 'El monto del pago debe ser mayor a cero', 400, 'VALIDATION_ERROR');
+    }
+
     const metodoPagoId = await resolvePaymentMethodId(prisma, method);
     let newPaidAmount, newStatus, newPayment;
 
     await prisma.$transaction(async (tx) => {
-      newPayment = await tx.pagosVenta.create({
-        data: { ventaId: id, monto: amount, metodoPagoId, referencia: reference || null }
-      });
+      // Nada validaba que lo pagado no superara el total: dos registros del mismo pago
+      // (un doble clic, un reintento de red) sumaban los dos y el sobrepago quedaba
+      // guardado tal cual. Asi se colaron $678.600 en una venta de $339.300 en produccion
+      // (venta 64, dos pagos identicos de $339.300 separados por 12 segundos).
+      //
+      // El SELECT ... FOR UPDATE bloquea la fila de la venta hasta que termine esta
+      // transaccion: si el segundo pago llega mientras el primero todavia esta
+      // committeando, espera y lee el saldo YA actualizado, en vez de leer el mismo saldo
+      // pendiente que el primero y colarse igual.
+      await tx.$queryRaw`SELECT id FROM ventas WHERE id = ${id} FOR UPDATE`;
 
       const pagos = await tx.pagosVenta.findMany({
         where: { ventaId: id },
         select: { monto: true }
       });
-      const suma = pagos.reduce((t, p) => t + (Number(p.monto) || 0), 0);
+      const sumaExistente = pagos.reduce((t, p) => t + (Number(p.monto) || 0), 0);
+      const saldoPendiente = venta.montoTotal - sumaExistente;
+
+      // Sin saldo pendiente, ningun pago nuevo tiene donde ir: ni uno parcial (se colaria
+      // por encima del total) ni uno "isTotal" (crearia un pago de mas sobre una venta que
+      // ya esta saldada). Cubre las dos entradas del endpoint con una sola regla.
+      if (saldoPendiente <= TOLERANCIA_PAGO) {
+        throw Object.assign(
+          new Error('Esta venta ya está pagada: no queda saldo pendiente'),
+          { statusCode: 409, code: 'SALDO_CERO' }
+        );
+      }
+      if (!isTotal && montoInput > saldoPendiente + TOLERANCIA_PAGO) {
+        throw Object.assign(
+          new Error(
+            `El pago de $${montoInput.toLocaleString('es-CO')} supera el saldo pendiente ` +
+            `de $${saldoPendiente.toLocaleString('es-CO')}`
+          ),
+          { statusCode: 409, code: 'SALDO_INSUFICIENTE' }
+        );
+      }
+
+      newPayment = await tx.pagosVenta.create({
+        data: { ventaId: id, monto: amount, metodoPagoId, referencia: reference || null }
+      });
 
       // `isTotal` salda la venta de una: el importe queda en el total sin importar que
       // sumen las filas. Hoy la interfaz siempre manda false, pero el endpoint lo soporta.
-      newPaidAmount = isTotal ? venta.montoTotal : suma;
+      newPaidAmount = isTotal ? venta.montoTotal : sumaExistente + montoInput;
       newStatus = newPaidAmount >= venta.montoTotal ? 'pagado' : 'abonado';
 
       await tx.ventas.update({
