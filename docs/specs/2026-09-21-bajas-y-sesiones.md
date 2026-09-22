@@ -124,7 +124,13 @@ Y por la API, con un usuario de prueba:
   sus filas se van al vencer. La última consulta de arriba dará filas hasta entonces.
 - **Sin auditoría de bajas.** `logs_usuarios` existe y no se usa: no queda registro de quién dio
   de baja a quién.
-- **En producción, dos migraciones destruyen o mueven datos.** `quitar_permisos_por_usuario`
-  borra la tabla `permisos_usuario` (y quien tenía una excepción restrictiva pasa a tener los
-  permisos de su rol), y los usuarios eliminados con el modelo viejo siguen reteniendo su correo
-  hasta correr `liberar_correos_de_eliminados`. Ninguna se ha revisado contra producción.
+- **Las migraciones ya corrieron en producción** (verificado el 2026-09-22, por fuera de esta
+  sesión de trabajo: alguien mergeó `feat-bayrol` a `main` y Render las aplicó solas). No se
+  pudo comprobar de antemano qué usuarios tenían filas en `permisos_usuario` antes de que la
+  tabla desapareciera; lo único que se confirmó después es que `permisos_rol` sigue teniendo
+  filas para `asesor` y `freelancer` y que se ven intencionales, no que nadie haya perdido una
+  restricción sin que se note.
+- **`liberar_correos_de_eliminados` sigue sin correr en producción.** El modelo nuevo ya se usó
+  ahí de verdad —un usuario real se eliminó, su correo se le dio a otra persona como usuario
+  nuevo, sin heredar nada— pero eso fue con el código nuevo. Los que se habían "eliminado" con
+  el modelo viejo, antes de este cambio, siguen reteniendo su correo hasta correr el script.

@@ -44,6 +44,16 @@ que la venta viene del listado, que no devuelve los pagos— el monto abonado se
 en **cero** y el estado caía a `credito`, borrando un abono que sí existía en
 `pagos_venta`.
 
+### Un pago se sumaba sin techo
+
+*(2026-09-22.)* `registerPayment` sumaba todos los pagos de `pagos_venta` y guardaba esa
+suma en `montoPagadoCredito`, sin comprobar que no superara `montoTotal`. En producción, la
+venta 64 quedó con **$678.600 pagados sobre un total de $339.300**: dos pagos idénticos de
+$339.300, separados por 12 segundos, el patrón de un doble clic o un reintento de red sobre
+un botón que no se deshabilitaba mientras la petición estaba en vuelo. El dato de esa venta
+se dejó como está —es historia del software, no afectó factura ni comisión (comisión en
+$0, sin factura en Siigo)—, pero el código que lo permitió se corrigió: ver más abajo.
+
 ### Los endpoints de producto suelto desfasaban el total
 
 Crear, editar o borrar por `POST/PUT/DELETE /sales/:id/products/*` tocaba `detalle_venta`
@@ -59,6 +69,7 @@ sumaban **$8.165.000**.
 | Totales al tocar un producto suelto | `recalcularTotalesVenta()` en `products.controller.js`, llamado por create, update y delete |
 | Importes de un ítem | `financierosDe()` en el backend, `importesDe()` en `wizardData.ts`. **Una función por lado**, no dieciocho |
 | Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción |
+| Que lo pagado no supere el total | `registerPayment` calcula el saldo pendiente y rechaza (409) lo que lo exceda, o cualquier pago si el saldo ya es cero. `SELECT ... FOR UPDATE` sobre la venta serializa dos registros casi simultáneos del mismo pago |
 | Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda** |
 
 `detalle_venta.costo_proveedor`, `ta` y `ta_cre` de un paquete se mantienen **iguales a la
@@ -88,7 +99,15 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
 - **El `useEffect` de totales del wizard sigue escribiendo estado derivado.** Ahora que el
   servidor calcula el que persiste, ese cálculo es solo vista previa; reescribirlo arrastra
   la comisión, que también se escribe desde `Step3Payment` y `Step1Client`.
-- **`monto_pagado_credito` difiere de la suma de pagos en 39 ventas `pagado` y 2
-  `anulado`.** Ahí queda en cero y la suma de pagos es el total, lo que es coherente con
-  que esa columna siga solo los abonos a crédito. Las 6 en crédito y la abonada cuadran.
-  Si esa lectura no es la correcta, hay que revisarlo.
+- **`monto_pagado_credito` difiere de la suma de pagos en varias ventas `pagado` y
+  `anulado`** (39 y 2 al 17 de septiembre). Ahí queda en cero y la suma de pagos es el
+  total, lo que es coherente con que esa columna siga solo los abonos a crédito, no un pago
+  completo al vender. Si esa lectura no es la correcta, hay que revisarlo.
+- **La venta 64 queda por encima del total** (ver arriba): es el único caso conocido, y se
+  decidió no corregirlo. Conviene repetir esta consulta de vez en cuando por si aparece
+  otro, ya que el guardarraíl es nuevo y no repara lo que pasó antes de él:
+
+  ```sql
+  SELECT id, status, monto_total, monto_pagado_credito FROM ventas
+   WHERE monto_pagado_credito > monto_total;
+  ```
