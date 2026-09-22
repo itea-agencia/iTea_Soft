@@ -1,49 +1,50 @@
 const { verifyToken } = require('../utils/tokenUtils');
 const prisma = require('../config/db');
 const { error } = require('../utils/apiResponse');
-
-// Caché en memoria para evitar golpear la Base de Datos en cada clic (TTL: 5 minutos)
-const AUTH_CACHE = new Map();
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const sesiones = require('../services/sesiones.service');
 
 async function auth(req, res, next) {
   try {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
-      // Un ERP en produccion con facturacion real. Sin token, no hay identidad: cualquier
-      // request a /api/sales (o a cualquier otra ruta protegida, todas pasan por aca) sin
-      // Authorization quedaba con rol admin y scope 'all'. Quedo asi de una prueba y nadie
-      // lo noto porque el sintoma es "todo funciona".
-      return error(res, 'No autenticado', 401, 'NO_TOKEN');
+      // Sin token no hay identidad. Aqui hubo un bypass de pruebas que asignaba
+      // `{ id: 1, role: 'admin' }` a cualquier request sin cabecera, y dejaba TODAS las
+      // rutas (ventas, facturas de Siigo, usuarios) abiertas a quien no se autenticara.
+      return error(res, 'Autenticación requerida', 401, 'NO_TOKEN');
     }
 
     const token = header.split(' ')[1];
     const decoded = verifyToken(token);
+    const tokenHash = sesiones.hashToken(token);
 
-    // 1. Revisar si el usuario está en RAM Cache
-    const now = Date.now();
-    const cached = AUTH_CACHE.get(decoded.userId);
-    
-    if (cached && cached.expiresAt > now) {
+    const cached = sesiones.leerCache(tokenHash);
+    if (cached) {
       req.user = cached.user;
+      req.tokenHash = tokenHash;
       return next();
     }
 
-    // 2. Si no está en caché, consultar a Supabase (viaje pesado)
-    const usuario = await prisma.usuarios.findUnique({
-      where: { id: decoded.userId },
+    // Que el JWT sea valido no basta: la sesion tiene que seguir registrada. Un logout, un
+    // cambio de contrasena o una baja borran esa fila, y con ella el acceso, aunque el token
+    // no haya vencido.
+    const sesion = await prisma.sesiones.findFirst({
+      where: { tokenHash, expiresAt: { gt: new Date() } },
       include: {
-        persona: true,
-        rol: {
+        usuario: {
           include: {
-            permisosRol: { include: { permiso: true } }
+            persona: true,
+            rol: { include: { permisosRol: { include: { permiso: true } } } }
           }
-        },
-        permisosUsuario: { include: { permiso: true } }
+        }
       }
     });
 
-    if (!usuario || usuario.status === 'inactive') {
+    if (!sesion || sesion.usuarioId !== decoded.userId) {
+      return error(res, 'La sesión ya no es válida. Inicia sesión de nuevo', 401, 'SESSION_REVOKED');
+    }
+
+    const usuario = sesion.usuario;
+    if (usuario.status === 'inactive' || usuario.deletedAt) {
       return error(res, 'Usuario no encontrado o inactivo', 401, 'USER_INACTIVE');
     }
 
@@ -58,20 +59,12 @@ async function auth(req, res, next) {
         accion: pr.permiso.accion,
         valor: pr.valor
       })),
-      permisosUsuario: usuario.permisosUsuario.filter(pu => pu.permitido).map(pu => ({
-        modulo: pu.permiso.modulo,
-        accion: pu.permiso.accion,
-        valor: pu.valor
-      }))
     };
 
-    // 3. Guardar en RAM Cache para la próxima vez
-    AUTH_CACHE.set(decoded.userId, {
-      user: userData,
-      expiresAt: now + CACHE_TTL_MS
-    });
+    sesiones.guardarCache(tokenHash, userData, sesion.expiresAt);
 
     req.user = userData;
+    req.tokenHash = tokenHash;
     next();
   } catch (err) {
     if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
@@ -82,4 +75,3 @@ async function auth(req, res, next) {
 }
 
 module.exports = auth;
-module.exports.AUTH_CACHE = AUTH_CACHE;

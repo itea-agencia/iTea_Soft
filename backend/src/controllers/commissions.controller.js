@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
@@ -87,16 +88,16 @@ exports.listAgents = async (req, res, next) => {
       };
     }
 
-    let statusCondition = '';
-    if (status) statusCondition = `AND c.status = '${status}'`;
-    let searchCondition = '';
-    if (search) {
-      searchCondition = `AND (p.nombres ILIKE '%${search}%' OR p.apellidos ILIKE '%${search}%')`;
-    }
+    // Parametros, no interpolacion: `search` y `status` vienen del request.
+    const like = `%${search}%`;
+    const statusCondition = status ? Prisma.sql`AND c.status::text = ${String(status)}` : Prisma.empty;
+    const searchCondition = search
+      ? Prisma.sql`AND (p.nombres ILIKE ${like} OR p.apellidos ILIKE ${like})`
+      : Prisma.empty;
 
     const [total, agentsRaw] = await Promise.all([
       prisma.comisionistas.count({ where }),
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw(Prisma.sql`
         SELECT 
           c.id,
           c.tipo as "type",
@@ -324,16 +325,13 @@ exports.listSettlements = async (req, res, next) => {
       if (dateTo) where.fecha.lte = new Date(dateTo);
     }
 
-    let agentCondition = '';
-    if (agentId) agentCondition = `AND lc.comisionista_id = ${parseInt(agentId)}`;
-    
-    let dateCondition = '';
-    if (dateFrom) dateCondition += ` AND lc.fecha >= '${new Date(dateFrom).toISOString()}'`;
-    if (dateTo) dateCondition += ` AND lc.fecha <= '${new Date(dateTo).toISOString()}'`;
+    const agentCondition = agentId ? Prisma.sql`AND lc.comisionista_id = ${parseInt(agentId)}` : Prisma.empty;
+    const dateFromCondition = dateFrom ? Prisma.sql`AND lc.fecha >= ${new Date(dateFrom)}` : Prisma.empty;
+    const dateToCondition = dateTo ? Prisma.sql`AND lc.fecha <= ${new Date(dateTo)}` : Prisma.empty;
 
     const [total, settlementsRaw] = await Promise.all([
       prisma.liquidacionesComision.count({ where }),
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw(Prisma.sql`
         SELECT 
           lc.id,
           lc.comisionista_id as "agentId",
@@ -352,7 +350,7 @@ exports.listSettlements = async (req, res, next) => {
         JOIN comisionistas c ON lc.comisionista_id = c.id
         JOIN personas p ON c.persona_id = p.id
         LEFT JOIN metodos_pago mp ON lc.metodo_pago_id = mp.id
-        WHERE 1=1 ${agentCondition} ${dateCondition}
+        WHERE 1=1 ${agentCondition} ${dateFromCondition} ${dateToCondition}
         ORDER BY lc.creado_at DESC
         LIMIT ${perPage} OFFSET ${skip}
       `)

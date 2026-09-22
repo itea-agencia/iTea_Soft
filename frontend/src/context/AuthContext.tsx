@@ -34,6 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // El interceptor de la API avisa cuando el servidor revoca la sesion.
+  useEffect(() => {
+    const alExpirar = () => setUser(null);
+    window.addEventListener('itea:sesion-expirada', alExpirar);
+    return () => window.removeEventListener('itea:sesion-expirada', alExpirar);
+  }, []);
+
   const login = async (email: string, password: string, remember = false): Promise<{ success: boolean; error?: string }> => {
     try {
       const data = await apiLogin(email, password, remember);

@@ -7,9 +7,9 @@ const { authorize } = require('../middleware/authorize');
 router.use(auth);
 
 router.get('/dashboard', authorize('dashboard', 'view'), statsController.dashboard);
-router.get('/sales-history', statsController.salesHistory);
-router.get('/asesor-performance', statsController.asesorPerformance);
-router.get('/top-clients', statsController.topClients);
-router.get('/category-distribution', statsController.categoryDistribution);
+router.get('/sales-history', authorize('dashboard', 'view'), statsController.salesHistory);
+router.get('/asesor-performance', authorize('dashboard', 'view'), statsController.asesorPerformance);
+router.get('/top-clients', authorize('dashboard', 'view'), statsController.topClients);
+router.get('/category-distribution', authorize('dashboard', 'view'), statsController.categoryDistribution);
 
 module.exports = router;

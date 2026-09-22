@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
@@ -61,21 +62,20 @@ exports.list = async (req, res, next) => {
       where.creadoPorId = req.user.id;
     }
 
-    let searchCondition = '';
-    if (search) searchCondition = `AND (p.nombres ILIKE '%${search}%' OR p.apellidos ILIKE '%${search}%' OR p.documento ILIKE '%${search}%' OR p.email ILIKE '%${search}%')`;
-    
-    let statusCondition = '';
-    if (status) statusCondition = `AND p.status = '${status}'`;
-    
-    let ownCondition = '';
-    if (req.permissionScope === 'own') ownCondition = `AND c.creado_por_id = ${req.user.id}`;
+    // Parametros, no interpolacion: `search` y `status` vienen del request.
+    const like = `%${search}%`;
+    const searchCondition = search
+      ? Prisma.sql`AND (p.nombres ILIKE ${like} OR p.apellidos ILIKE ${like} OR p.documento ILIKE ${like} OR p.email ILIKE ${like})`
+      : Prisma.empty;
+    const statusCondition = status ? Prisma.sql`AND p.status::text = ${String(status)}` : Prisma.empty;
+    const ownCondition = req.permissionScope === 'own' ? Prisma.sql`AND c.creado_por_id = ${req.user.id}` : Prisma.empty;
 
     const sortFieldMapSQL = { 'creadoAt': 'c.fecha_registro', 'name': 'c.persona_id', 'date': 'c.fecha_registro' };
     const sqlOrderBy = sortFieldMapSQL[sortBy] || 'c.fecha_registro';
 
     const [total, clientesRaw] = await Promise.all([
       prisma.clientes.count({ where }),
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw(Prisma.sql`
         SELECT 
           c.id,
           c.fecha_registro as "fechaRegistro",
@@ -94,7 +94,7 @@ exports.list = async (req, res, next) => {
         JOIN personas p ON c.persona_id = p.id
         LEFT JOIN tipos_documento td ON p.tipo_documento_id = td.id
         WHERE 1=1 ${searchCondition} ${statusCondition} ${ownCondition}
-        ORDER BY ${sqlOrderBy} ${sortOrder === 'desc' ? 'DESC' : 'ASC'}
+        ORDER BY ${Prisma.raw(sqlOrderBy)} ${Prisma.raw(sortOrder === 'desc' ? 'DESC' : 'ASC')}
         LIMIT ${perPage} OFFSET ${skip}
       `)
     ]);

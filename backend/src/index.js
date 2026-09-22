@@ -13,6 +13,11 @@ const { success } = require("./utils/apiResponse");
 
 const app = express();
 
+// Detras de Render hay un proxy: sin esto `req.ip` es SIEMPRE la IP del proxy, y los limites
+// de intentos de mas abajo se comparten entre todos los usuarios (5 logins por minuto para
+// toda la agencia) en vez de contarse por cliente.
+app.set("trust proxy", 1);
+
 //CLASE DE ERROR PARA CORS
 class ForbiddenError extends Error {
   constructor(message = "No permitido por CORS") {
@@ -84,6 +89,25 @@ const authLimiter = rateLimit({
 });
 app.use(["/api/v1/auth/login", "/api/auth/login"], authLimiter);
 
+// Recuperacion de contrasena: cada peticion o manda un correo o prueba un codigo de 6
+// digitos. El limite por codigo esta en auth.controller.js; este frena a quien cambie de
+// correo para esquivarlo.
+const recoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: {
+    success: false,
+    error: { message: "Demasiados intentos de recuperación, intente más tarde" },
+  },
+});
+app.use(
+  ["forgot-password", "verify-code", "reset-password"].flatMap((r) => [
+    `/api/v1/auth/${r}`,
+    `/api/auth/${r}`,
+  ]),
+  recoveryLimiter,
+);
+
 // Parsing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -125,15 +149,6 @@ process.on("unhandledRejection", (reason, promise) => {
 process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception", err);
   process.exit(1);
-});
-
-// Manejo de errores globales
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    status: "error",
-    message: err.message,
-  });
 });
 
 // Iniciar servidor

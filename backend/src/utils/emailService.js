@@ -8,10 +8,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
  * @param {string} options.to Correo destino
  * @param {string} options.subject Asunto del correo
  * @param {string} options.html Contenido HTML del correo
+ * @param {string} [options.text] Version en texto plano. Donde el dato debe llegar EXACTO (una
+ *   contrasena), es la que no pasa por ningun interprete de HTML.
  * @param {Array} [options.attachments] Arreglo de adjuntos { filename, content }
  * @returns {Promise<Object>} Resultado del envío
  */
-const sendEmail = async ({ to, subject, html, attachments = [] }) => {
+const sendEmail = async ({ to, subject, html, text, attachments = [] }) => {
   try {
     const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
     
@@ -20,6 +22,7 @@ const sendEmail = async ({ to, subject, html, attachments = [] }) => {
       to,
       subject,
       html,
+      ...(text ? { text } : {}),
       attachments
     });
 

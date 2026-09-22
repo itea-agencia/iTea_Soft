@@ -73,6 +73,11 @@ interface DataContextType {
   fetchResponsables: () => Promise<void>;
   fetchUsers: () => Promise<void>;
   fetchConfig: () => Promise<void>;
+  // Los permisos de rol de la BD. `rolePermissionsReady` es false hasta que llegan: mientras
+  // tanto `data.config.rolePermissions` trae los valores por defecto del codigo, que NO son
+  // los del servidor y no se deben mostrar ni guardar como si lo fueran.
+  fetchRolePermissions: () => Promise<void>;
+  rolePermissionsReady: boolean;
   fetchFlights: () => Promise<void>;
   fetchCommissionAgents: () => Promise<void>;
   fetchSettlements: () => Promise<void>;
@@ -80,7 +85,6 @@ interface DataContextType {
   addUser: (user: Omit<User, 'id'>) => Promise<User>;
   updateUser: (id: number, user: Partial<User>) => Promise<void>;
   deleteUser: (id: number) => Promise<void>;
-  updateUserPermissions: (id: number, permissions: RolePermissions) => Promise<void>;
   addClient: (client: Omit<Client, 'id'>) => Promise<Client>;
   updateClient: (id: number, client: Partial<Client>) => Promise<void>;
   toggleClientStatus: (id: number) => Promise<void>;
@@ -126,6 +130,7 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const [rolePermissionsReady, setRolePermissionsReady] = useState(false);
   const [data, setData] = useState<AppData>(() => {
     // ── Inicialización optimista desde caché ──────────────────────────────
     // Si hay datos cacheados válidos, pre-populamos el estado para que la
@@ -229,15 +234,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchConfig = useCallback(async () => {
     try {
-      const [configAll, asesorPerms, freelancerPerms] = await Promise.all([
-        api.getAllConfig().catch(() => ({})),
-        api.getRolePermissions('asesor').catch(() => null),
-        api.getRolePermissions('freelancer').catch(() => null),
-      ]);
-      const resolvedRolePermissions = {
-        asesor: asesorPerms ? normalizeRolePermissions(asesorPerms) : emptyData.config.rolePermissions.asesor,
-        freelancer: freelancerPerms ? normalizeRolePermissions(freelancerPerms) : emptyData.config.rolePermissions.freelancer,
-      };
+      const configAll = await api.getAllConfig().catch(() => ({}));
       if (configAll && Object.keys(configAll).length > 0) {
         saveConfigCache({
           cards: configAll.cards || [],
@@ -263,10 +260,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
           baggage: configAll?.baggage || [],
           packages: configAll?.packages || [],
           cities: configAll?.cities || [],
-          rolePermissions: resolvedRolePermissions,
+          // Los permisos de rol no son de este fetch: si venian de otro (o de nada), se dejan.
+          // Antes, si la peticion de permisos fallaba, aqui se ponian los defaults del codigo.
+          rolePermissions: prev.config.rolePermissions,
         }
       }));
     } catch {}
+  }, []);
+
+  const fetchRolePermissions = useCallback(async () => {
+    try {
+      const [asesorPerms, freelancerPerms] = await Promise.all([
+        api.getRolePermissions('asesor'),
+        api.getRolePermissions('freelancer'),
+      ]);
+      setData(prev => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          rolePermissions: {
+            asesor: normalizeRolePermissions(asesorPerms),
+            freelancer: normalizeRolePermissions(freelancerPerms),
+          },
+        },
+      }));
+      setRolePermissionsReady(true);
+    } catch {
+      // Sin respuesta del servidor NO se cae a los defaults: se queda "no listo", y la
+      // pantalla de permisos se niega a guardar en vez de escribir el default sobre la BD.
+      setRolePermissionsReady(false);
+    }
   }, []);
 
   const fetchFlights = useCallback(async () => {
@@ -296,6 +319,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setData(emptyData);
       setDashboardData(null);
+      setRolePermissionsReady(false);
       return;
     }
 
@@ -313,10 +337,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setDashboardLoading(!loadDashboardCache());
     setSalesLoading(!loadSalesCache());
 
+    // Los permisos de rol se piden SIEMPRE. La cache de configuracion los excluye a
+    // proposito (son de la BD y deben ser frescos), pero el fetch de permisos colgaba de
+    // `!cachedConfig`: al cerrar sesion y volver a entrar, o recargar, dentro de los 15
+    // minutos de esa cache, no se pedian nunca y la pantalla mostraba los defaults del
+    // codigo. Guardar desde ahi los escribia sobre los permisos que el admin habia puesto.
+    setRolePermissionsReady(false);
+    fetchRolePermissions();
+
     if (!cachedConfig) {
        fetchConfig();
     }
-  }, [user?.id, fetchConfig]);
+  }, [user?.id, fetchConfig, fetchRolePermissions]);
 
   const refreshData = () => { 
     // Compatibilidad para el botón refrescar del usuario
@@ -352,14 +384,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       invalidateUsersCache();
       return { ...prev, users: prev.users.filter(u => u.id !== id) };
     });
-  };
-
-  const updateUserPermissions = async (id: number, permissions: RolePermissions) => {
-    await api.updateUserPermissions(id, permissions as any);
-    setData(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === id ? { ...u, customPermissions: permissions } : u)
-    }));
   };
 
   const addClient = async (client: Omit<Client, 'id'>): Promise<Client> => {
@@ -682,6 +706,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       fetchClients,
       fetchUsers,
       fetchConfig,
+      fetchRolePermissions,
+      rolePermissionsReady,
       fetchFlights,
       fetchResponsables,
       fetchCommissionAgents,
@@ -690,7 +716,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addUser,
       updateUser,
       deleteUser,
-      updateUserPermissions,
       addClient,
       updateClient,
       toggleClientStatus,
