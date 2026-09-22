@@ -41,12 +41,18 @@ inexistentes.
 | sin fila | botón **Generar factura en Siigo** | `—` |
 | `pendiente` | botón **Generar** + aviso de intentos que no crearon nada | `Sin emitir` |
 | `fallida` | botón **Reintentar** + el error de Siigo | `Falló` |
-| `emitida` + `Draft` | **Factura generada** · número · `Borrador` · *Verla en Siigo* | `FV-2-120 · Borrador` |
+| `emitida` + `Draft` | **Factura generada** · número · `Borrador` · *Verla en Siigo* | `FV-2-120` |
 | `emitida` timbrada | **Factura generada** · número · *Verla en Siigo* | `FV-2-118` |
 
 Con `emitida` el control **deja de ser un botón**. Un botón deshabilitado se lee como
 "todavía no podés", no como "ya está hecho": lo que cambia no es la etiqueta sino la
 naturaleza del control.
+
+**La columna del listado no distingue borrador de timbrada.** Al principio mostraba
+`FV-2-120 · Borrador` con fondo ámbar, replicando en el listado la misma distinción del
+detalle. Se simplificó a mostrar solo el número, siempre en el mismo estilo: el listado
+contesta "¿ya se facturó?", y si falta timbrar es una pregunta del detalle, no del listado.
+El dato de `estampilla` sigue viajando en `siigoInvoice` y el detalle lo sigue mostrando.
 
 ## El guardarraíl: no emitir facturas reales desde un entorno de prueba
 

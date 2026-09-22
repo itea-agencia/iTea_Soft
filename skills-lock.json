@@ -7,6 +7,12 @@
       "skillPath": "plugins/backend-development/skills/api-design-principles/SKILL.md",
       "computedHash": "19715a3a3ff7bf7b1e2ab1cb631ebe810d5b050ed6b3ab0c358e39e5e2e6d33a"
     },
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
+      "computedHash": "0eb8e9ba100985eb4da20c46807268cafd72ec1c4ea58132edf9be6c469867fe"
+    },
     "caveman": {
       "source": "juliusbrussee/caveman",
       "sourceType": "github",
