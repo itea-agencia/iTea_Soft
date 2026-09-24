@@ -80,7 +80,10 @@ si no existe. Un bloqueo que actuara al emitir ya habría escrito en la cuenta r
 - **IP** = Ingresos Propios, la tarifa administrativa. IVA 19%, y `price` es la base
   gravable (`monto / 1.19`).
 - El NIT va **sin dígito de verificación**: `890100577`, no `890100577-6`. Con el DV,
-  Siigo responde `The customer doesn't exist` aunque el tercero exista.
+  Siigo responde `The customer doesn't exist` aunque el tercero exista. El formulario de
+  clientes (`Clients.tsx`) acepta el NIT/RUT **solo con números**: ya no exige el guion ni el
+  dígito de verificación. Un DV pegado (NIT de 10 dígitos) no se detecta ahí: solo el
+  formulario de proveedores rechaza más de 9 dígitos.
 - Los nombres de producto se envían **tal como están en Siigo**. El nombre lo define
   contabilidad; la app no le agrega nada.
 - Tiquetería es la única categoría con variante nacional/internacional.
