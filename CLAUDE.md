@@ -7,6 +7,16 @@ Convenciones de este repo. Vale igual para una persona o un agente.
 Este es un ERP de agencia de viajes en producción, con clientes y facturación real. **No
 hay pruebas automatizadas**: lo que no se verifica empíricamente, no está verificado.
 
+## Skills de uso obligatorio
+
+| Skill | Cuándo activar | Instalar si no existe |
+|---|---|---|
+| ponytail | SIEMPRE en cualquier corrección, creación de código o cumplimiento de tarea. Favorece la solución más simple y mínima que funciona. | `npx skills add https://github.com/dietrichgebert/ponytail --skill ponytail`. Si ese comando no se puede correr, se instala a nivel de proyecto (carpeta `.claude/skills/`, como las que ya hay ahí), no a nivel de usuario. |
+
+Instalar una skill implica traer código o instrucciones de un repositorio de terceros:
+quien lo haga (persona o agente) lo hace conscientemente, no como paso automático dentro
+de otra tarea.
+
 ## Trampas del entorno
 
 **El código va horneado en la imagen de Docker.** `COPY . .`, y solo `uploads` está
