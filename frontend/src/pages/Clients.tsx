@@ -79,11 +79,7 @@ export default function Clients() {
               errorMsg = 'El pasaporte solo debe contener caracteres alfanuméricos';
             }
           } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-            if (value.length !== 11) {
-              errorMsg = 'El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)';
-            } else if (!/^\d{9}-\d{1}$/.test(value)) {
-              errorMsg = 'El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)';
-            }
+            if (!/^\d+$/.test(value)) errorMsg = 'El NIT/RUT solo debe contener números';
           } else if (typeUpper === 'CC') {
             if (value.length < 8 || value.length > 10) {
               errorMsg = 'La cédula de ciudadanía debe tener entre 8 y 10 dígitos';
@@ -223,11 +219,7 @@ export default function Clients() {
           newErrors.docNumber = 'El pasaporte solo debe contener caracteres alfanuméricos';
         }
       } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-        if (formData.docNumber.length !== 11) {
-          newErrors.docNumber = 'El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)';
-        } else if (!/^\d{9}-\d{1}$/.test(formData.docNumber)) {
-          newErrors.docNumber = 'El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)';
-        }
+        if (!/^\d+$/.test(formData.docNumber)) newErrors.docNumber = 'El NIT/RUT solo debe contener números';
       } else if (typeUpper === 'CC') {
         if (formData.docNumber.length < 8 || formData.docNumber.length > 10) {
           newErrors.docNumber = 'La cédula de ciudadanía debe tener entre 8 y 10 dígitos';
@@ -709,12 +701,10 @@ export default function Clients() {
                   onChange={e => {
                     let val = e.target.value;
                     const typeUpper = formData.docType ? formData.docType.toUpperCase() : '';
-                    if (typeUpper === 'CC') {
+                    if (typeUpper === 'CC' || typeUpper === 'NIT' || typeUpper === 'RUT') {
                       val = val.replace(/\D/g, '');
                     } else if (typeUpper === 'PASAPORTE' || typeUpper === 'PP' || typeUpper === 'PAS') {
                       val = val.replace(/[^a-zA-Z0-9]/g, '');
-                    } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-                      val = val.replace(/[^0-9-]/g, '');
                     } else {
                       val = val.replace(/[^\w-]/gi, '');
                     }
@@ -727,8 +717,7 @@ export default function Clients() {
                   maxLength={
                     formData.docType ? (
                       formData.docType.toUpperCase() === 'CC' ? 10 :
-                      ['PASAPORTE', 'PP', 'PAS'].includes(formData.docType.toUpperCase()) ? 12 :
-                      ['NIT', 'RUT'].includes(formData.docType.toUpperCase()) ? 11 : 15
+                      ['PASAPORTE', 'PP', 'PAS'].includes(formData.docType.toUpperCase()) ? 12 : 15
                     ) : 15
                   }
                 />
