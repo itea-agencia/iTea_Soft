@@ -3142,8 +3142,21 @@ exports.sendVoucher = async (req, res, next) => {
   }
 };
 
+// Ventas con una facturacion a Siigo en curso. Sin esto, dos pestañas (o dos asesores)
+// pidiendo facturar la misma venta casi al mismo tiempo pasan juntas el chequeo de "ya
+// emitida" -todavia esta en `pendiente`- y las dos llegan a crear una factura real en
+// Siigo. Alcanza con un Set en memoria porque el backend corre en una sola instancia de
+// Render; si algun dia corre en mas de una, esto deja de proteger entre instancias y hace
+// falta un lock a nivel de base (advisory lock de Postgres).
+const facturacionEnCurso = new Set();
+
 exports.generateSiigoInvoice = async (req, res, next) => {
   const id = parseInt(req.params.id);
+
+  if (facturacionEnCurso.has(id)) {
+    return error(res, 'Ya hay una facturación en curso para esta venta. Esperá a que termine.', 409, 'SIIGO_FACTURACION_EN_CURSO');
+  }
+  facturacionEnCurso.add(id);
 
   try {
     const venta = await prisma.ventas.findUnique({
@@ -3295,5 +3308,7 @@ exports.generateSiigoInvoice = async (req, res, next) => {
 
   } catch (err) {
     next(err);
+  } finally {
+    facturacionEnCurso.delete(id);
   }
 };

@@ -1,0 +1,16 @@
+DirectoryIndex index.html
+
+# Sin esto, el mod_negotiation de Apache intenta resolver /sales por su cuenta
+# (busca /sales.html, /sales.var, etc.) antes de llegar al RewriteCond de abajo,
+# y devuelve su propio 404 sin pasar por index.html.
+<IfModule mod_negotiation.c>
+  Options -MultiViews
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
