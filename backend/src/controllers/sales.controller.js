@@ -448,6 +448,7 @@ const PRODUCT_TRANSFORMS = {
   tiqueteria(d, passengers, target) {
     const t = d.prodTiqueteria;
     if (!t) return;
+    const legs = mapLegs(t.tramosVuelo);
     target.push({
       id: t.id,
       airline: String(t.aerolineaId || ''),
@@ -457,7 +458,10 @@ const PRODUCT_TRANSFORMS = {
       ticketNumber: t.nroTiquete,
       flightMode: t.modoVuelo,
       checkinStatus: t.checkinStatus,
-      baggagePlan: t.planEquipaje ? `${t.planEquipaje.tipoTarifa}` : null,
+      // El wizard guarda el equipaje en cada tramo, no en el tiquete: en produccion las
+      // ventas #160 a #168 tienen planEquipajeId nulo en prod_tiqueteria y el plan solo
+      // en tramos_vuelo. Sin el respaldo al primer tramo, el "Equipaje" del detalle salia "-".
+      baggagePlan: t.planEquipaje ? `${t.planEquipaje.tipoTarifa}` : (legs[0]?.baggagePlan ?? null),
       // `seatNumber` salia del PRIMER pasajero y se presentaba como el asiento del
       // tiquete entero; de ahi volvia a la escritura y se copiaba a todos. El asiento es
       // de cada pasajero y va en `passengers[]`. Se deja el campo para no romper lecturas
@@ -467,7 +471,7 @@ const PRODUCT_TRANSFORMS = {
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
-      legs: mapLegs(t.tramosVuelo),
+      legs,
       passengers: passengers.map(p => ({
         name: p.nombreCompleto,
         docType: String(p.tipoDocumento || ''),
@@ -1870,6 +1874,16 @@ exports.create = async (req, res, next) => {
       });
     }
     console.log('[CREATE VENTA] landTravelData received:', JSON.stringify(data.landTravelData, null, 2));
+
+    // El frontend ya lo exige, pero una venta en credito o abono sin responsable queda
+    // sin nadie a quien reclamarle la deuda, y el endpoint es publico para cualquiera con
+    // sesion: no alcanza con validarlo solo del lado del cliente.
+    if ((data.status === 'credito' || data.status === 'abonado') && !data.responsableId) {
+      const err = new Error('El responsable es obligatorio para ventas en crédito o abonadas');
+      err.statusCode = 400;
+      err.code = 'VALIDATION_ERROR';
+      throw err;
+    }
 
     const metodoPagoId = await resolvePaymentMethodId(prisma, data.paymentMethod);
 
