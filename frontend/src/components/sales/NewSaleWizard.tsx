@@ -1234,6 +1234,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       
       const isCreditState = form.status === "credito" || form.status === "abonado";
       if (isCreditState) {
+        if (!form.responsableId) {
+          errs.responsableId = "El responsable es obligatorio para ventas en crédito o abonadas";
+        }
         if (!form.creditDueDate) {
           errs.creditDueDate = "La fecha de vencimiento es obligatoria para crédito o abonos";
         } else {

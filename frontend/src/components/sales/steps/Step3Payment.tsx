@@ -345,7 +345,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
 
         {/* Responsable (Sólo si es crédito o abonado) */}
         {(form.status === "credito" || form.status === "abonado") && (
-          <FormField label="Responsable del Crédito">
+          <FormField label="Responsable del Crédito *" error={errors.responsableId}>
             <Combobox
               value={form.responsableId || ""}
               onChange={(val) => set("responsableId", val)}
@@ -356,6 +356,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
                   label: r.name,
                 }))}
               placeholder="Seleccione el responsable de la deuda..."
+              error={errors.responsableId}
             />
           </FormField>
         )}

@@ -116,3 +116,7 @@ frontend/pdf_formatobackend/test*.js
 *.py
 backend_logs.txt
 *.ps1
+
+# Skills y config locales de agentes: cada uno las instala en su maquina
+.agents/
+.claude/

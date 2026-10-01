@@ -11,7 +11,7 @@ hay pruebas automatizadas**: lo que no se verifica empíricamente, no está veri
 
 | Skill | Cuándo activar | Instalar si no existe |
 |---|---|---|
-| ponytail | SIEMPRE en cualquier corrección, creación de código o cumplimiento de tarea. Favorece la solución más simple y mínima que funciona. | `npx skills add https://github.com/dietrichgebert/ponytail --skill ponytail`. Si ese comando no se puede correr, se instala a nivel de proyecto (carpeta `.claude/skills/`, como las que ya hay ahí), no a nivel de usuario. |
+| ponytail | SIEMPRE en cualquier corrección, creación de código o cumplimiento de tarea. Favorece la solución más simple y mínima que funciona. | `npx skills add https://github.com/dietrichgebert/ponytail --skill ponytail`. Si ese comando no se puede correr, se instala a nivel de proyecto (carpeta `.claude/skills/`), no a nivel de usuario. `.agents/` y `.claude/` están en el `.gitignore`: cada uno la instala en su máquina. |
 
 Instalar una skill implica traer código o instrucciones de un repositorio de terceros:
 quien lo haga (persona o agente) lo hace conscientemente, no como paso automático dentro
