@@ -29,10 +29,14 @@ exports.dashboard = async (req, res, next) => {
       where.usuarioId = req.user.id;
     }
 
+    // totalRevenue y creditTa suman ta_cre_total: monto_total = costo + ta + ta_cre, y sin
+    // el TA CRE la T.A ingresada no coincidia con la ganancia por categoria (que ya lo
+    // sumaba) y el desglose de la modal no cerraba con el pendiente (venta #169: faltaban
+    // 135.000).
     const aggregatesSql = `
       SELECT
         COUNT(*)::int as "totalOperations",
-        COALESCE(SUM(CASE WHEN status = 'pagado' THEN ta_total WHEN status = 'abonado' AND monto_total > 0 THEN (ta_total * (COALESCE(monto_pagado_credito, 0) / monto_total)) ELSE 0 END), 0) as "totalRevenue",
+        COALESCE(SUM(CASE WHEN status = 'pagado' THEN ta_total + COALESCE(ta_cre_total, 0) WHEN status = 'abonado' AND monto_total > 0 THEN ((ta_total + COALESCE(ta_cre_total, 0)) * (COALESCE(monto_pagado_credito, 0) / monto_total)) ELSE 0 END), 0) as "totalRevenue",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') THEN (monto_total - COALESCE(monto_pagado_credito, 0)) ELSE 0 END), 0) as "pendingBalance",
         COUNT(CASE WHEN status IN ('credito', 'abonado') THEN 1 END)::int as "pendingCount",
         COALESCE(SUM(CASE WHEN status = 'pagado' THEN costo_proveedor_total WHEN status = 'abonado' AND monto_total > 0 THEN (costo_proveedor_total * (COALESCE(monto_pagado_credito, 0) / monto_total)) ELSE 0 END), 0) as "suppliersTotal",
@@ -42,7 +46,7 @@ exports.dashboard = async (req, res, next) => {
         COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM creado_at) = ${currentYear} THEN monto_total ELSE 0 END), 0) as "currentYearSales",
         COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM creado_at) = ${currentYear - 1} THEN monto_total ELSE 0 END), 0) as "prevYearSales",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (costo_proveedor_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditProveedores",
-        COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (ta_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditTa"
+        COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN ((ta_total + COALESCE(ta_cre_total, 0)) * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditTa"
       FROM ventas
       WHERE deleted_at IS NULL AND status != 'anulado' ${dateCondition} ${userCondition}
     `;
