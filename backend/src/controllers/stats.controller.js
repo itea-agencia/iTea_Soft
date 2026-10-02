@@ -58,7 +58,11 @@ exports.dashboard = async (req, res, next) => {
     }
 
     // Run all DB queries in parallel
-    const [aggregatesRaw, categoryStats, totalClients, activeClients, recentSales, supplierCount] = await Promise.all([
+    // Un tiquete es por pasajero: una venta de tiqueteria con dos pasajeros son dos
+    // tiquetes, cada uno con su numero en pasajeros_detalle. Contar filas de detalle_venta
+    // daba uno. Un detalle sin pasajeros (ventas viejas) cuenta como un tiquete.
+    const ventaTiquetes = { categoria: 'tiqueteria', venta: { ...where, deletedAt: null } };
+    const [aggregatesRaw, categoryStats, totalClients, activeClients, recentSales, supplierCount, tiquetesPorPasajero, tiquetesSinPasajero] = await Promise.all([
       prisma.$queryRawUnsafe(aggregatesSql),
       prisma.detalleVenta.groupBy({
         by: ['categoria'],
@@ -78,6 +82,8 @@ exports.dashboard = async (req, res, next) => {
         }
       }),
       req.permissionScope === 'own' ? Promise.resolve(0) : prisma.proveedores.count(),
+      prisma.pasajerosDetalle.count({ where: { detalleVenta: ventaTiquetes } }),
+      prisma.detalleVenta.count({ where: { ...ventaTiquetes, pasajerosDetalle: { none: {} } } }),
     ]);
 
     // Calcular monthly trend para el usuario actual o global
@@ -168,8 +174,9 @@ exports.dashboard = async (req, res, next) => {
         categoryBreakdown[cat].count = cnt;
         categoryBreakdown[cat].revenue = Math.round(sum);
       }
-      if (cat === 'tiqueteria') totalFlights = cnt;
     }
+    totalFlights = tiquetesPorPasajero + tiquetesSinPasajero;
+    categoryBreakdown.tiqueteria.count = totalFlights;
 
 
     const groupedTrend = Array.from({ length: 12 }, (_, i) => {
