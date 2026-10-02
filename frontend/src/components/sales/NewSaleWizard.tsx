@@ -1605,6 +1605,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   baggage={data.config.baggage}
                   clients={data.clients}
                   triggerError={triggerError}
+                  showErrors={!!errors.tiqueteriaValidation}
                 />
               );
             case "hoteleria":
@@ -1729,6 +1730,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             case "renta_fincas":
               return (
                 <FincaForm
+                  showErrors={!!errors.fincaValidation}
                   finca={form.fincas[activeIdx] || INITIAL_FINCA(client)}
                   client={client}
                   suppliers={data.config.suppliers}
@@ -1744,6 +1746,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             case "tours":
               return (
                 <TourForm
+                  showErrors={!!errors.tourValidation}
                   tour={form.tours[activeIdx] || INITIAL_TOUR(client)}
                   mainClient={client}
                   data={data}
@@ -1758,6 +1761,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             case "centros_convencion":
               return (
                 <ConventionForm
+                  showErrors={!!errors.conventionValidation}
                   convention={form.conventions[activeIdx] || INITIAL_CONVENTION(client)}
                   client={client}
                   suppliers={data.config.suppliers}
@@ -1818,6 +1822,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
             case "servicio_mascotas":
               return (
                 <PetServiceForm
+                  showErrors={!!errors.petValidation}
                   pet={form.petServices[activeIdx] || INITIAL_PET_SERVICE(client)}
                   client={client}
                   suppliers={data.config.suppliers}

@@ -14,7 +14,7 @@ interface PetServiceFormProps {
   triggerError?: (msg: string) => void;
 }
 
-export function PetServiceForm({ pet, client, suppliers, paymentMethods, onChange, triggerError }: PetServiceFormProps) {
+export function PetServiceForm({ pet, client, suppliers, paymentMethods, onChange, triggerError, showErrors }: PetServiceFormProps & { showErrors?: boolean }) {
   const todayStr = todayStrHelper();
   return (
     <div className="space-y-6 animate-fade-in">
@@ -194,6 +194,7 @@ export function PetServiceForm({ pet, client, suppliers, paymentMethods, onChang
         supplierCost={pet.supplierCost}
         supplierPaymentMethod={pet.supplierPaymentMethod}
         isPaymentMethodRequired={true}
+        showErrors={showErrors}
         paymentMethods={paymentMethods}
         ta={pet.ta}
         suppliers={suppliers}

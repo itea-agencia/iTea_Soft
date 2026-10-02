@@ -13,7 +13,7 @@ interface ConventionFormProps {
   triggerError?: (msg: string) => void;
 }
 
-export function ConventionForm({ convention, client, suppliers, paymentMethods, onChange, triggerError }: ConventionFormProps) {
+export function ConventionForm({ convention, client, suppliers, paymentMethods, onChange, triggerError, showErrors }: ConventionFormProps & { showErrors?: boolean }) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -187,6 +187,7 @@ export function ConventionForm({ convention, client, suppliers, paymentMethods, 
         supplierCost={convention.supplierCost}
         supplierPaymentMethod={convention.supplierPaymentMethod}
         isPaymentMethodRequired={true}
+        showErrors={showErrors}
         paymentMethods={paymentMethods}
         ta={convention.ta}
         suppliers={suppliers}

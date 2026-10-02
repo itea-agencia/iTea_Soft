@@ -14,7 +14,7 @@ interface TourFormProps {
   triggerError?: (msg: string) => void;
 }
 
-export function TourForm({ tour, mainClient, data, onChange, triggerError }: TourFormProps) {
+export function TourForm({ tour, mainClient, data, onChange, triggerError, showErrors }: TourFormProps & { showErrors?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addGuest = () => {
@@ -230,6 +230,7 @@ export function TourForm({ tour, mainClient, data, onChange, triggerError }: Tou
         supplierCost={tour.supplierCost}
         supplierPaymentMethod={tour.supplierPaymentMethod}
         isPaymentMethodRequired={true}
+        showErrors={showErrors}
         paymentMethods={data.config.cards}
         ta={tour.ta}
         suppliers={data.config.suppliers}

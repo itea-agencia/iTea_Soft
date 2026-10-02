@@ -25,6 +25,8 @@ interface TicketFormProps {
   }[];
   clients: any[];
   triggerError?: (msg: string) => void;
+  // El wizard ya intento avanzar y la validacion fallo: marcar los campos que faltan.
+  showErrors?: boolean;
 }
 
 const FLIGHT_MODE_TABS = [
@@ -498,7 +500,13 @@ export function TicketForm({
   clients,
   mainClient,
   triggerError,
+  showErrors,
 }: TicketFormProps & { mainClient?: any }) {
+  // La alerta del wizard decia que faltaban campos sin decir cual: este era el unico
+  // obligatorio sin asterisco ni marca.
+  const errorMetodoPago = showErrors && !ticket.supplierPaymentMethod
+    ? "Selecciona el método de pago al proveedor"
+    : undefined;
   // Id estable para agrupar los radios de titular. Antes era `titular-${idx}`, un grupo
   // distinto por fila, asi que se podian marcar varios titulares a la vez. Terrestre,
   // paquetes y hoteleria ya lo corrigieron con useId().
@@ -1374,8 +1382,9 @@ export function TicketForm({
               onChange={(val) => onChange({ taCre: val === "" ? undefined : Number(val) })}
             />
           </FormField>
-          <FormField label="Método de Pago Proveedor">
+          <FormField label="Método de Pago Proveedor *" error={errorMetodoPago}>
             <Combobox
+              error={errorMetodoPago}
               value={ticket.supplierPaymentMethod || ""}
               onChange={(val) => onChange({ supplierPaymentMethod: val })}
               options={paymentMethods.map((m) => ({

@@ -13,7 +13,7 @@ interface FincaFormProps {
   triggerError?: (msg: string) => void;
 }
 
-export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, triggerError }: FincaFormProps) {
+export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, triggerError, showErrors }: FincaFormProps & { showErrors?: boolean }) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -139,6 +139,7 @@ export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, 
         supplierCost={finca.supplierCost}
         supplierPaymentMethod={finca.supplierPaymentMethod}
         isPaymentMethodRequired={true}
+        showErrors={showErrors}
         paymentMethods={paymentMethods}
         ta={finca.ta}
         suppliers={suppliers}

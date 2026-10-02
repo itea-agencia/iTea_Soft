@@ -227,12 +227,17 @@ interface FinancialSectionProps {
   taCre?: number;
   supplierPaymentMethod?: string;
   isPaymentMethodRequired?: boolean;
+  // El wizard ya intento avanzar y la validacion fallo: marcar el metodo de pago si falta.
+  showErrors?: boolean;
   paymentMethods?: any[];
   suppliers?: { id: number; name: string }[];
   onChange: (updates: { supplierName?: string; supplierCost?: number; ta?: number; taCre?: number; supplierPaymentMethod?: string }) => void;
 }
 
-export function FinancialSection({ supplierName, supplierCost, ta, taCre, supplierPaymentMethod, isPaymentMethodRequired, paymentMethods = [], suppliers = [], onChange }: FinancialSectionProps) {
+export function FinancialSection({ supplierName, supplierCost, ta, taCre, supplierPaymentMethod, isPaymentMethodRequired, showErrors, paymentMethods = [], suppliers = [], onChange }: FinancialSectionProps) {
+  const errorMetodoPago = showErrors && isPaymentMethodRequired && !supplierPaymentMethod
+    ? "Selecciona el método de pago al proveedor"
+    : undefined;
   const supplierOptions = suppliers.map(s => ({ value: s.name, label: s.name }));
 
   const handleNumericChange = (field: 'supplierCost' | 'ta' | 'taCre', value: string) => {
@@ -302,7 +307,7 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
             />
           </div>
         </FormField>
-        <FormField label={`Método de Pago${isPaymentMethodRequired ? ' *' : ''}`}>
+        <FormField label={`Método de Pago${isPaymentMethodRequired ? ' *' : ''}`} error={errorMetodoPago}>
           <div className="relative group">
             <LuCreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
             <Combobox
@@ -313,7 +318,8 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
                 label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name
               }))}
               placeholder="Seleccionar método..."
-              inputClassName={`pl-8 ${isPaymentMethodRequired && !supplierPaymentMethod ? 'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 dark:bg-slate-900/50'}`}
+              error={errorMetodoPago}
+              inputClassName={`pl-8 ${errorMetodoPago ? '' : isPaymentMethodRequired && !supplierPaymentMethod ?'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 dark:bg-slate-900/50'}`}
               preventNumbers={false}
             />
           </div>
