@@ -9,6 +9,7 @@ import {
   Wallet, 
   AlertCircle,
   Search,
+  SlidersHorizontal,
   X
 } from "lucide-react";
 import { 
@@ -22,6 +23,8 @@ import {
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { Client, Sale } from "../../types";
 
+const filterInput = "text-sm font-normal border border-gray-border rounded-lg px-2.5 py-1.5 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 w-full";
+
 interface CreditDashboardProps {
   clients: Client[];
   sales: Sale[];
@@ -31,6 +34,24 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
   const [creditFilter, setCreditFilter] = useState<'all' | 'overdue' | 'urgent' | 'pending'>('all');
   const [selectedCreditClient, setSelectedCreditClient] = useState<ClientCreditSummary | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [asesorFilter, setAsesorFilter] = useState("");
+  const [dueFrom, setDueFrom] = useState("");
+  const [dueTo, setDueTo] = useState("");
+  const [minDebt, setMinDebt] = useState("");
+  const [sortBy, setSortBy] = useState<'urgency' | 'debt' | 'due' | 'name'>('urgency');
+
+  const activeFilters = [asesorFilter, dueFrom, dueTo, minDebt].filter(Boolean).length
+    + (creditFilter !== 'all' ? 1 : 0) + (sortBy !== 'urgency' ? 1 : 0);
+  const clearFilters = () => {
+    setCreditFilter('all'); setAsesorFilter(''); setDueFrom(''); setDueTo(''); setMinDebt(''); setSortBy('urgency');
+  };
+
+  const asesores = useMemo(() => {
+    const m = new Map<number, string>();
+    sales.forEach(s => { if (s.asesorId && s.asesorName) m.set(s.asesorId, s.asesorName); });
+    return Array.from(m, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [sales]);
 
   const clientsWithCredit = useMemo(() => 
     getClientsWithCredit(clients, sales), 
@@ -44,6 +65,20 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
     let result = clientsWithCredit;
     if (creditFilter !== 'all') {
       result = result.filter(c => c.status === creditFilter);
+    }
+
+    if (asesorFilter || dueFrom || dueTo) {
+      result = result.filter(c => getClientCreditSales(c.client.id, sales).some(cs => {
+        if (asesorFilter && String(cs.sale.asesorId) !== asesorFilter) return false;
+        const due = cs.sale.creditDueDate?.slice(0, 10);
+        if (dueFrom && (!due || due < dueFrom)) return false;
+        if (dueTo && (!due || due > dueTo)) return false;
+        return true;
+      }));
+    }
+
+    if (minDebt) {
+      result = result.filter(c => c.pendingAmount >= Number(minDebt));
     }
 
     if (searchTerm.trim()) {
@@ -66,8 +101,15 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
       });
     }
 
-    return result;
-  }, [clientsWithCredit, creditFilter, searchTerm, sales]);
+    if (sortBy === 'urgency') return result;
+    return [...result].sort((a, b) => {
+      if (sortBy === 'debt') return b.pendingAmount - a.pendingAmount;
+      if (sortBy === 'name') return (a.client.name || '').localeCompare(b.client.name || '');
+      const da = a.nextDueDate ? new Date(a.nextDueDate).getTime() : Infinity;
+      const db = b.nextDueDate ? new Date(b.nextDueDate).getTime() : Infinity;
+      return da - db;
+    });
+  }, [clientsWithCredit, creditFilter, searchTerm, sales, asesorFilter, dueFrom, dueTo, minDebt, sortBy]);
 
   const selectedClientCreditSales = useMemo(() => {
     if (!selectedCreditClient) return [];
@@ -95,6 +137,13 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
                     </button>
                   )}
                 </div>
+                <button
+                  onClick={() => setShowFilters(v => !v)}
+                  aria-expanded={showFilters}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${showFilters || activeFilters > 0 ? 'border-primary text-primary bg-primary/5' : 'border-gray-border text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+                >
+                  <SlidersHorizontal size={14} /> Filtros{activeFilters > 0 ? ` (${activeFilters})` : ''}
+                </button>
                 <button onClick={() => setCreditFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${creditFilter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'}`}>
                   Todos ({clientsWithCredit.length})
                 </button>
@@ -111,6 +160,36 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
             }>
               Clientes con Crédito Pendiente
             </CardHeader>
+            {showFilters && (
+              <div className="px-4 py-3 border-b border-gray-border bg-gray-50/60 dark:bg-slate-800/40 grid grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                {([
+                  ['Asesor', <select key="a" value={asesorFilter} onChange={e => setAsesorFilter(e.target.value)} className={filterInput}>
+                    <option value="">Todos</option>
+                    {asesores.map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+                  </select>],
+                  ['Vence desde', <input key="f" type="date" value={dueFrom} max={dueTo || undefined} onChange={e => setDueFrom(e.target.value)} className={filterInput} />],
+                  ['Vence hasta', <input key="t" type="date" value={dueTo} min={dueFrom || undefined} onChange={e => setDueTo(e.target.value)} className={filterInput} />],
+                  ['Deuda mínima', <input key="m" type="number" min="0" step="50000" placeholder="0" value={minDebt} onChange={e => setMinDebt(e.target.value)} className={filterInput} />],
+                  ['Ordenar por', <select key="s" value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} className={filterInput}>
+                    <option value="urgency">Urgencia</option>
+                    <option value="debt">Mayor deuda</option>
+                    <option value="due">Vencimiento más próximo</option>
+                    <option value="name">Nombre</option>
+                  </select>],
+                ] as [string, React.ReactElement][]).map(([label, control]) => (
+                  <label key={label} className="text-xs font-semibold text-gray-600 dark:text-slate-300 flex flex-col gap-1">
+                    {label}
+                    {control}
+                  </label>
+                ))}
+                <div className="col-span-2 lg:col-span-5 flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
+                  <span>{filteredCreditClients.length} de {clientsWithCredit.length} clientes</span>
+                  {activeFilters > 0 && (
+                    <button onClick={clearFilters} className="font-bold text-primary hover:underline">Limpiar filtros</button>
+                  )}
+                </div>
+              </div>
+            )}
             <CardBody className="p-0">
               {filteredCreditClients.length > 0 ? (
                 <div className="divide-y divide-gray-border max-h-[500px] overflow-y-auto custom-scrollbar">
