@@ -42,8 +42,13 @@ export function getCreditSaleStatus(sale: Sale): 'pending' | 'partial' | 'paid' 
   return 'pending';
 }
 
+// Una venta anulada conserva isCredit=true (voidSale solo cambia el estado), así que sin
+// excluirla por estado seguía sumando al crédito y a la deuda del cliente.
+const esCreditoVigente = (s: Sale) =>
+  s.status !== 'anulado' && (s.isCredit === true || s.status === 'credito' || s.status === 'abonado');
+
 export function getClientsWithCredit(clients: Client[], sales: Sale[]): ClientCreditSummary[] {
-  const creditSales = sales.filter(s => s.isCredit === true || s.status === 'credito' || s.status === 'abonado');
+  const creditSales = sales.filter(esCreditoVigente);
   
   const clientMap = new Map<number, ClientCreditSummary>();
   
@@ -108,7 +113,7 @@ export function getClientsWithCredit(clients: Client[], sales: Sale[]): ClientCr
 
 export function getClientCreditSales(clientId: number, sales: Sale[]): CreditSaleInfo[] {
   const creditSales = sales
-    .filter(s => s.clientId === clientId && (s.isCredit === true || s.status === 'credito' || s.status === 'abonado'))
+    .filter(s => s.clientId === clientId && esCreditoVigente(s))
     .map(sale => {
       const daysUntilDue = sale.creditDueDate ? getDaysUntilDue(sale.creditDueDate) : 0;
       const paidAmount = sale.creditPaidAmount || 0;
