@@ -8,6 +8,7 @@ const { formatName, escaparHtml } = require('../utils/stringUtils');
 const { normalizarEmail, correoDeEliminado } = require('../utils/emailUtils');
 const sesiones = require('../services/sesiones.service');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
+const { auditar } = require('../utils/auditoria');
 
 exports.list = async (req, res, next) => {
   try {
@@ -227,7 +228,7 @@ exports.create = async (req, res, next) => {
       const include = { persona: { include: { tipoDocumento: true } }, rol: true };
       // Reingreso de un eliminado: vuelve SU fila, con su historial, con el correo y la
       // contrasena nuevos. Sus datos personales son los de siempre.
-      return previo
+      const guardado = await (previo
         ? tx.usuarios.update({
             where: { id: previo.id },
             // Un reingreso conserva a quien lo creo; si no tenia, pasa a quien lo reingresa.
@@ -237,7 +238,10 @@ exports.create = async (req, res, next) => {
         : tx.usuarios.create({
             data: { personaId: persona.id, email, passwordHash, rolId: rol.id, status, creadoPorId: req.user.id },
             include
-          });
+          }));
+      await auditar(tx, req.user.id, 'users', 'create',
+        `usuario ${guardado.id}, rol ${rol.nombre}${previo ? ' (reingreso)' : ''}`);
+      return guardado;
     });
 
     try {
@@ -384,11 +388,18 @@ exports.update = async (req, res, next) => {
         personaUpdate.updatedAt = new Date();
         await tx.personas.update({ where: { id: usuario.personaId }, data: personaUpdate });
       }
-      return tx.usuarios.update({
+      const guardado = await tx.usuarios.update({
         where: { id },
         data: updateData,
         include: { persona: { include: { tipoDocumento: true } }, rol: true }
       });
+      if (cambiaRol) {
+        await auditar(tx, req.user.id, 'users', 'rol', `usuario ${id}: ${usuario.rol.nombre} -> ${nuevoRol.nombre}`);
+      }
+      if (desactiva) {
+        await auditar(tx, req.user.id, 'users', 'toggle', `usuario ${id}: desactivado`);
+      }
+      return guardado;
     });
 
     // Lo que el usuario ya tiene abierto debe reflejar el cambio en su siguiente clic.
@@ -435,6 +446,8 @@ exports.remove = async (req, res, next) => {
         // El correo real NO se pierde: sigue en `personas.email`, que no es unico.
         data: { status: 'inactive', deletedAt: new Date(), email: correoDeEliminado(id) }
       });
+
+      await auditar(tx, req.user.id, 'users', 'delete', `usuario ${id}: eliminado`);
 
       // Si la persona tambien es cliente o comisionista sigue existiendo como tal.
       if (!tieneOtrosRoles) {

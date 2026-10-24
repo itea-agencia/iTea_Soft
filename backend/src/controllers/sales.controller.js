@@ -9,6 +9,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // El nombre del cliente va dentro del HTML de los correos de voucher: sin escapar, un
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
+const { auditar } = require('../utils/auditoria');
 const siigoService = require('../services/siigo.service');
 
 exports.list = async (req, res, next) => {
@@ -2118,12 +2119,15 @@ exports.voidSale = async (req, res, next) => {
       ? `${venta.observaciones}\n[ANULADA] Motivo: ${reason}` 
       : `[ANULADA] Motivo: ${reason}`;
 
-    await prisma.ventas.update({
-      where: { id },
-      data: { 
-        status: 'anulado',
-        observaciones: newObservaciones
-      }
+    await prisma.$transaction(async (tx) => {
+      await tx.ventas.update({
+        where: { id },
+        data: {
+          status: 'anulado',
+          observaciones: newObservaciones
+        }
+      });
+      await auditar(tx, req.user.id, 'sales', 'void', `venta ${id}: anulada`);
     });
     
     // Anular no deshace lo que ya salio de la app. Se avisa en vez de bloquear: bloquear
@@ -2793,6 +2797,12 @@ exports.generateSiigoInvoice = async (req, res, next) => {
           ultimoError: null
         }
       });
+
+      // Fuera de la transaccion a proposito: la factura ya existe en Siigo. Si el registro
+      // fallara junto con `emitida`, la venta quedaria pendiente y un reintento crearia una
+      // segunda factura real. Perder la linea de auditoria es el mal menor.
+      await auditar(prisma, req.user.id, 'sales', 'invoice', `venta ${id}: factura ${r.name || r.id} emitida`)
+        .catch((e) => console.error(`[AUDITORIA] No se registro la factura de la venta ${id}:`, e.message));
 
       return success(res, {
         message: 'Factura generada en Siigo',

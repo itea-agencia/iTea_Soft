@@ -122,8 +122,9 @@ Y por la API, con un usuario de prueba:
 - **Filas de sesión antiguas.** Las creadas antes de este cambio guardan el token completo, no
   el hash: no coinciden, así que esas sesiones dejan de valer (todos inician sesión una vez) y
   sus filas se van al vencer. La última consulta de arriba dará filas hasta entonces.
-- **Sin auditoría de bajas.** `logs_usuarios` existe y no se usa: no queda registro de quién dio
-  de baja a quién.
+- ~~**Sin auditoría de bajas.**~~ Desde el 2026-10-24, crear, cambiar de rol, desactivar y
+  eliminar usuarios queda en `logs_usuarios`, dentro de la misma transacción (`utils/auditoria.js`).
+  Se consulta con SQL; no tiene pantalla.
 - **Las migraciones ya corrieron en producción** (verificado el 2026-09-22, por fuera de esta
   sesión de trabajo: alguien mergeó `feat-bayrol` a `main` y Render las aplicó solas). No se
   pudo comprobar de antemano qué usuarios tenían filas en `permisos_usuario` antes de que la

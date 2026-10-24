@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const { success, error } = require('../utils/apiResponse');
 const sesiones = require('../services/sesiones.service');
 const { CATALOGO, existeAccion, leerValor, catalogoParaPanel } = require('../config/permisos');
+const { auditar } = require('../utils/auditoria');
 
 const ROLES_EDITABLES = ['asesor', 'freelancer'];
 
@@ -90,6 +91,13 @@ exports.updatePermissions = async (req, res, next) => {
     // es la unica fuente (sin permiso no hay acceso), un fallo a medias dejaba al rol con
     // solo una parte de sus permisos y al resto de sus usuarios sin acceso.
     await prisma.$transaction(async (tx) => {
+      // Lo que tenia el rol, para auditar solo lo que cambia.
+      const antes = new Map((await tx.permisosRol.findMany({ where: { rolId: rol.id }, include: { permiso: true } }))
+        .map(pr => [`${pr.permiso.modulo}.${pr.permiso.accion}`, pr.valor]));
+      const cambios = filas
+        .filter(f => antes.get(`${f.modulo}.${f.accion}`) !== f.valor)
+        .map(f => `${f.modulo}.${f.accion}: ${antes.get(`${f.modulo}.${f.accion}`) ?? '(sin fila)'} -> ${f.valor}`);
+
       await tx.permisosRol.deleteMany({ where: { rolId: rol.id } });
 
       for (const { modulo, accion, valor } of filas) {
@@ -105,6 +113,9 @@ exports.updatePermissions = async (req, res, next) => {
           data: { rolId: rol.id, permisoId: permiso.id, valor }
         });
       }
+
+      await auditar(tx, req.user.id, 'roles', 'permisos',
+        `rol ${role}: ${cambios.length ? cambios.join('; ') : 'sin cambios'}`);
     });
 
     // Limpiar toda la caché de autenticación en RAM para que todos los usuarios

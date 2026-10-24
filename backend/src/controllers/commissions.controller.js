@@ -3,6 +3,8 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
+const { completarPersona } = require('../utils/personas');
+const { auditar } = require('../utils/auditoria');
 
 const splitFullName = (fullName) => {
   const parts = fullName ? fullName.trim().split(/\s+/) : [];
@@ -187,7 +189,8 @@ exports.createAgent = async (req, res, next) => {
       const existingPersona = await prisma.personas.findUnique({
         where: { documento: data.docNumber }
       });
-      if (existingPersona) {
+      if (existingPersona && existingAgent) {
+        // Reactivacion del mismo comisionista: sus datos se actualizan con los del formulario.
         const { firstName, lastName } = splitFullName(data.name || `${existingPersona.nombres} ${existingPersona.apellidos}`);
         persona = await prisma.personas.update({
           where: { id: existingPersona.id },
@@ -197,6 +200,24 @@ exports.createAgent = async (req, res, next) => {
             tipoDocumentoId: tipoDocumentoId || existingPersona.tipoDocumentoId,
             email: data.email || existingPersona.email,
             telefono: data.phone || existingPersona.telefono,
+            status: 'active',
+            deletedAt: null
+          }
+        });
+      } else if (existingPersona) {
+        // La persona existe pero no era comisionista: solo se completa lo que no tiene. Antes
+        // se le sobrescribian nombre, correo y telefono (ver utils/personas.js).
+        const { firstName, lastName } = splitFullName(data.name || '');
+        persona = await prisma.personas.update({
+          where: { id: existingPersona.id },
+          data: {
+            ...completarPersona(existingPersona, {
+              nombres: formatName(firstName),
+              apellidos: formatName(lastName),
+              tipoDocumentoId,
+              email: data.email,
+              telefono: data.phone,
+            }),
             status: 'active',
             deletedAt: null
           }
@@ -226,8 +247,9 @@ exports.createAgent = async (req, res, next) => {
           tipo: data.type || existingAgent.tipo,
           umbralPago: parseFloat(data.paymentThreshold) || existingAgent.umbralPago,
           observacion: data.observacion || existingAgent.observacion,
-          status: data.status || 'Activo',
-          deletedAt: null
+          // Aca tambien se escribia `deletedAt: null`, pero `comisionistas` no tiene esa
+          // columna: reactivar a un comisionista inactivo revento siempre.
+          status: data.status || 'Activo'
         },
         include: { persona: { include: { tipoDocumento: true } } }
       });
@@ -467,6 +489,8 @@ exports.createSettlement = async (req, res, next) => {
         where: { id: { in: salesIds } },
         data: { comisionLiquidada: true }
       });
+      await auditar(tx, req.user.id, 'commissions', 'settle',
+        `liquidacion ${settlement.id}: comisionista ${agentId}, ventas ${salesIds.join(', ')}, monto ${settlement.monto}`);
 
       const fullSettlement = await tx.liquidacionesComision.findUnique({
         where: { id: settlement.id },

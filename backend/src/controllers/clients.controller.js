@@ -5,6 +5,8 @@ const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
 const ciudadesDane = require('../config/ciudades-dane');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
+const { completarPersona } = require('../utils/personas');
+const { auditar } = require('../utils/auditoria');
 
 // Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
 // por documento en cada emision de factura. Se ejecuta en segundo plano: si Siigo esta
@@ -229,21 +231,21 @@ exports.create = async (req, res, next) => {
           }
         });
       } else if (existingPersona) {
-        // La persona existe pero no es cliente (un pasajero, un comisionista, un usuario).
-        // Antes se le sobrescribian nombre, correo y telefono con lo que se escribiera aca, asi
-        // que registrar un cliente podia cambiarle los datos a cualquiera. Ahora solo se
-        // completa lo que la persona no tiene.
+        // La persona existe pero no es cliente (un pasajero, un comisionista, un usuario): solo
+        // se completa lo que no tiene. Ver utils/personas.js.
         persona = await prisma.personas.update({
           where: { id: existingPersona.id },
           data: {
-            nombres: existingPersona.nombres || data.firstName || '',
-            apellidos: existingPersona.apellidos || data.lastName || '',
-            tipoDocumentoId: existingPersona.tipoDocumentoId || tipoDocumentoId,
-            email: existingPersona.email || data.email || null,
-            telefono: existingPersona.telefono || data.phone || null,
-            birthDate: existingPersona.birthDate || (data.birthDate ? new Date(data.birthDate) : null),
-            direccion: existingPersona.direccion || data.address || null,
-            ciudadCodigoDane: existingPersona.ciudadCodigoDane || validarCiudad(data.cityCode),
+            ...completarPersona(existingPersona, {
+              nombres: data.firstName,
+              apellidos: data.lastName,
+              tipoDocumentoId,
+              email: data.email,
+              telefono: data.phone,
+              birthDate: data.birthDate ? new Date(data.birthDate) : null,
+              direccion: data.address,
+              ciudadCodigoDane: validarCiudad(data.cityCode),
+            }),
             status: 'active',
             deletedAt: null
           }
@@ -366,9 +368,14 @@ exports.toggleStatus = async (req, res, next) => {
     if (!cliente) return error(res, 'Cliente no encontrado', 404);
 
     const newStatus = cliente.persona.status === 'active' ? 'inactive' : 'active';
-    await prisma.personas.update({
-      where: { id: cliente.personaId },
-      data: { status: newStatus, updatedAt: new Date() }
+    await prisma.$transaction(async (tx) => {
+      await tx.personas.update({
+        where: { id: cliente.personaId },
+        data: { status: newStatus, updatedAt: new Date() }
+      });
+      if (newStatus === 'inactive') {
+        await auditar(tx, req.user.id, 'clients', 'toggle', `cliente ${id}: desactivado`);
+      }
     });
 
     success(res, { status: newStatus });

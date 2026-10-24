@@ -386,6 +386,10 @@ rompe la equivalencia a propósito.
   existente reutilizada completando solo campos vacíos. Responsables: eliminar comprueba la
   deuda.
 - [x] **T2.8** Catálogos: leer pide solo sesión.
+- [x] **T2.9** (agregado después de verificar P2) Responsables y comisionistas tampoco
+  sobrescriben una persona existente: el criterio de clientes pasa a `utils/personas.js`
+  (`completarPersona`) y lo usan los tres. Reactivar un comisionista inactivo reventaba
+  siempre (escribía `deletedAt`, columna que `comisionistas` no tiene).
 
 **Verificación**: matriz de alcances (`all` ajeno pasa, `own` propio pasa, `own` ajeno da
 404, `none` da 403) para clientes, responsables, comisionistas, liquidaciones y usuarios;
@@ -394,11 +398,16 @@ catálogos; consultas de dueños de la sección Verificación.
 
 ### P3 — Auditoría
 
-- [ ] **T3.1** `auditar(tx, usuarioId, modulo, accion, descripcion)`.
-- [ ] **T3.2** Llamadas dentro de la transacción de cada acción: permisos de rol (con qué
+- [x] **T3.1** `auditar(tx, usuarioId, modulo, accion, descripcion)`.
+- [x] **T3.2** Llamadas dentro de la transacción de cada acción: permisos de rol (con qué
   cambió), usuarios (crear, cambiar rol, desactivar, eliminar), responsables (desactivar,
   eliminar), clientes (desactivar), anular venta, factura emitida, liquidación. Las que hoy
   no corren en transacción (anular, por ejemplo) pasan a hacerlo.
+
+  *Notas de implementación:* la factura emitida se audita **fuera** de la transacción, a
+  propósito: la factura ya existe en Siigo, y si el registro fallara junto con `emitida` la
+  venta quedaría pendiente y un reintento facturaría dos veces. Desactivar clientes,
+  responsables y usuarios se audita; reactivar no, porque no estaba en lo decidido.
 
 **Verificación**: cada acción probada deja su fila en `logs_usuarios`; una acción que falla
 no deja ninguna.
@@ -436,5 +445,8 @@ interfaz la revisa el usuario.
 Diseño y plan aprobados el 2026-10-24. **P1** implementada y verificada (colección de
 Postman de 22 pasos, en verde, con `agregar_permisos_por_accion.sql` corrido en local).
 **P2** implementada y verificada (colección de Postman de 45 pasos, en verde, con la
-migración aplicada y `rellenar_creado_por.sql` corrido en local). El hotfix está en `main`
+migración aplicada y `rellenar_creado_por.sql` corrido en local).
+T2.9 y **P3** implementadas y verificadas (colecciones de 8 y 23 pasos en verde; las 11
+acciones auditadas dejaron exactamente 11 filas en `logs_usuarios`, y las dos que fallan,
+ninguna). El hotfix está en `main`
 (`0a464c8`), verificado por el usuario.

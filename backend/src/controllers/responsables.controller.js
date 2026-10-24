@@ -2,6 +2,8 @@ const prisma = require('../config/db');
 const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
+const { completarPersona } = require('../utils/personas');
+const { auditar } = require('../utils/auditoria');
 
 exports.list = async (req, res, next) => {
   try {
@@ -202,15 +204,17 @@ exports.create = async (req, res, next) => {
             return existingResponsable;
           }
         }
+        // La persona existe pero no era responsable: solo se completa lo que no tiene. Antes
+        // se le sobrescribian nombre, correo y telefono (ver utils/personas.js).
         await tx.personas.update({
           where: { id: persona.id },
-          data: {
+          data: completarPersona(persona, {
             nombres: firstName,
             apellidos: lastName,
-            tipoDocumentoId: docTypeId || persona.tipoDocumentoId,
-            telefono: phone || persona.telefono,
-            email: email || persona.email
-          }
+            tipoDocumentoId: docTypeId,
+            telefono: phone,
+            email
+          })
         });
       }
 
@@ -311,9 +315,12 @@ exports.delete = async (req, res, next) => {
       return error(res, `No se puede eliminar: el responsable tiene una deuda de $${pendiente.toLocaleString('es-CO')}`, 400);
     }
 
-    await prisma.responsables.update({
-      where: { id },
-      data: { deletedAt: new Date() }
+    await prisma.$transaction(async (tx) => {
+      await tx.responsables.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+      });
+      await auditar(tx, req.user.id, 'responsables', 'delete', `responsable ${id}: eliminado`);
     });
 
     success(res, { message: 'Responsable eliminado exitosamente' });
@@ -342,9 +349,15 @@ exports.toggleStatus = async (req, res, next) => {
       }
     }
 
-    const updated = await prisma.responsables.update({
-      where: { id },
-      data: { status }
+    const updated = await prisma.$transaction(async (tx) => {
+      const guardado = await tx.responsables.update({
+        where: { id },
+        data: { status }
+      });
+      if (status === 'inactive' && responsable.status !== 'inactive') {
+        await auditar(tx, req.user.id, 'responsables', 'toggle', `responsable ${id}: desactivado`);
+      }
+      return guardado;
     });
 
     success(res, updated);
