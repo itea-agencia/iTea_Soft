@@ -65,7 +65,7 @@ backend (`itea-backend.onrender.com`) están en dominios distintos, así que la 
 "entre sitios" y eso obliga a decidir cómo se evita CSRF (ver D1). Es el único punto de este
 plan que cambia una interfaz de la que depende todo (el login y cada petición).
 
-## Decisiones
+## Decisiones (aceptadas el 2026-10-24, tal como están propuestas)
 
 | # | Pregunta | Propuesta | Necesaria para |
 |---|---|---|---|
@@ -83,9 +83,9 @@ un diseño propio.
 
 ### C1 — Dueño en los itinerarios
 
-- [ ] **C1.1** El listado de vuelos (`flights.controller`) devuelve el usuario de la venta de
+- [x] **C1.1** El listado de vuelos (`flights.controller`) devuelve el usuario de la venta de
   cada tramo y plan.
-- [ ] **C1.2** `Itineraries.tsx` decide el botón de check-in con `puede('itineraries', 'edit',
+- [x] **C1.2** `Itineraries.tsx` decide el botón de check-in con `puede('itineraries', 'edit',
   duenoId)` y se quita el `shortcut`.
 
 **Verificación**: con un usuario de prueba en "Ver: Todos / Editar: Propios", el listado trae
@@ -93,7 +93,7 @@ el dueño (Postman); el botón se revisa en pantalla.
 
 ### C2 — Auditar reactivaciones (D3)
 
-- [ ] **C2.1** `auditar(...)` también al reactivar clientes, responsables y usuarios.
+- [x] **C2.1** `auditar(...)` también al reactivar clientes, responsables y usuarios.
 
 **Verificación**: desactivar y reactivar uno de cada deja dos filas por registro en
 `logs_usuarios` (SQL).
@@ -110,22 +110,22 @@ el dueño (Postman); el botón se revisa en pantalla.
 
 ### C4 — Borrador del asistente (D4)
 
-- [ ] **C4.1** El borrador se guarda sin los `voucher`/`vouchers` de cada producto.
-- [ ] **C4.2** Cerrar sesión borra los borradores (`itea_new_sale_draft_v2_*`).
+- [x] **C4.1** El borrador se guarda sin los `voucher`/`vouchers` de cada producto.
+- [x] **C4.2** Cerrar sesión borra los borradores (`itea_new_sale_draft_v2_*`).
 
 **Verificación**: `tsc`; en pantalla, que el borrador recupere lo tipeado y que tras cerrar
 sesión no quede (`localStorage` en las herramientas del navegador).
 
 ### C5 — TypeScript `strict`
 
-- [ ] **C5.1** Corregir los 18 errores y activar `strict: true`.
+- [x] **C5.1** Corregir los 18 errores y activar `strict: true`.
 
 **Verificación**: `tsc --noEmit` y `npm run build` en verde. Las pantallas tocadas se revisan.
 
 ### C6 — Orden del repositorio (D5)
 
-- [ ] **C6.1** `git rm --cached` de `.superpowers/` y agregarlo al `.gitignore`.
-- [ ] **C6.2** Commitear `skills-lock.json`; `.postman/` y `postman/` al `.gitignore`.
+- [x] **C6.1** `git rm --cached` de `.superpowers/` y agregarlo al `.gitignore`.
+- [x] **C6.2** Commitear `skills-lock.json`; `.postman/` y `postman/` al `.gitignore`.
 
 **Verificación**: `git status` limpio.
 
@@ -137,4 +137,15 @@ despliegue pensado para no echar a nadie a mitad de sesión.
 
 ## Estado
 
-Plan escrito, sin empezar. Faltan D1–D5.
+D1–D5 aceptadas el 2026-10-24. C1–C6 en `feat/cierre-pendientes`.
+
+**C3 en pausa, D2 a revisar.** Al implementarlo se vio que el backend se conecta por el
+transaction pooler de Supabase (puerto 6543, `pgbouncer=true`): un advisory lock de sesión no
+sirve ahí (cada consulta puede ir por otra conexión), y uno de transacción obliga a tener una
+transacción abierta mientras se habla con Siigo (30 s o más), reteniendo una conexión del pool
+y subiendo el timeout de Prisma. No son "unas líneas" como decía la propuesta.
+
+Commiteados el 2026-10-24: **C1** (verificado por la API; el botón en pantalla, pendiente
+porque el frontend no se había reconstruido), **C2** (clientes y responsables verificados con
+SQL; repetir la reactivación de un usuario, que no llegó con `status: active`), **C5** y
+**C6**. **C4** implementado y sin commitear: falta probarlo con el frontend reconstruido.
