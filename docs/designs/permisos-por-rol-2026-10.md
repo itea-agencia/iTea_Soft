@@ -371,21 +371,21 @@ rompe la equivalencia a propósito.
 
 ### P2 — Recursos con dueño
 
-- [ ] **T2.1** Migración `creado_por_id` en `responsables`, `comisionistas` y `usuarios`
+- [x] **T2.1** Migración `creado_por_id` en `responsables`, `comisionistas` y `usuarios`
   (`npm run db:migrate -- --name creado_por_id`, con permiso).
-- [ ] **T2.2** `backend/db-manual/rellenar_creado_por.{sql,sh}`.
-- [ ] **T2.3** `middleware/propio.js` reemplaza a `ventaPropia.js`, con la tabla de dueños.
+- [x] **T2.2** `backend/db-manual/rellenar_creado_por.{sql,sh}`.
+- [x] **T2.3** `middleware/propio.js` reemplaza a `ventaPropia.js`, con la tabla de dueños.
   Itinerarios conserva su comprobación actual en `flights.controller`, que ya funciona.
-- [ ] **T2.4** Crear guarda `creadoPorId` en responsables, comisionistas y usuarios.
-- [ ] **T2.5** Listados filtrados por alcance: responsables, comisionistas (todos si llega
+- [x] **T2.4** Crear guarda `creadoPorId` en responsables, comisionistas y usuarios.
+- [x] **T2.5** Listados filtrados por alcance: responsables, comisionistas (todos si llega
   por `sales.create`), liquidaciones y usuarios; `includeSales` de clientes filtra por
   `sales.view`. Los listados devuelven quién creó cada registro.
-- [ ] **T2.6** Usuarios: un no-admin solo crea y asigna asesor o freelancer; cambiar el
+- [x] **T2.6** Usuarios: un no-admin solo crea y asigna asesor o freelancer; cambiar el
   estado dentro de un `PUT` exige `toggle`.
-- [ ] **T2.7** Clientes: error claro si el documento es de un cliente activo; persona
+- [x] **T2.7** Clientes: error claro si el documento es de un cliente activo; persona
   existente reutilizada completando solo campos vacíos. Responsables: eliminar comprueba la
   deuda.
-- [ ] **T2.8** Catálogos: leer pide solo sesión.
+- [x] **T2.8** Catálogos: leer pide solo sesión.
 
 **Verificación**: matriz de alcances (`all` ajeno pasa, `own` propio pasa, `own` ajeno da
 404, `none` da 403) para clientes, responsables, comisionistas, liquidaciones y usuarios;
@@ -434,5 +434,7 @@ interfaz la revisa el usuario.
 ## Estado
 
 Diseño y plan aprobados el 2026-10-24. **P1** implementada y verificada (colección de
-Postman de 22 pasos, en verde, con `agregar_permisos_por_accion.sql` corrido en local). El hotfix está en `main`
+Postman de 22 pasos, en verde, con `agregar_permisos_por_accion.sql` corrido en local).
+**P2** implementada y verificada (colección de Postman de 45 pasos, en verde, con la
+migración aplicada y `rellenar_creado_por.sql` corrido en local). El hotfix está en `main`
 (`0a464c8`), verificado por el usuario.

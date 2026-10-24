@@ -144,6 +144,13 @@ model Usuarios {
   // Baja definitiva. Distinta de `status = inactive`, que es una suspension: el eliminado
   // libera su correo (ver users.controller.js) y solo vuelve reingresando por su cedula.
   deletedAt       DateTime?         @map("deleted_at")
+  // Quien lo creo: "Propios" en el modulo de usuarios. Null en los creados antes del
+  // 2026-10-24 que no se rellenaron (ver db-manual/rellenar_creado_por.sql).
+  creadoPorId     Int?              @map("creado_por_id")
+  creadoPor       Usuarios?         @relation("usuario_creado_por", fields: [creadoPorId], references: [id])
+  usuariosCreados Usuarios[]        @relation("usuario_creado_por")
+  responsablesCreados  Responsables[]  @relation("responsable_creado_por")
+  comisionistasCreados Comisionistas[] @relation("comisionista_creado_por")
   clientesCreados Clientes[]        @relation("cliente_creado_por")
   logs            LogsUsuarios[]
   paquetesCreados Paquetes[]        @relation("paquete_creado_por")
@@ -205,6 +212,9 @@ model Comisionistas {
   status                AgentStatus             @default(Activo)
   creadoAt              DateTime                @default(now()) @map("creado_at")
   observacion           String?                 @db.VarChar(300)
+  // Quien lo creo: "Propios" en el modulo de comisionistas.
+  creadoPorId           Int?                    @map("creado_por_id")
+  creadoPor             Usuarios?               @relation("comisionista_creado_por", fields: [creadoPorId], references: [id])
   persona               Personas                @relation(fields: [personaId], references: [id])
   liquidacionesComision LiquidacionesComision[]
   ventas                Ventas[]
@@ -218,6 +228,10 @@ model Responsables {
   status    UserStatus @default(active)
   creadoAt  DateTime   @default(now()) @map("creado_at")
   deletedAt DateTime?  @map("deleted_at")
+  // Quien lo creo: "Propios" en el modulo de responsables. Antes no se guardaba, asi que el
+  // alcance "Propios" que ofrecia el panel no se podia aplicar.
+  creadoPorId Int?     @map("creado_por_id")
+  creadoPor Usuarios?  @relation("responsable_creado_por", fields: [creadoPorId], references: [id])
   persona   Personas   @relation(fields: [personaId], references: [id])
   ventas    Ventas[]   @relation("venta_responsable")
 

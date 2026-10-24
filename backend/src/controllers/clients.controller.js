@@ -4,6 +4,7 @@ const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
 const ciudadesDane = require('../config/ciudades-dane');
+const { permisosEfectivos, alcanceDe } = require('../config/permisos');
 
 // Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
 // por documento en cada emision de factura. Se ejecuta en segundo plano: si Siigo esta
@@ -126,13 +127,18 @@ exports.list = async (req, res, next) => {
 exports.getById = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const includeSales = req.query.includeSales === 'true';
+    // Las ventas del cliente se muestran con el alcance de `sales.view`, no con el del cliente:
+    // antes esta ficha devolvia hasta 50 ventas de cualquier asesor a quien pudiera ver el
+    // cliente, con sus detalles.
+    const alcanceVentas = alcanceDe(permisosEfectivos(req.user), 'sales', 'view');
+    const includeSales = req.query.includeSales === 'true' && alcanceVentas !== false;
 
     const cliente = await prisma.clientes.findUnique({
       where: { id },
       include: {
         persona: { include: { tipoDocumento: true } },
         ventas: includeSales ? {
+          where: alcanceVentas === 'own' ? { usuarioId: req.user.id } : undefined,
           include: { detalleVentas: true, usuario: { include: { persona: true } } },
           orderBy: { creadoAt: 'desc' },
           take: 50
@@ -193,7 +199,9 @@ exports.create = async (req, res, next) => {
       });
       if (existingClient) {
         if (!existingClient.deletedAt) {
-          return error(res, 'Este número de documento ya está registrado y activo como cliente', 400);
+          // Con alcance "Propios" el cliente puede ser de otro usuario y no aparecer en su
+          // lista: no se le muestra ni se le deja venderle (decision 6 del diseno de permisos).
+          return error(res, 'Este número de documento ya está registrado como cliente. Si no lo ves en tu lista, es de otro usuario: pide la venta a un asesor o administrador.', 400, 'CLIENTE_EXISTENTE');
         }
       }
     }
@@ -203,8 +211,8 @@ exports.create = async (req, res, next) => {
       const existingPersona = await prisma.personas.findUnique({
         where: { documento: data.docNumber }
       });
-      if (existingPersona) {
-        // Reuse existing persona and update details
+      if (existingPersona && existingClient) {
+        // Reingreso de un cliente eliminado: sus datos se actualizan con los del formulario.
         persona = await prisma.personas.update({
           where: { id: existingPersona.id },
           data: {
@@ -216,6 +224,26 @@ exports.create = async (req, res, next) => {
             birthDate: data.birthDate ? new Date(data.birthDate) : existingPersona.birthDate,
             direccion: data.address !== undefined ? (data.address || null) : existingPersona.direccion,
             ciudadCodigoDane: data.cityCode !== undefined ? validarCiudad(data.cityCode) : existingPersona.ciudadCodigoDane,
+            status: 'active',
+            deletedAt: null
+          }
+        });
+      } else if (existingPersona) {
+        // La persona existe pero no es cliente (un pasajero, un comisionista, un usuario).
+        // Antes se le sobrescribian nombre, correo y telefono con lo que se escribiera aca, asi
+        // que registrar un cliente podia cambiarle los datos a cualquiera. Ahora solo se
+        // completa lo que la persona no tiene.
+        persona = await prisma.personas.update({
+          where: { id: existingPersona.id },
+          data: {
+            nombres: existingPersona.nombres || data.firstName || '',
+            apellidos: existingPersona.apellidos || data.lastName || '',
+            tipoDocumentoId: existingPersona.tipoDocumentoId || tipoDocumentoId,
+            email: existingPersona.email || data.email || null,
+            telefono: existingPersona.telefono || data.phone || null,
+            birthDate: existingPersona.birthDate || (data.birthDate ? new Date(data.birthDate) : null),
+            direccion: existingPersona.direccion || data.address || null,
+            ciudadCodigoDane: existingPersona.ciudadCodigoDane || validarCiudad(data.cityCode),
             status: 'active',
             deletedAt: null
           }

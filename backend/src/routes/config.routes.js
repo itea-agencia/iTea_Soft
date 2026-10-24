@@ -4,7 +4,10 @@ const configController = require('../controllers/config.controller');
 const auth = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
 
-router.use(auth, authorize('config', 'view'));
+// Leer catalogos pide solo sesion: el asistente de ventas los necesita para llenar sus
+// listas, y exigir `config.view` dejaba a un freelancer con el asistente vacio. Ese permiso
+// decide si se ve la pantalla de Gestion Interna (decision 23 del diseno de permisos).
+router.use(auth);
 
 router.get('/all', configController.getAll);
 router.get('/:section', configController.getSection);

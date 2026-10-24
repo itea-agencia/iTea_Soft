@@ -7,6 +7,7 @@ const emailService = require('../utils/emailService');
 const { formatName, escaparHtml } = require('../utils/stringUtils');
 const { normalizarEmail, correoDeEliminado } = require('../utils/emailUtils');
 const sesiones = require('../services/sesiones.service');
+const { permisosEfectivos, alcanceDe } = require('../config/permisos');
 
 exports.list = async (req, res, next) => {
   try {
@@ -34,6 +35,9 @@ exports.list = async (req, res, next) => {
     if (status) where.status = status;
     where.persona = { ...where.persona, deletedAt: null };
     where.deletedAt = null;
+    // "Propios" son los usuarios que creo ese usuario.
+    if (req.permissionScope === 'own') where.creadoPorId = req.user.id;
+    const ownCondition = req.permissionScope === 'own' ? Prisma.sql`AND u.creado_por_id = ${req.user.id}` : Prisma.empty;
 
     // Ejecución paralela: Conteo (Prisma) y Búsqueda (SQL Puro)
     const [total, usuariosRaw] = await Promise.all([
@@ -51,12 +55,13 @@ exports.list = async (req, res, next) => {
           p.documento as "docNumber", 
           p.birth_date as "birthDate", 
           td.abreviatura as "docType",
-          r.nombre as "role"
+          r.nombre as "role",
+          u.creado_por_id as "creadoPorId"
         FROM usuarios u
         JOIN personas p ON u.persona_id = p.id
         LEFT JOIN tipos_documento td ON p.tipo_documento_id = td.id
         JOIN roles r ON u.rol_id = r.id
-        WHERE p.deleted_at IS NULL AND u.deleted_at IS NULL ${searchCondition} ${roleCondition} ${statusCondition}
+        WHERE p.deleted_at IS NULL AND u.deleted_at IS NULL ${searchCondition} ${roleCondition} ${statusCondition} ${ownCondition}
         ORDER BY u.id DESC
         LIMIT ${perPage} OFFSET ${skip}
       `)
@@ -76,6 +81,7 @@ exports.list = async (req, res, next) => {
       birthDate: u.birthDate,
       lastLogin: u.ultimoLogin,
       createdAt: u.creadoAt,
+      createdBy: u.creadoPorId,
     }));
 
     success(res, data, buildMeta(total, page, perPage));
@@ -224,11 +230,12 @@ exports.create = async (req, res, next) => {
       return previo
         ? tx.usuarios.update({
             where: { id: previo.id },
-            data: { email, passwordHash, rolId: rol.id, status, deletedAt: null },
+            // Un reingreso conserva a quien lo creo; si no tenia, pasa a quien lo reingresa.
+            data: { email, passwordHash, rolId: rol.id, status, deletedAt: null, creadoPorId: previo.creadoPorId ?? req.user.id },
             include
           })
         : tx.usuarios.create({
-            data: { personaId: persona.id, email, passwordHash, rolId: rol.id, status },
+            data: { personaId: persona.id, email, passwordHash, rolId: rol.id, status, creadoPorId: req.user.id },
             include
           });
     });
@@ -289,11 +296,27 @@ exports.update = async (req, res, next) => {
     if (!usuario || usuario.deletedAt) return error(res, 'Usuario no encontrado', 404);
 
     const objetivoEsAdmin = usuario.rol.nombre === 'admin';
+    // Desde que el modulo de usuarios se puede dar a un asesor, nadie que no sea admin toca a
+    // un admin: ni sus datos, ni su correo, ni su contrasena (decision 19 del diseno).
+    if (objetivoEsAdmin && !esAdmin(req)) {
+      return error(res, 'Solo un administrador puede modificar a otro administrador', 403, 'ADMIN_PROTEGIDO');
+    }
 
     if (data.status !== undefined && !['active', 'inactive'].includes(data.status)) {
       return error(res, 'Estado no válido', 400, 'VALIDATION_ERROR');
     }
     const desactiva = data.status === 'inactive' && usuario.status !== 'inactive';
+    // Activar o desactivar es su propio permiso (`users.toggle`), aunque llegue dentro de este
+    // PUT: tener "Editar" no alcanza para dar de baja.
+    if (data.status !== undefined && data.status !== usuario.status) {
+      const alcance = alcanceDe(permisosEfectivos(req.user), 'users', 'toggle');
+      if (alcance === false) {
+        return error(res, 'No tienes permiso para activar o desactivar usuarios', 403);
+      }
+      if (alcance === 'own' && usuario.creadoPorId !== req.user.id) {
+        return error(res, 'Usuario no encontrado', 404);
+      }
+    }
     if (desactiva && id === req.user.id) {
       return error(res, 'No puedes desactivar tu propia cuenta', 403, 'AUTOACCION');
     }

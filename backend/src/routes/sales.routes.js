@@ -3,7 +3,9 @@ const router = Router();
 const salesController = require('../controllers/sales.controller');
 const auth = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
-const ventaPropia = require('../middleware/ventaPropia');
+const propio = require('../middleware/propio');
+
+const ventaPropia = propio('venta');
 const paginate = require('../middleware/paginate');
 
 // No hay PUT /:id, DELETE /:id ni /:saleId/products/*: eran 56 rutas de escritura que la

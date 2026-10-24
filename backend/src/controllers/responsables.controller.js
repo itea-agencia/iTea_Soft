@@ -21,6 +21,10 @@ exports.list = async (req, res, next) => {
       };
     }
     if (status) where.status = status;
+    // "Propios" son los que creo ese usuario. Antes el panel ofrecia el alcance pero aca no se
+    // aplicaba: cualquiera con permiso de ver llegaba a todos.
+    if (req.permissionScope === 'own') where.creadoPorId = req.user.id;
+    const ownCondition = req.permissionScope === 'own' ? Prisma.sql`AND r.creado_por_id = ${req.user.id}` : Prisma.empty;
 
     // Parametros, no interpolacion: `search` y `status` vienen del request.
     const like = `%${search}%`;
@@ -46,6 +50,7 @@ exports.list = async (req, res, next) => {
           p.email,
 
           r.status,
+          r.creado_por_id as "creadoPorId",
           td.abreviatura as "docType",
           COALESCE(
             (SELECT SUM(v.monto_total - COALESCE(v.monto_pagado_credito, 0))
@@ -55,7 +60,7 @@ exports.list = async (req, res, next) => {
         FROM responsables r
         JOIN personas p ON r.persona_id = p.id
         LEFT JOIN tipos_documento td ON p.tipo_documento_id = td.id
-        WHERE r.deleted_at IS NULL ${searchCondition} ${statusCondition}
+        WHERE r.deleted_at IS NULL ${searchCondition} ${statusCondition} ${ownCondition}
         ORDER BY ${Prisma.raw(sqlOrderBy)} ${Prisma.raw(sortOrder === 'desc' ? 'DESC' : 'ASC')}
         LIMIT ${perPage} OFFSET ${skip}
       `)
@@ -74,6 +79,7 @@ exports.list = async (req, res, next) => {
 
       status: r.status,
       creadoAt: r.creadoAt,
+      createdBy: r.creadoPorId,
       deudaTotal: parseFloat(r.deudaTotal)
     }));
 
@@ -211,7 +217,8 @@ exports.create = async (req, res, next) => {
       const responsable = await tx.responsables.create({
         data: {
           personaId: persona.id,
-          status: 'active'
+          status: 'active',
+          creadoPorId: req.user.id
         }
       });
 
@@ -292,6 +299,17 @@ exports.delete = async (req, res, next) => {
     const id = parseInt(req.params.id);
     const responsable = await prisma.responsables.findUnique({ where: { id } });
     if (!responsable || responsable.deletedAt) return error(res, 'Responsable no encontrado', 404);
+
+    // Desactivar ya lo comprobaba; eliminar no, y un responsable con deuda quedaba borrado
+    // con sus ventas a credito sin nadie a quien reclamarlas.
+    const deuda = await prisma.$queryRaw`
+      SELECT SUM(v.monto_total - COALESCE(v.monto_pagado_credito, 0)) AS "deuda"
+      FROM ventas v
+      WHERE v.responsable_id = ${id} AND v.status IN ('credito', 'abonado')`;
+    const pendiente = Number(deuda[0]?.deuda) || 0;
+    if (pendiente > 0) {
+      return error(res, `No se puede eliminar: el responsable tiene una deuda de $${pendiente.toLocaleString('es-CO')}`, 400);
+    }
 
     await prisma.responsables.update({
       where: { id },

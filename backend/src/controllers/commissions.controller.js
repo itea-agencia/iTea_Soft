@@ -74,11 +74,28 @@ exports.getAgent = async (req, res, next) => {
 
 exports.listAgents = async (req, res, next) => {
   try {
+    // Para elegir comisionista en el asistente de ventas: todos, pero solo lo necesario para
+    // elegir. Los datos de contacto y el acumulado son del modulo de comisiones, con su alcance.
+    if (req.query.para === 'venta') {
+      const agentes = await prisma.comisionistas.findMany({
+        select: { id: true, status: true, persona: { select: { nombres: true, apellidos: true } } },
+        orderBy: { id: 'desc' }
+      });
+      return success(res, agentes.map(a => ({
+        id: a.id,
+        name: `${a.persona.nombres} ${a.persona.apellidos}`.trim(),
+        status: a.status
+      })));
+    }
+
     const { page, perPage, skip } = req.pagination;
     const { search, status } = req.query;
 
     const where = {};
     if (status) where.status = status;
+    // "Propios" son los que creo ese usuario.
+    if (req.permissionScope === 'own') where.creadoPorId = req.user.id;
+    const ownCondition = req.permissionScope === 'own' ? Prisma.sql`AND c.creado_por_id = ${req.user.id}` : Prisma.empty;
     if (search) {
       where.persona = {
         OR: [
@@ -110,11 +127,12 @@ exports.listAgents = async (req, res, next) => {
           p.email,
           p.documento as "docNumber",
           td.abreviatura as "docType",
-          c.observacion as "observacion"
+          c.observacion as "observacion",
+          c.creado_por_id as "creadoPorId"
         FROM comisionistas c
         JOIN personas p ON c.persona_id = p.id
         LEFT JOIN tipos_documento td ON p.tipo_documento_id = td.id
-        WHERE 1=1 ${statusCondition} ${searchCondition}
+        WHERE 1=1 ${statusCondition} ${searchCondition} ${ownCondition}
         ORDER BY c.id DESC
         LIMIT ${perPage} OFFSET ${skip}
       `)
@@ -131,7 +149,8 @@ exports.listAgents = async (req, res, next) => {
       paymentThreshold: a.paymentThreshold,
       phone: a.phone,
       email: a.email,
-      observacion: a.observacion
+      observacion: a.observacion,
+      createdBy: a.creadoPorId
     }));
 
     success(res, data, buildMeta(total, page, perPage));
@@ -220,7 +239,8 @@ exports.createAgent = async (req, res, next) => {
           umbralPago: parseFloat(data.paymentThreshold) || 0,
           acumulado: 0,
           observacion: data.observacion || null,
-          status: data.status || 'Activo'
+          status: data.status || 'Activo',
+          creadoPorId: req.user.id
         },
         include: { persona: { include: { tipoDocumento: true } } }
       });
@@ -319,6 +339,9 @@ exports.listSettlements = async (req, res, next) => {
 
     const where = {};
     if (agentId) where.comisionistaId = parseInt(agentId);
+    // Con "Propios", solo las liquidaciones de los comisionistas que creo ese usuario.
+    if (req.permissionScope === 'own') where.comisionista = { creadoPorId: req.user.id };
+    const ownCondition = req.permissionScope === 'own' ? Prisma.sql`AND c.creado_por_id = ${req.user.id}` : Prisma.empty;
     if (dateFrom || dateTo) {
       where.fecha = {};
       if (dateFrom) where.fecha.gte = new Date(dateFrom);
@@ -350,7 +373,7 @@ exports.listSettlements = async (req, res, next) => {
         JOIN comisionistas c ON lc.comisionista_id = c.id
         JOIN personas p ON c.persona_id = p.id
         LEFT JOIN metodos_pago mp ON lc.metodo_pago_id = mp.id
-        WHERE 1=1 ${agentCondition} ${dateFromCondition} ${dateToCondition}
+        WHERE 1=1 ${agentCondition} ${dateFromCondition} ${dateToCondition} ${ownCondition}
         ORDER BY lc.creado_at DESC
         LIMIT ${perPage} OFFSET ${skip}
       `)
@@ -386,6 +409,15 @@ exports.createSettlement = async (req, res, next) => {
     const salesIds = [...new Set((Array.isArray(data.salesIds) ? data.salesIds : []).map(id => parseInt(id, 10)))];
     if (!Number.isInteger(agentId) || salesIds.length === 0 || salesIds.some(id => !Number.isInteger(id))) {
       return error(res, 'Una liquidación necesita un comisionista y al menos una venta', 400, 'VALIDATION_ERROR');
+    }
+
+    // Con "Propios", solo se liquida a los comisionistas que creo ese usuario. El resto de la
+    // validacion (que las ventas sean de ese comisionista) va dentro de la transaccion.
+    if (req.permissionScope === 'own') {
+      const agente = await prisma.comisionistas.findUnique({ where: { id: agentId }, select: { creadoPorId: true } });
+      if (!agente || agente.creadoPorId !== req.user.id) {
+        return error(res, 'Comisionista no encontrado', 404);
+      }
     }
 
     const result = await prisma.$transaction(async (tx) => {
