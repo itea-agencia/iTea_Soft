@@ -438,13 +438,13 @@ interfaz la revisa el usuario.
 
 ### P5 — Producción
 
-- [ ] **T5.1** `agregar_permisos_por_accion` en producción (con confirmación), antes del
+- [x] **T5.1** `agregar_permisos_por_accion` en producción (con confirmación), antes del
   merge.
-- [ ] **T5.2** Merge a `main` (lo hace el usuario); la migración la aplica Render.
-- [ ] **T5.3** `rellenar_creado_por` en producción (con confirmación).
-- [ ] **T5.4** `quitar_permisos_viejos` en producción (con confirmación), con el deploy ya
+- [x] **T5.2** Merge a `main` (lo hace el usuario); la migración la aplica Render.
+- [x] **T5.3** `rellenar_creado_por` en producción (con confirmación).
+- [x] **T5.4** `quitar_permisos_viejos` en producción (con confirmación), con el deploy ya
   arriba.
-- [ ] **T5.5** Consultas de verificación en producción, en modo lectura; estado de los tres
+- [x] **T5.5** Consultas de verificación en producción, en modo lectura; estado de los tres
   scripts en `backend/db-manual/README.md`.
 
 ## Estado
@@ -458,5 +458,10 @@ acciones auditadas dejaron exactamente 11 filas en `logs_usuarios`, y las dos qu
 ninguna).
 **P4** implementada y verificada (colección de Postman de 9 pasos en verde y revisión de
 la interfaz por el usuario: panel con los 8 módulos, menú y botones según permisos,
-asistente con todos los comisionistas, Gestión Interna). Falta **P5**. El hotfix está en `main`
+asistente con todos los comisionistas, Gestión Interna).
+**P5** hecha el 2026-10-24: `agregar_permisos_por_accion` en producción, merge de
+`feat-bayrol` a `main` (`45c7ae8`), migración aplicada por Render, `rellenar_creado_por` y
+`quitar_permisos_viejos` en producción. Verificado en producción en modo lectura: 0 claves
+fuera del catálogo, permisos efectivos del asesor iguales a los de antes, dueños
+asignados, backend y frontend respondiendo. **Diseño completo.** El hotfix está en `main`
 (`0a464c8`), verificado por el usuario.
