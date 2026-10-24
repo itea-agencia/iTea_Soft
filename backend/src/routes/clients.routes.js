@@ -12,7 +12,7 @@ router.get('/', authorize('clients', 'view'), paginate, clientsController.list);
 router.get('/:id', authorize('clients', 'view'), clientsController.getById);
 router.post('/', authorize('clients', 'create'), clientsController.create);
 router.put('/:id', authorize('clients', 'edit'), clientsController.update);
-router.patch('/:id/toggle-status', authorize('clients', 'edit'), clientsController.toggleStatus);
+router.patch('/:id/toggle-status', authorize('clients', 'toggle'), clientsController.toggleStatus);
 
 
 module.exports = router;

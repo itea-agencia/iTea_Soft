@@ -7,6 +7,7 @@ const emailService = require('../utils/emailService');
 const sesiones = require('../services/sesiones.service');
 const { validarPassword } = require('../utils/passwordPolicy');
 const { escaparHtml } = require('../utils/stringUtils');
+const { permisosEfectivos } = require('../config/permisos');
 
 // key: email (lowercase), value: { code, expiresAt, attempts, sentAt }
 const resetCodes = new Map();
@@ -123,7 +124,11 @@ exports.login = async (req, res, next) => {
         docType: usuario.persona.tipoDocumento?.abreviatura || null,
         docNumber: usuario.persona.documento,
         lastLogin: usuario.ultimoLogin,
-        permisos
+        permisos,
+        // Ya leidos con la misma funcion que aplica authorize.js, para que la pantalla no
+        // tenga su propia lectura (la que tenia no coincidia con la del backend). `permisos`
+        // se queda hasta que el frontend use este campo.
+        permisosEfectivos: permisosEfectivos({ role: usuario.rol.nombre, permisosRol: permisos })
       },
       token,
       expiresAt
@@ -171,7 +176,8 @@ exports.me = async (req, res, next) => {
       docType: usuario.persona.tipoDocumento?.abreviatura || null,
       docNumber: usuario.persona.documento,
       lastLogin: usuario.ultimoLogin,
-      permisos
+      permisos,
+      permisosEfectivos: permisosEfectivos({ role: usuario.rol.nombre, permisosRol: permisos })
     });
   } catch (err) {
     next(err);

@@ -345,23 +345,23 @@ reconstruir el contenedor, correr scripts) se pide antes, por la regla 4 del `CL
 Primero se actualiza la spec de autenticación y autorización con el catálogo y las reglas
 nuevas (flujo del `CLAUDE.md`: la spec antes que el código).
 
-- [ ] **T1.1** `backend/src/config/permisos.js`: el catálogo de la tabla de arriba y tres
+- [x] **T1.1** `backend/src/config/permisos.js`: el catálogo de la tabla de arriba y tres
   funciones: `leerValor(modulo, accion, valor)` (reemplaza a `utils/permisosValor.js`),
   `permisosEfectivos(user)` (reemplaza a `getEffectivePermissions`; el admin sale del
   catálogo con todo en `all`/`true`) y `existeAccion(modulo, accion)`.
-- [ ] **T1.2** `middleware/authorize.js`: `authorize` y `authorizeAny` leen del catálogo y
+- [x] **T1.2** `middleware/authorize.js`: `authorize` y `authorizeAny` leen del catálogo y
   lanzan un error **al definir la ruta** si la acción no existe, así el backend no arranca.
   Se borran `ADMIN_PERMISSIONS` y `getActionScope` duplicados.
-- [ ] **T1.3** Rutas con las claves nuevas: ventas (`pay`, `invoice`, `void`, `review`),
+- [x] **T1.3** Rutas con las claves nuevas: ventas (`pay`, `invoice`, `void`, `review`),
   clientes (`toggle`), responsables (`toggle`, `delete`), comisiones (`settle` para
   liquidar), catálogos (`create`, `delete`), dashboard (`all` real en `stats.controller`).
   `ventaPropia` pasa a decidir con el alcance **de la acción de la ruta**.
-- [ ] **T1.4** `roles.controller`: `GET /roles/:role/permissions` solo admin; el `PUT`
+- [x] **T1.4** `roles.controller`: `GET /roles/:role/permissions` solo admin; el `PUT`
   rechaza (400) claves fuera del catálogo y valores que no correspondan al tipo; ruta nueva
   `GET /roles/catalogo` (solo sesión). Se borra `MODULE_ACTIONS`.
-- [ ] **T1.5** Login y `/auth/me` agregan `permisosEfectivos` (mapa ya leído por el
+- [x] **T1.5** Login y `/auth/me` agregan `permisosEfectivos` (mapa ya leído por el
   backend). El campo viejo `permisos` se queda hasta P4 para no romper el frontend actual.
-- [ ] **T1.6** `backend/db-manual/agregar_permisos_por_accion.{sql,sh}`, con la guarda de
+- [x] **T1.6** `backend/db-manual/agregar_permisos_por_accion.{sql,sh}`, con la guarda de
   equivalencia. Se corre en local (con permiso) antes de probar P1.
 
 **Verificación**: el catálogo responde; un asesor recibe 403 al leer los permisos de un
@@ -433,5 +433,6 @@ interfaz la revisa el usuario.
 
 ## Estado
 
-Diseño aprobado el 2026-10-24; plan de implementación escrito, pendiente de revisión. El hotfix está en `main`
+Diseño y plan aprobados el 2026-10-24. **P1** implementada y verificada (colección de
+Postman de 22 pasos, en verde, con `agregar_permisos_por_accion.sql` corrido en local). El hotfix está en `main`
 (`0a464c8`), verificado por el usuario.

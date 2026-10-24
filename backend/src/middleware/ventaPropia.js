@@ -1,6 +1,5 @@
 const prisma = require('../config/db');
 const { error } = require('../utils/apiResponse');
-const { getEffectivePermissions, getActionScope } = require('./authorize');
 
 // Guarda de propietario para toda ruta que cuelga de una venta (`:id` o `:saleId`).
 //
@@ -9,15 +8,13 @@ const { getEffectivePermissions, getActionScope } = require('./authorize');
 // los productos aceptaban cualquier id, asi que un asesor con `sales.edit = own` editaba,
 // anulaba y facturaba ventas de otros con solo cambiar el numero en la URL.
 //
-// Va DESPUES de `authorize`. Decide con el alcance de vista en las lecturas y el de edicion
-// en todo lo demas, y no con el de la accion concreta: `sales.create` y `sales.delete` son
-// booleanos y siempre darian 'all', lo que dejaria a un usuario que solo puede editar lo
-// suyo agregar productos a una venta ajena. Sin permiso de edicion se trata como 'own'.
+// Va DESPUES de `authorize` y decide con el alcance de la accion de esa ruta, que authorize
+// deja en `req.permissionScope`. Antes decidia con el de `view` o `edit` segun el metodo,
+// porque `sales.delete` era un si/no que siempre daba 'all'; desde el catalogo de permisos
+// cada accion sobre una venta (pagar, facturar, anular, revisar) tiene su propio alcance.
 async function ventaPropia(req, res, next) {
   try {
-    const { permissions } = getEffectivePermissions(req.user);
-    const accion = req.method === 'GET' ? 'view' : 'edit';
-    if (getActionScope(permissions, 'sales', accion) === 'all') return next();
+    if (req.permissionScope === 'all') return next();
 
     const id = parseInt(req.params.id ?? req.params.saleId, 10);
     if (!Number.isInteger(id)) return next();

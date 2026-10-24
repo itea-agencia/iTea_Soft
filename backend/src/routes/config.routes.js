@@ -8,8 +8,8 @@ router.use(auth, authorize('config', 'view'));
 
 router.get('/all', configController.getAll);
 router.get('/:section', configController.getSection);
-router.post('/:section', authorize('config', 'edit'), configController.createItem);
+router.post('/:section', authorize('config', 'create'), configController.createItem);
 router.put('/:section/:id', authorize('config', 'edit'), configController.updateItem);
-router.delete('/:section/:id', authorize('config', 'edit'), configController.removeItem);
+router.delete('/:section/:id', authorize('config', 'delete'), configController.removeItem);
 
 module.exports = router;

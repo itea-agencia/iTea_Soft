@@ -17,6 +17,6 @@ router.delete('/agents/:id', authorize('commissions', 'delete'), commissionsCont
 
 // Liquidaciones
 router.get('/settlements', authorize('commissions', 'view'), paginate, commissionsController.listSettlements);
-router.post('/settlements', authorize('commissions', 'create'), commissionsController.createSettlement);
+router.post('/settlements', authorize('commissions', 'settle'), commissionsController.createSettlement);
 
 module.exports = router;

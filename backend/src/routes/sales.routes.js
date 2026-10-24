@@ -18,13 +18,13 @@ router.get('/', authorize('sales', 'view'), paginate, salesController.list);
 router.get('/:id', authorize('sales', 'view'), ventaPropia, salesController.getById);
 router.get('/:id/details', authorize('sales', 'view'), ventaPropia, paginate, salesController.getPaginatedDetails);
 router.post('/', authorize('sales', 'create'), salesController.create);
-router.patch('/:id/review-status', authorize('sales', 'edit'), ventaPropia, salesController.updateReviewStatus);
-router.post('/:id/void', authorize('sales', 'delete'), ventaPropia, salesController.voidSale);
-router.post('/:id/payments', authorize('sales', 'edit'), ventaPropia, salesController.registerPayment);
-router.delete('/:saleId/payments/:paymentId', authorize('sales', 'edit'), ventaPropia, salesController.deletePayment);
+router.patch('/:id/review-status', authorize('sales', 'review'), ventaPropia, salesController.updateReviewStatus);
+router.post('/:id/void', authorize('sales', 'void'), ventaPropia, salesController.voidSale);
+router.post('/:id/payments', authorize('sales', 'pay'), ventaPropia, salesController.registerPayment);
+router.delete('/:saleId/payments/:paymentId', authorize('sales', 'pay'), ventaPropia, salesController.deletePayment);
 router.get('/:id/payments', authorize('sales', 'view'), ventaPropia, salesController.listPayments);
 router.post('/:id/send-voucher', authorize('sales', 'view'), ventaPropia, salesController.sendVoucher);
-// Emitir una factura electronica no se revierte: exige poder editar la venta, no solo verla.
-router.post('/:id/invoice', authorize('sales', 'edit'), ventaPropia, salesController.generateSiigoInvoice);
+// Emitir una factura electronica no se revierte: tiene su propio permiso, no basta con ver.
+router.post('/:id/invoice', authorize('sales', 'invoice'), ventaPropia, salesController.generateSiigoInvoice);
 
 module.exports = router;

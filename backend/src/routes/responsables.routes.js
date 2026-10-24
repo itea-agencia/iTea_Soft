@@ -13,6 +13,6 @@ router.post('/', authorize('responsables', 'create'), controller.create);
 router.get('/:id', authorize('responsables', 'view'), controller.getById);
 router.put('/:id', authorize('responsables', 'edit'), controller.update);
 router.delete('/:id', authorize('responsables', 'delete'), controller.delete);
-router.patch('/:id/toggle-status', authorize('responsables', 'delete'), controller.toggleStatus);
+router.patch('/:id/toggle-status', authorize('responsables', 'toggle'), controller.toggleStatus);
 
 module.exports = router;

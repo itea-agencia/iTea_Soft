@@ -10,6 +10,12 @@
    parámetro, siempre.
 3. **Un permiso de alcance `own` se comprueba contra el dato, no solo contra la acción.**
    "Puedo editar ventas" no es lo mismo que "puedo editar *esta* venta".
+4. **Un permiso existe si está en el catálogo, y solo ahí.** `backend/src/config/permisos.js`
+   declara cada acción, su tipo (alcance o sí/no) y su etiqueta. Una ruta que pide una acción
+   fuera del catálogo hace que el backend no arranque, y el panel de roles no guarda claves
+   que no estén en él.
+5. **Solo el admin decide quién puede qué.** Ver y cambiar los permisos de un rol es
+   `requireAdmin`; ningún permiso configurable lo concede.
 
 ## Qué pasó sin ellos
 
@@ -58,12 +64,25 @@ mayoría de `/stats` ni siquiera pasaban por `authorize`: cualquier usuario aute
 sin mirar su rol, podía crear comisionistas o consultar los endpoints de inspección de
 Siigo (que usan las credenciales del servidor).
 
+### Un asesor podía darse cualquier permiso
+
+`PUT /roles/:role/permissions` exigía `config.edit`, y en producción el rol asesor lo tenía:
+con una sola petición, un asesor podía reescribir los permisos de su propio rol (anular,
+gestionar usuarios, liquidar comisiones) y crear filas inventadas en el catálogo, porque el
+endpoint aceptaba cualquier módulo y acción. Se corrigió el 2026-10-24 con `requireAdmin`
+(`0a464c8`). El mismo día se vio que la estructura de permisos estaba copiada en cuatro
+lugares que no coincidían: para un `sales.edit = 'true'` el frontend entendía "Todas" y el
+backend aplicaba "Propias". De ahí el catálogo único (diseño en
+[`docs/designs/permisos-por-rol-2026-10.md`](../designs/permisos-por-rol-2026-10.md)).
+
 ## Dónde vive la regla
 
 | Regla | Dónde |
 |---|---|
 | Token + sesión viva exigidos, sin excepción | `backend/src/middleware/auth.js` |
-| Permiso por módulo/acción, solo lo que hay en la base | `backend/src/middleware/authorize.js` (`authorize`, `authorizeAny`, `requireAdmin`) |
+| Qué permisos existen, de qué tipo, y cómo se lee un valor guardado | `backend/src/config/permisos.js` (catálogo, `leerValor`, `permisosEfectivos`). El admin tiene todo, derivado del catálogo |
+| Permiso por módulo/acción, solo lo que hay en la base | `backend/src/middleware/authorize.js` (`authorize`, `authorizeAny`, `requireAdmin`): valida la acción contra el catálogo al definir la ruta |
+| Ver y cambiar los permisos de un rol | `requireAdmin` en `roles.routes.js`; el `PUT` rechaza claves y valores fuera del catálogo. `GET /roles/catalogo` (solo sesión) dice qué acciones existen, sin valores de ningún rol |
 | Propiedad del dato sobre una venta | `backend/src/middleware/ventaPropia.js`, en todas las rutas de `sales.routes.js` que llevan `:id`/`:saleId` (9 desde el 2026-10-24, cuando se quitaron `PUT`/`DELETE /sales/:id` y los 54 endpoints de producto suelto: la interfaz no los usaba, y el `PUT` de producto escribía el body crudo y no comprobaba que el producto fuera de la venta de la URL) |
 | Parámetros de búsqueda parametrizados | `Prisma.sql` en `sales.controller.js`, `clients.controller.js`, `responsables.controller.js`, `users.controller.js`, `commissions.controller.js` |
 | Orígenes permitidos (CORS) | `backend/src/index.js`: `FRONTEND_URL`, el dominio propio y localhost. Desde el 2026-10-24 sin el comodín `*.vercel.app`, que autorizaba con credenciales cualquier sitio publicado en Vercel. El token viaja solo como `Authorization: Bearer`; no hay cookie de sesión |
