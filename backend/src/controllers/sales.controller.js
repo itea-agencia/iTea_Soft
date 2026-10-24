@@ -6,6 +6,9 @@ const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
 const { getSamturLogoBase64 } = require('../utils/logoHelper');
+// El nombre del cliente va dentro del HTML de los correos de voucher: sin escapar, un
+// nombre con `<` se leia como etiqueta.
+const { escaparHtml } = require('../utils/stringUtils');
 const siigoService = require('../services/siigo.service');
 
 exports.list = async (req, res, next) => {
@@ -1665,15 +1668,8 @@ async function resolveBaggagePlanId(prisma, baggagePlan) {
 exports.create = async (req, res, next) => {
   try {
     const data = req.body;
-    console.log('[CREATE VENTA] Received data keys:', Object.keys(data));
-    console.log('[CREATE VENTA] clientId:', data.clientId, 'paymentMethod:', data.paymentMethod);
-    if (data.ticketData) {
-      console.log('[CREATE VENTA] ticketData count:', data.ticketData.length);
-      data.ticketData.forEach((t, i) => {
-        console.log(`[CREATE VENTA] ticket[${i}] flightMode=${t.flightMode} legs=${JSON.stringify(t.legs)} returnLeg=${JSON.stringify(t.returnLeg)}`);
-      });
-    }
-    console.log('[CREATE VENTA] landTravelData received:', JSON.stringify(data.landTravelData, null, 2));
+    // Aca se imprimia el body de cada venta (pasajeros de viajes terrestres, tramos de cada
+    // tiquete) en los logs de Render. Son datos de clientes; no van a los logs.
 
     // El estado y lo abonado salen de los pagos y del total que calcula el servidor, no de
     // `data.status`: el paso de pagos ofrecia "Completada" sin ningun pago registrado, y
@@ -1987,13 +1983,10 @@ exports.create = async (req, res, next) => {
     const clientName = `${created.cliente.persona.nombres} ${created.cliente.persona.apellidos}`;
 
     // Send vouchers emails
-    console.log('[VOUCHER] clientEmail:', clientEmail);
     if (clientEmail) {
       for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
         const items = Array.isArray(data[field]) ? data[field] : [];
-        console.log(`[VOUCHER] field=${field} items=${items.length}`);
         for (const item of items) {
-          console.log(`[VOUCHER] item.sendVoucher=${item.sendVoucher} item.voucher=${JSON.stringify(item.voucher)?.substring(0, 80)}`);
           if (item.sendVoucher) {
             const attachments = [];
             
@@ -2021,7 +2014,6 @@ exports.create = async (req, res, next) => {
 
             if (attachments.length > 0) {
               try {
-                console.log(`[VOUCHER] Sending email to ${clientEmail} for ${handler.nombreServicio} with ${attachments.length} attachments...`);
                 const result = await emailService.sendEmail({
                   to: clientEmail,
                   subject: `Tu voucher de ${handler.nombreServicio} - iTea Travel`,
@@ -2031,7 +2023,7 @@ exports.create = async (req, res, next) => {
                         <h1 style="color: #ffffff; margin: 0; font-size: 24px;">¡Tu voucher está listo!</h1>
                       </div>
                       <div style="padding: 30px;">
-                        <p style="font-size: 16px;">Hola <strong>${clientName}</strong>,</p>
+                        <p style="font-size: 16px;">Hola <strong>${escaparHtml(clientName)}</strong>,</p>
                         <p style="font-size: 16px;">Adjunto a este correo encontrarás el comprobante correspondiente a tu servicio de <strong>${handler.nombreServicio}</strong>.</p>
                         <p style="font-size: 16px; margin-top: 20px;">Gracias por confiar en nosotros.</p>
                       </div>
@@ -2039,7 +2031,8 @@ exports.create = async (req, res, next) => {
                   `,
                   attachments: attachments
                 });
-                console.log(`[VOUCHER] sendEmail result:`, JSON.stringify(result));
+                // Sin el correo del cliente en el log: alcanza con la venta para buscarlo.
+                if (!result?.success) console.error(`[VOUCHER] No se pudo enviar el voucher de ${handler.nombreServicio} de la venta ${created.id}:`, result?.error?.message);
               } catch (err) {
                 console.error('[ERROR] Sending voucher email:', err.message);
               }
@@ -2492,7 +2485,7 @@ exports.sendVoucher = async (req, res, next) => {
                 <tr>
                   <td style="padding:36px 40px 24px;">
                     <h1 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#032650;">
-                      ¡Hola, ${clientName}! 👋
+                      ¡Hola, ${escaparHtml(clientName)}! 👋
                     </h1>
                     <p style="margin:0;font-size:15px;color:#475569;line-height:1.7;">
                       Nos complace confirmar tu reserva. Adjunto a este correo encontrarás tu 
@@ -2542,11 +2535,11 @@ exports.sendVoucher = async (req, res, next) => {
                             </tr>
                             <tr>
                               <td style="padding:5px 0;font-size:13px;color:#64748b;">Pasajero:</td>
-                              <td style="padding:5px 0;font-size:13px;font-weight:700;color:#032650;">${clientName}</td>
+                              <td style="padding:5px 0;font-size:13px;font-weight:700;color:#032650;">${escaparHtml(clientName)}</td>
                             </tr>
                             <tr>
                               <td style="padding:5px 0;font-size:13px;color:#64748b;">Asesor:</td>
-                              <td style="padding:5px 0;font-size:13px;font-weight:600;color:#032650;">${asesorName}</td>
+                              <td style="padding:5px 0;font-size:13px;font-weight:600;color:#032650;">${escaparHtml(asesorName)}</td>
                             </tr>
                             <tr>
                               <td style="padding:5px 0;font-size:13px;color:#64748b;">Fecha de emisión:</td>

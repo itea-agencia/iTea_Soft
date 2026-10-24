@@ -68,6 +68,7 @@ interface DataContextType {
   dashboardData: DashboardData | null;
   dashboardLoading: boolean;
   salesLoading: boolean;
+  errorDeCarga: string | null;
   fetchDashboard: (params?: Record<string, unknown>, isBackgroundRefresh?: boolean) => Promise<void>;
   fetchSales: () => Promise<void>;
   fetchClients: () => Promise<void>;
@@ -162,6 +163,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const hasCachedSales = loadSalesCache() !== null;
     return !hasCachedSales;
   });
+  // Un listado que no carga se mostraba como vacío (`.catch(() => ({ data: [] }))`): sin
+  // conexión, la pantalla decía "no hay ventas" en vez de "no se pudieron cargar". Ahora un
+  // fallo deja los datos que había (la caché o la carga anterior) y lo dice. Un 401/403 no
+  // es un fallo: es un listado que ese rol no tiene permitido, y vacío es lo correcto.
+  const [errorDeCarga, setErrorDeCarga] = useState<string | null>(null);
+  const falloAlCargar = (que: string) => (err: any) => {
+    const status = err?.response?.status;
+    if (status !== 401 && status !== 403) {
+      setErrorDeCarga(`No se pudieron cargar ${que}. Lo que ves puede estar desactualizado: recarga la página.`);
+    }
+    return null;
+  };
+
   const backgroundLoadingRef = useRef(false);
   const fetchingDashboardRef = useRef(false);
 
@@ -191,7 +205,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
     try {
-      const res = await api.listSales({ perPage: 5000 }).catch(() => ({ data: [] }));
+      const res = await api.listSales({ perPage: 5000 }).catch(falloAlCargar('las ventas'));
+      if (!res) return;
       const freshSales = res.data || [];
       setData(prev => {
         saveSalesAndClientsCache(freshSales, prev.clients);
@@ -205,7 +220,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchClients = useCallback(async () => {
     try {
-      const res = await api.listClients({ perPage: 5000 }).catch(() => ({ data: [] }));
+      const res = await api.listClients({ perPage: 5000 }).catch(falloAlCargar('los clientes'));
+      if (!res) return;
       const freshClients = res.data || [];
       setData(prev => {
         saveSalesAndClientsCache(prev.sales, freshClients);
@@ -216,15 +232,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchResponsables = useCallback(async () => {
     try {
-      const res = await api.listResponsables({ perPage: 5000 }).catch(() => null);
-      const freshResponsables = res?.data || [];
+      const res = await api.listResponsables({ perPage: 5000 }).catch(falloAlCargar('los responsables'));
+      if (!res) return;
+      const freshResponsables = res.data || [];
       setData(prev => ({ ...prev, responsables: freshResponsables }));
     } catch {}
   }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await api.listUsers({ perPage: 5000 }).catch(() => ({ data: [] }));
+      const res = await api.listUsers({ perPage: 5000 }).catch(falloAlCargar('los usuarios'));
+      if (!res) return;
       const freshUsers = res.data || [];
       saveUsersCache(freshUsers);
       setData(prev => ({ ...prev, users: freshUsers }));
@@ -293,7 +311,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchFlights = useCallback(async () => {
     try {
-      const res = await api.listFlights({ perPage: 5000 }).catch(() => ({ data: [] }));
+      const res = await api.listFlights({ perPage: 5000 }).catch(falloAlCargar('los itinerarios'));
+      if (!res) return;
       setData(prev => ({ ...prev, flights: res.data || [] }));
     } catch (err) {
       console.warn('[DataContext] Error fetching flights:', err);
@@ -302,14 +321,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchCommissionAgents = useCallback(async () => {
     try {
-      const res = await api.listCommissionAgents({ perPage: 5000 }).catch(() => ({ data: [] }));
+      const res = await api.listCommissionAgents({ perPage: 5000 }).catch(falloAlCargar('los comisionistas'));
+      if (!res) return;
       setData(prev => ({ ...prev, commissionAgents: res.data || [] }));
     } catch {}
   }, []);
 
   const fetchSettlements = useCallback(async () => {
     try {
-      const res = await api.listSettlements({ perPage: 5000 }).catch(() => ({ data: [] }));
+      const res = await api.listSettlements({ perPage: 5000 }).catch(falloAlCargar('las liquidaciones'));
+      if (!res) return;
       setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
     } catch {}
   }, []);
@@ -532,7 +553,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshSettlements = async () => {
-    const res = await api.listSettlements({ perPage: 100 }).catch(() => ({ data: [] }));
+    const res = await api.listSettlements({ perPage: 100 }).catch(falloAlCargar('las liquidaciones'));
+    if (!res) return;
     setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
   };
 
@@ -676,6 +698,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dashboardData,
       dashboardLoading,
       salesLoading,
+      errorDeCarga,
       fetchDashboard,
       fetchSales,
       fetchClients,

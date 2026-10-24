@@ -289,11 +289,11 @@ Responsables queda fuera: ningún rol tiene ahí alcance `own` hoy.
 
 Depende de D6.
 
-- [ ] **T7.1** Quitar la cookie `token` del login (`auth.controller.js:108`) y el
+- [x] **T7.1** Quitar la cookie `token` del login (`auth.controller.js:108`) y el
   `*.vercel.app` de CORS (`index.js:59`).
-- [ ] **T7.2** `escaparHtml` en los dos correos de voucher.
-- [ ] **T7.3** Quitar los `console.log` con datos de pasajeros de `create`.
-- [ ] **T7.4** `DataContext`: un error al cargar se muestra como error, no como lista vacía.
+- [x] **T7.2** `escaparHtml` en los dos correos de voucher.
+- [x] **T7.3** Quitar los `console.log` con datos de pasajeros de `create`.
+- [x] **T7.4** `DataContext`: un error al cargar se muestra como error, no como lista vacía.
   **Interfaz: no verificable visualmente.**
 
 ## Riesgos y desconocidos
@@ -340,4 +340,13 @@ Depende de D6.
   revisar en Siigo. Verificada el 2026-10-24 con una autoverificación contra un servidor
   HTTP local que hace de Siigo: uno que nunca responde da `SIIGO_SIN_RESPUESTA` a los 32 s,
   y uno que responde 400 sigue dando `SIIGO_RECHAZO`. El camino real de Siigo no se probó.
-- **F6–F7**: sin empezar.
+- **F7**: implementada en `fix/endurecimiento-menor`, que sale de la rama de F5.
+  *Notas de implementación:* además de la cookie se quitó `cookie-parser` del arranque
+  (nadie lee cookies); la dependencia sigue en `package.json`. Los logs de `create`
+  dejaron de imprimir el body y el correo del cliente; un voucher que no se pudo enviar
+  se loguea con el número de venta. El aviso de carga fallida no se muestra para 401/403,
+  que son listados que ese rol no tiene permitidos. `tsc` y `node --check` en verde.
+  Verificada el 2026-10-24 con una colección de Postman (login y logout sin cookie, origen
+  `*.vercel.app` ajeno rechazado, los propios aceptados), en verde. El aviso en pantalla,
+  los correos y los logs no se probaron ahí.
+- **F6**: queda para el plan de permisos.

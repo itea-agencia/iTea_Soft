@@ -104,13 +104,10 @@ exports.login = async (req, res, next) => {
       modulo: pr.permiso.modulo, accion: pr.permiso.accion, valor: pr.valor
     }));
 
-    const maxAge = remember ? 1000 * 60 * 60 * 24 * 7 : 1000 * 60 * 60 * 24;
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge
-    });
+    // El token viaja solo en el body y se manda como `Authorization: Bearer`. Aca tambien se
+    // seteaba una cookie `token` que nadie leia (auth.js solo mira la cabecera); con CORS
+    // aceptando cualquier *.vercel.app y credenciales, era una sesion pegada a cada peticion
+    // cruzada. Si algun dia el token pasa a cookie httpOnly, es otro diseno, con CSRF.
 
     success(res, {
       user: {
@@ -140,12 +137,6 @@ exports.logout = async (req, res, next) => {
   try {
     // Solo la sesion de este token: las de los otros dispositivos siguen.
     if (req.tokenHash) await sesiones.revocarSesion(req.tokenHash);
-    
-    res.clearCookie('token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-    });
 
     success(res, { message: 'Sesión cerrada' });
   } catch (err) {

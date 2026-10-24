@@ -4,7 +4,6 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
-const cookieParser = require("cookie-parser");
 
 const env = require("./config/env");
 const errorHandler = require("./middleware/errorHandler");
@@ -53,10 +52,12 @@ app.use(
         url.replace(/\/$/, ""),
       );
 
+      // Sin el comodin `*.vercel.app` que habia aca: cualquiera puede publicar un sitio en
+      // vercel.app, y con `credentials: true` eso era un origen ajeno autorizado. El frontend
+      // de produccion es el dominio propio (decision D6 del plan de octubre).
       const isAllowed =
         cleanAllowedOrigins.includes(cleanOrigin) ||
-        cleanAllowedOrigins.includes("*") ||
-        cleanOrigin.endsWith(".vercel.app"); // Permite URLs de Vercel de producción y vistas previas
+        cleanAllowedOrigins.includes("*");
 
       if (isAllowed) {
         callback(null, true);
@@ -111,7 +112,6 @@ app.use(
 // Parsing
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(cookieParser());
 
 // Logging
 if (env.nodeEnv === "development") {
