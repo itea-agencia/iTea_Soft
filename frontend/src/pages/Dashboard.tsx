@@ -379,7 +379,7 @@ export default function Dashboard() {
                     }} 
                   />
                   <Tooltip 
-                    formatter={(value: number) => formatCurrency(value)} 
+                    formatter={(value) => formatCurrency(Number(value))} 
                     contentStyle={{ borderRadius: "16px", border: "1px solid #f1f5f9", boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", padding: "12px", fontWeight: "bold" }} 
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", fontWeight: 600, paddingTop: "20px" }} />
@@ -406,7 +406,7 @@ export default function Dashboard() {
                       ))}
                     </Pie>
                     <Tooltip 
-                      formatter={(v: number) => `${v}%`} 
+                      formatter={(v) => `${v}%`} 
                       contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 25px -5px rgb(0 0 0 / 0.1)", padding: "8px 16px" }} 
                       itemStyle={{ color: "#1e293b", fontWeight: "900", fontSize: "16px" }} 
                     />
@@ -514,7 +514,7 @@ export default function Dashboard() {
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(value) => `$${value / 1000}k`} />
                     <Tooltip 
                       cursor={{ fill: 'transparent' }} 
-                      formatter={(value: number) => [formatCurrency(value), "Ventas"]}
+                      formatter={(value) => [formatCurrency(Number(value)), "Ventas"]}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Bar dataKey="ventas" fill="#4f46e5" shape={<TriangleBar />}>
@@ -542,7 +542,7 @@ export default function Dashboard() {
                     <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#64748b", fontWeight: 600 }} width={160} />
                     <Tooltip 
                       cursor={{ fill: 'rgba(0,0,0,0.05)' }} 
-                      formatter={(value: number) => [formatCurrency(value), "Comisión"]}
+                      formatter={(value) => [formatCurrency(Number(value)), "Comisión"]}
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Bar dataKey="comision" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20}>
@@ -583,7 +583,7 @@ export default function Dashboard() {
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
                     <Tooltip 
-                      formatter={(value: number) => formatCurrency(value)} 
+                      formatter={(value) => formatCurrency(Number(value))} 
                       contentStyle={{ borderRadius: "16px", border: "1px solid #f1f5f9", boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)", padding: "12px", fontWeight: "bold" }} 
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", fontWeight: 600, paddingTop: "20px" }} />

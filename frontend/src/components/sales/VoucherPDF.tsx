@@ -569,12 +569,12 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   </div>
                 )}
 
-                {getChildrenForPlan(plan.detalleVentaId).length > 0 && (
+                {getChildrenForPlan(plan.detalleVentaId ?? '').length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span style={{color: '#3b82f6'}}>↳</span> SERVICIOS ADICIONALES VINCULADOS
                     </div>
-                    {getChildrenForPlan(plan.detalleVentaId).map((child: any, cidx: number, arr: any[]) => {
+                    {getChildrenForPlan(plan.detalleVentaId ?? '').map((child: any, cidx: number, arr: any[]) => {
                       if (child._type === 'tour') {
                         return (
                           <div key={`child-${cidx}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '10px', padding: '8px 0', borderBottom: cidx < arr.length - 1 ? '1px dashed #cbd5e1' : 'none' }}>

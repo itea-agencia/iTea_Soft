@@ -66,7 +66,9 @@ export function Input({ className = '', error, onBlur, ...props }: InputProps) {
   );
 }
 
-export function CurrencyInput({ className = '', error, value, onChange, placeholder, ...props }: InputProps & { value?: string | number, onChange?: (val: string) => void }) {
+// Sin el onChange de InputProps: este entrega el valor limpio (string), no el evento, y la
+// interseccion de los dos tipos dejaba el parametro como `string | ChangeEvent`.
+export function CurrencyInput({ className = '', error, value, onChange, placeholder, ...props }: Omit<InputProps, 'onChange' | 'value'> & { value?: string | number, onChange?: (val: string) => void }) {
   const [displayValue, setDisplayValue] = useState('');
 
   useEffect(() => {
@@ -245,4 +247,4 @@ export function Textarea({ className = '', ...props }: TextareaProps) {
       {...props}
     />
   );
-}
+}

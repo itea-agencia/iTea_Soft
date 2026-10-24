@@ -147,7 +147,7 @@ export default function Responsables() {
       setFormData({
         firstName: responsable.firstName || '',
         lastName: responsable.lastName || '',
-        docType: responsable.docType,
+        docType: responsable.docType || '',
         docNumber: responsable.docNumber,
         phone: responsable.phone,
         email: responsable.email,

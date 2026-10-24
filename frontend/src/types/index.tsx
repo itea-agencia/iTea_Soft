@@ -15,7 +15,7 @@ export interface User {
   role: "admin" | "asesor" | "freelancer";
   status: "active" | "inactive";
   createdAt?: string;
-  lastLogin?: string;
+  lastLogin?: string | null;
   createdBy?: number | null;
   permisosEfectivos?: PermisosEfectivos;
 }

@@ -298,7 +298,7 @@ export default function Users() {
         firstName,
         lastName,
         email: user.email,
-        password: user.password,
+        password: user.password ?? '',
         role: user.role,
         docType: user.docType || "CC",
         docNumber: user.docNumber || "",
@@ -511,6 +511,7 @@ export default function Users() {
     }
     setIsSaving(true);
     try {
+      if (!rolePerms) return;
       await updateRolePermissions(editingRole, rolePerms);
       setRoleDraft(null);
       setSuccessMessage(`Permisos globales del rol ${editingRole === "asesor" ? "Asesor" : "Freelancer"} actualizados`);
@@ -876,7 +877,7 @@ export default function Users() {
                 Rol Freelancer
               </Button>
             </div>
-            {rolePermissionsReady ? (
+            {rolePermissionsReady && rolePerms ? (
               <PermissionsGrid
                 permissions={rolePerms}
                 onChange={setRoleDraft}
