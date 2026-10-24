@@ -22,7 +22,7 @@ import { DatePicker } from '../components/sales/forms/TicketForm';
 export default function Responsables() {
   const { data, addResponsable, updateResponsable, deleteResponsable, toggleResponsableStatus, fetchResponsables, fetchSales } = useData();
   const { user } = useAuth();
-  const { permissions, canCreate, canEdit, canDelete } = usePermissions();
+  const { puede } = usePermissions();
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -141,7 +141,7 @@ export default function Responsables() {
 
 
   const handleOpenModal = (responsable?: Responsable) => {
-    if (responsable && !canEdit('responsables')) return;
+    if (responsable && !puede('responsables', 'edit', responsable.createdBy)) return;
     if (responsable) {
       setEditingResponsable(responsable);
       setFormData({
@@ -271,7 +271,7 @@ export default function Responsables() {
   };
 
   const handleToggleStatus = (responsable: Responsable) => {
-    if (!canDelete('responsables')) return;
+    if (!puede('responsables', 'toggle', responsable.createdBy)) return;
     setConfirmToggle({
       id: responsable.id,
       name: responsable.name,
@@ -503,7 +503,7 @@ export default function Responsables() {
               <option value="active">Solo Activos</option>
               <option value="inactive">Solo Inactivos</option>
             </select>
-            {canCreate('responsables') && (
+            {puede('responsables', 'create') && (
               <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto justify-center">
                 <Plus size={18} />
                 Nuevo Responsable
@@ -559,12 +559,12 @@ export default function Responsables() {
                   <Button variant="outline" size="sm" onClick={() => handleViewDetail(responsable)} title="Ver detalle">
                     <Eye size={14} />
                   </Button>
-                  {canEdit('responsables') && (
+                  {puede('responsables', 'edit', responsable.createdBy) && (
                     <Button variant="outline" size="sm" onClick={() => handleOpenModal(responsable)} title="Editar">
                       <Pencil size={14} />
                     </Button>
                   )}
-                  {canDelete('responsables') && (
+                  {puede('responsables', 'toggle', responsable.createdBy) && (
                     <Button 
                       variant="outline" 
                       size="sm" 

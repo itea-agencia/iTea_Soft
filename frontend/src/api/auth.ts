@@ -1,4 +1,5 @@
 import api from './client';
+import type { PermisosEfectivos } from '../types';
 
 export interface LoginResponse {
   user: {
@@ -14,7 +15,7 @@ export interface LoginResponse {
     docType: string | null;
     docNumber: string;
     lastLogin: string | null;
-    permisos: { modulo: string; accion: string }[];
+    permisosEfectivos: PermisosEfectivos;
   };
   token: string;
   expiresAt: string;

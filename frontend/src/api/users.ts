@@ -34,3 +34,10 @@ export async function getRolePermissions(role: string) {
   const res = await api.get(`/roles/${role}/permissions`);
   return res.data.data;
 }
+
+// Que acciones existen (modulos, etiquetas y tipos), sin valores de ningun rol: el panel de
+// permisos se dibuja desde aca.
+export async function getPermisosCatalogo() {
+  const res = await api.get('/roles/catalogo');
+  return res.data.data;
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePermissions } from "../../context/PermissionsContext";
 import {
   Plane,
   Building2,
@@ -95,6 +96,7 @@ export default function SaleDetailModal({
   responsables,
   onViewProductDetails,
 }: SaleDetailModalProps) {
+  const { puede } = usePermissions();
   const [activeTab, setActiveTab] = useState("summary");
   const [fullSale, setFullSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(false);
@@ -348,7 +350,7 @@ export default function SaleDetailModal({
                 </a>
               )}
             </div>
-          ) : (
+          ) : puede('sales', 'invoice', selectedSale?.asesorId) && (
             <Button
               variant="primary"
               className="flex items-center gap-2"

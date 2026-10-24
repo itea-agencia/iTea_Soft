@@ -68,7 +68,7 @@ export function Step1Client({ form, set, data, errors }: any) {
                   set("commissionAgentRetentionPercentage", "0");
                   set("commissionAgentNetPayment", "0");
                 } else {
-                  const agent = (data.commissionAgents || []).find((a: any) => a.name === val);
+                  const agent = (data.commissionAgentsForSale || []).find((a: any) => a.name === val);
                   if (agent) {
                     set("commissionAgentId", String(agent.id));
                     set("commissionAgentName", agent.name);
@@ -78,7 +78,7 @@ export function Step1Client({ form, set, data, errors }: any) {
                   }
                 }
               }}
-              options={(data.commissionAgents || []).map((a: any) => ({
+              options={(data.commissionAgentsForSale || []).map((a: any) => ({
                 value: a.name,
                 label: a.name,
               }))}

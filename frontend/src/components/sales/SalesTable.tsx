@@ -6,6 +6,7 @@ import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
 import { Sale, Client, User } from "../../types";
+import { usePermissions } from "../../context/PermissionsContext";
 
 // Valor centinela del select. Separado de la etiqueta a proposito.
 const MARCAR_FACTURADO = 'marcar-facturado';
@@ -86,6 +87,7 @@ export default function SalesTable({
   isAdmin,
   onReviewStatusChange,
 }: SalesTableProps) {
+  const { puede } = usePermissions();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const totalPages = Math.ceil(sales.length / itemsPerPage);
@@ -171,7 +173,7 @@ export default function SalesTable({
                           ? "Anulado"
                           : "En Crédito"}
                   </Badge>
-                  {sale.status === "pagado" && onReviewStatusChange && (
+                  {sale.status === "pagado" && onReviewStatusChange && puede('sales', 'review', sale.asesorId) && (
                     <div className="relative inline-flex items-center">
                       {sale.isReviewed ? (
                         <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100" title="Facturado">
@@ -259,7 +261,7 @@ export default function SalesTable({
                 >
                   <RxUpdate size={14} className={canEditThis(sale) ? "text-primary" : "text-gray-300"} />
                 </Button>
-                {isAdmin && (
+                {puede('sales', 'void', sale.asesorId) && (
                   <Button
                     variant="outline"
                     size="icon"

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { usePermissions } from "../context/PermissionsContext";
 import { 
   Plus, 
   Pencil, 
@@ -59,6 +60,7 @@ const isOptimisticId = (item: any): boolean => {
 
 export default function Config() {
   const { data, addConfigItem, updateConfigItem, deleteConfigItem, fetchConfig } = useData();
+  const { puede } = usePermissions();
   const [isLoading, setIsLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState<SectionId>('cards');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -458,10 +460,12 @@ export default function Config() {
                   </button>
                 </div>
                 {/* Add new button */}
+                {puede('config', 'create') && (
                 <Button onClick={() => handleOpenModal()} size="sm">
                   <Plus size={14} />
                   Agregar Nuevo
                 </Button>
+                )}
               </div>
             }>
               <div className="flex items-center gap-2">
@@ -515,6 +519,7 @@ export default function Config() {
                                     <Eye size={13} />
                                   </Button>
                                 )}
+                                {puede('config', 'edit') && (
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
@@ -523,6 +528,8 @@ export default function Config() {
                                 >
                                   <Pencil size={13} />
                                 </Button>
+                                )}
+                                {puede('config', 'delete') && (
                                 <Button 
                                   variant="danger" 
                                   size="sm" 
@@ -531,6 +538,7 @@ export default function Config() {
                                 >
                                   <Trash2 size={13} />
                                 </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

@@ -25,8 +25,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
-  const { user, logout, isAdmin } = useAuth();
-  const { canView } = usePermissions();
+  const { user, logout } = useAuth();
+  const { puede } = usePermissions();
   const [isHovered, setIsHovered] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -54,23 +54,16 @@ export function Sidebar({ isMobileOpen = false, onClose }: SidebarProps) {
     { to: "/commissions", icon: Coins, label: "Comisionistas", permission: 'commissions' as const },
   ];
 
-  // Solo para administradores (gestionados por rol)
-  const adminOnlyLinks = [
-    { to: "/users", icon: UserCog, label: "Usuarios", permission: 'users' as const },
-  ];
-
-  // Links que cualquier rol puede ver si tiene el permiso configurado
+  // Seccion de administracion. Usuarios dejo de ser solo del admin: se puede dar como permiso
+  // desde el panel (decision 18 del diseno de permisos); el panel de roles sigue siendo del admin.
   const permissionBasedAdminLinks = [
+    { to: "/users", icon: UserCog, label: "Usuarios", permission: 'users' as const },
     { to: "/responsables", icon: UserCheck, label: "Responsables", permission: 'responsables' as const },
     { to: "/config", icon: Database, label: "Gestión Interna", permission: 'config' as const },
   ];
 
-  const filteredMainLinks = mainLinks.filter(link => canView(link.permission));
-  const filteredAdminOnlyLinks = isAdmin ? adminOnlyLinks : [];
-  const filteredPermBasedLinks = permissionBasedAdminLinks.filter(link => canView(link.permission));
-
-  // Combinamos para el render de la sección admin (solo si hay algo que mostrar)
-  const allAdminLinks = [...filteredAdminOnlyLinks, ...filteredPermBasedLinks];
+  const filteredMainLinks = mainLinks.filter(link => puede(link.permission, 'view'));
+  const allAdminLinks = permissionBasedAdminLinks.filter(link => puede(link.permission, 'view'));
 
   return (
     <aside 

@@ -11,6 +11,7 @@ import { Badge } from "../ui/Badge";
 import { Input, Select, CurrencyInput } from "../ui/Form";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { Sale, Client, User, PaymentRecord } from "../../types";
+import { usePermissions } from "../../context/PermissionsContext";
 import * as api from "../../api";
 
 interface SaleEditModalProps {
@@ -103,6 +104,7 @@ export default function SaleEditModal({
   onDeletePayment,
   onDownloadVoucher,
 }: SaleEditModalProps) {
+  const { puede } = usePermissions();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [newPayment, setNewPayment] = useState({
     amount: "",
@@ -462,7 +464,7 @@ export default function SaleEditModal({
                         </div>
                       </div>
                       <div className="flex gap-2 items-center mt-2 sm:mt-0">
-                        {isAdmin && sale.status !== "pagado" && (
+                        {puede('sales', 'pay', sale.asesorId) && sale.status !== "pagado" && (
                           <Button
                             variant="outline"
                             size="sm"

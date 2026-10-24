@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePermissions } from "../../context/PermissionsContext";
 import { 
   CreditCard, Pencil, Trash2, Coins, IdCard, 
   PlaneTakeoff, Building2, Compass, Luggage, Boxes, MapPin, Moon, ShieldCheck, Eye
@@ -18,6 +19,9 @@ const isOptimisticId = (item: any): boolean => {
 };
 
 export default function ConfigGrids({ section, filteredData, handleOpenModal, handleDelete, setViewingPackage }: ConfigGridsProps) {
+  // Crear, editar y eliminar catalogos son permisos separados (decision 22 del diseno de
+  // permisos); lo que no se puede hacer no se muestra.
+  const { puede } = usePermissions();
   
   if (section === 'cards') {
     return (
@@ -69,6 +73,7 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                 <div className="flex justify-between items-center border-t border-white/20 pt-3">
                   <span className="text-[9px] font-mono text-white/60">{isOptimistic ? 'PROCESANDO EN BASE DE DATOS...' : 'SISTEMA DE FACTURACIÓN ITEA'}</span>
                   <div className="flex gap-2 relative z-10">
+                    {puede('config', 'edit') && (
                     <button 
                       onClick={() => handleOpenModal(card)}
                         className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-lg backdrop-blur-md transition-all duration-200 cursor-pointer flex items-center justify-center"
@@ -77,6 +82,8 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                     >
                       <Pencil size={14} />
                     </button>
+                    )}
+                    {puede('config', 'delete') && (
                     <button 
                       onClick={() => handleDelete(card.id)}
                       className="p-2 rounded-xl bg-red-600/60 hover:bg-red-600/80 text-white border border-red-400/30 shadow-lg backdrop-blur-md transition-all duration-200 cursor-pointer flex items-center justify-center"
@@ -85,6 +92,7 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                     >
                       <Trash2 size={14} />
                     </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -135,12 +143,16 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                   </div>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-4">
+                  {puede('config', 'edit') && (
                   <button onClick={() => handleOpenModal(method)} className="p-1.5 text-gray-400 dark:text-slate-400 hover:text-primary rounded-lg hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-gray-100 dark:hover:border-slate-600 shadow-sm transition-all" title="Editar" disabled={isOptimistic}>
                     <Pencil size={11} />
                   </button>
+                  )}
+                  {puede('config', 'delete') && (
                   <button onClick={() => handleDelete(method.id)} className="p-1.5 text-red-400 dark:text-red-400 hover:text-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20 border border-transparent hover:border-red-100 dark:hover:border-red-500/30 shadow-sm transition-all" title="Eliminar" disabled={isOptimistic}>
                     <Trash2 size={11} />
                   </button>
+                  )}
                 </div>
               </div>
               <div className="flex justify-between items-center border-t border-gray-100/60 dark:border-slate-700 pt-3 mt-auto">
@@ -191,12 +203,16 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                   </div>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-4 top-4">
+                  {puede('config', 'edit') && (
                   <button onClick={() => handleOpenModal(doc)} className="p-1.5 text-gray-400 dark:text-slate-400 hover:text-primary rounded-lg hover:bg-white dark:hover:bg-slate-700 border border-transparent hover:border-gray-100 dark:hover:border-slate-600 shadow-sm transition-all" title="Editar" disabled={isOptimistic}>
                     <Pencil size={11} />
                   </button>
+                  )}
+                  {puede('config', 'delete') && (
                   <button onClick={() => handleDelete(doc.id)} className="p-1.5 text-red-400 dark:text-red-400 hover:text-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/20 border border-transparent hover:border-red-100 dark:hover:border-red-500/30 shadow-sm transition-all" title="Eliminar" disabled={isOptimistic}>
                     <Trash2 size={11} />
                   </button>
+                  )}
                 </div>
               </div>
               <div className="flex justify-between items-center border-t border-gray-100/60 dark:border-slate-700 pt-3 mt-auto">
@@ -250,12 +266,16 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
             </div>
           </div>
           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {puede('config', 'edit') && (
             <button onClick={() => handleOpenModal(airline)} className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-teal-400 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700" title="Editar" disabled={isOptimistic}>
               <Pencil size={13} />
             </button>
+            )}
+            {puede('config', 'delete') && (
             <button onClick={() => handleDelete(airline.id)} className="p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-500/20" title="Eliminar" disabled={isOptimistic}>
               <Trash2 size={13} />
             </button>
+            )}
           </div>
         </div>
       );
@@ -364,12 +384,16 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                   )}
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {puede('config', 'edit') && (
                   <button onClick={() => handleOpenModal(supplier)} className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-teal-400 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700" title="Editar" disabled={isOptimistic}>
                     <Pencil size={13} />
                   </button>
+                  )}
+                  {puede('config', 'delete') && (
                   <button onClick={() => handleDelete(supplier.id)} className="p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-500/20" title="Eliminar" disabled={isOptimistic}>
                     <Trash2 size={13} />
                   </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -435,12 +459,16 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                 </div>
                 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {puede('config', 'edit') && (
                   <button onClick={() => handleOpenModal(airport)} className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-teal-400 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700" title="Editar" disabled={isOptimistic}>
                     <Pencil size={13} />
                   </button>
+                  )}
+                  {puede('config', 'delete') && (
                   <button onClick={() => handleDelete(airport.id)} className="p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-500/20" title="Eliminar" disabled={isOptimistic}>
                     <Trash2 size={13} />
                   </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -503,12 +531,16 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
               </div>
 
               <div className="border-t border-gray-100 dark:border-slate-700 pt-3 mt-3 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {puede('config', 'edit') && (
                 <button onClick={() => handleOpenModal(bag)} className="p-1.5 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-teal-400 rounded-md hover:bg-gray-100 dark:hover:bg-slate-700" title="Editar" disabled={isOptimistic}>
                   <Pencil size={13} />
                 </button>
+                )}
+                {puede('config', 'delete') && (
                 <button onClick={() => handleDelete(bag.id)} className="p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-500/20" title="Eliminar" disabled={isOptimistic}>
                   <Trash2 size={13} />
                 </button>
+                )}
               </div>
             </div>
           );
@@ -589,6 +621,7 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                     >
                       <Eye size={14} />
                     </button>
+                    {puede('config', 'edit') && (
                     <button 
                       onClick={() => handleOpenModal(pkg)}
                       className="p-2 rounded-xl bg-gray-50 dark:bg-slate-700 text-gray-500 dark:text-slate-400 hover:bg-primary dark:hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-sm"
@@ -597,6 +630,8 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                     >
                       <Pencil size={14} />
                     </button>
+                    )}
+                    {puede('config', 'delete') && (
                     <button 
                       onClick={() => handleDelete(pkg.id)}
                       className="p-2 rounded-xl bg-gray-50 dark:bg-slate-700 text-red-400 dark:text-red-400 hover:bg-red-500 hover:text-white transition-all duration-300 shadow-sm"
@@ -605,6 +640,7 @@ export default function ConfigGrids({ section, filteredData, handleOpenModal, ha
                     >
                       <Trash2 size={14} />
                     </button>
+                    )}
                   </div>
                 </div>
               </div>

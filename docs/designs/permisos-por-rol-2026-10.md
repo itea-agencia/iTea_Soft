@@ -414,17 +414,24 @@ no deja ninguna.
 
 ### P4 — Frontend
 
-- [ ] **T4.1** `PermissionsContext` con `puede(modulo, accion, registro?)`, desde
+- [x] **T4.1** `PermissionsContext` con `puede(modulo, accion, registro?)`, desde
   `permisosEfectivos` y `GET /roles/catalogo`. Se borran `RolePermissions`,
   `ADMIN_PERMISSIONS`, `DEFAULT_*_PERMISSIONS`, `normalizeRolePermissions` y
   `buildPermissionsFromApiPermisos`.
-- [ ] **T4.2** Menú lateral y rutas: módulos por `view`; Usuarios por `users.view` en vez de
+- [x] **T4.2** Menú lateral y rutas: módulos por `view`; Usuarios por `users.view` en vez de
   `AdminRoute`; la pestaña de permisos, solo admin.
-- [ ] **T4.3** Botones por registro con `puede(...)` en `Sales`, `SalesTable`,
+- [x] **T4.3** Botones por registro con `puede(...)` en `Sales`, `SalesTable`,
   `SaleEditModal`, `SaleDetailModal`, `Clients`, `Responsables`, `CommissionAgents`,
   `Itineraries`, `Users` y `Config`.
-- [ ] **T4.4** `PermissionsGrid` dibujado desde el catálogo, con Dashboard y Usuarios.
-- [ ] **T4.5** Se quita el campo viejo `permisos` de login y `/auth/me`.
+- [x] **T4.4** `PermissionsGrid` dibujado desde el catálogo, con Dashboard y Usuarios.
+- [x] **T4.5** Se quita el campo viejo `permisos` de login y `/auth/me`.
+
+  *Notas de implementación:* el asistente de ventas pide los comisionistas con
+  `?para=venta` y los guarda aparte (`commissionAgentsForSale`), porque el módulo de
+  comisiones muestra solo los propios. En Itinerarios el botón de check-in se decide sin
+  dueño, porque el vuelo no trae quién hizo la venta: con "Ver: Todos" y "Editar: Propios"
+  aparece en vuelos ajenos y el backend responde 404 (anotado como `shortcut` en el código).
+  Gestión Interna muestra crear, editar y eliminar según su permiso.
 
 **Verificación**: `tsc`; por la API, que `/auth/me` devuelve lo que el panel guardó. La
 interfaz la revisa el usuario.
@@ -448,5 +455,8 @@ Postman de 22 pasos, en verde, con `agregar_permisos_por_accion.sql` corrido en 
 migración aplicada y `rellenar_creado_por.sql` corrido en local).
 T2.9 y **P3** implementadas y verificadas (colecciones de 8 y 23 pasos en verde; las 11
 acciones auditadas dejaron exactamente 11 filas en `logs_usuarios`, y las dos que fallan,
-ninguna). El hotfix está en `main`
+ninguna).
+**P4** implementada y verificada (colección de Postman de 9 pasos en verde y revisión de
+la interfaz por el usuario: panel con los 8 módulos, menú y botones según permisos,
+asistente con todos los comisionistas, Gestión Interna). Falta **P5**. El hotfix está en `main`
 (`0a464c8`), verificado por el usuario.

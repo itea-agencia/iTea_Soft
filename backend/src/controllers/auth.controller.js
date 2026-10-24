@@ -124,10 +124,9 @@ exports.login = async (req, res, next) => {
         docType: usuario.persona.tipoDocumento?.abreviatura || null,
         docNumber: usuario.persona.documento,
         lastLogin: usuario.ultimoLogin,
-        permisos,
         // Ya leidos con la misma funcion que aplica authorize.js, para que la pantalla no
-        // tenga su propia lectura (la que tenia no coincidia con la del backend). `permisos`
-        // se queda hasta que el frontend use este campo.
+        // tenga su propia lectura (la que tenia no coincidia con la del backend). Reemplaza al
+        // campo `permisos`, que mandaba las filas crudas para que el frontend las leyera.
         permisosEfectivos: permisosEfectivos({ role: usuario.rol.nombre, permisosRol: permisos })
       },
       token,
@@ -176,7 +175,6 @@ exports.me = async (req, res, next) => {
       docType: usuario.persona.tipoDocumento?.abreviatura || null,
       docNumber: usuario.persona.documento,
       lastLogin: usuario.ultimoLogin,
-      permisos,
       permisosEfectivos: permisosEfectivos({ role: usuario.rol.nombre, permisosRol: permisos })
     });
   } catch (err) {

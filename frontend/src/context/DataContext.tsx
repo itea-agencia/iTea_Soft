@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
-import { AppData, User, Client, Sale, Flight, RolePermissions, normalizeRolePermissions, DEFAULT_ASESOR_PERMISSIONS, DEFAULT_FREELANCER_PERMISSIONS } from '../types';
+import { AppData, User, Client, Sale, Flight, PermisosEfectivos } from '../types';
 import { comisionPendiente } from '../utils/creditUtils';
 import * as api from '../api';
 import { useAuth } from './AuthContext';
@@ -75,13 +75,13 @@ interface DataContextType {
   fetchResponsables: () => Promise<void>;
   fetchUsers: () => Promise<void>;
   fetchConfig: () => Promise<void>;
-  // Los permisos de rol de la BD. `rolePermissionsReady` es false hasta que llegan: mientras
-  // tanto `data.config.rolePermissions` trae los valores por defecto del codigo, que NO son
-  // los del servidor y no se deben mostrar ni guardar como si lo fueran.
+  // Los permisos de rol de la BD, solo para el admin (es el panel). `rolePermissionsReady` es
+  // false hasta que llegan: sin ellos el panel no muestra ni guarda nada.
   fetchRolePermissions: () => Promise<void>;
   rolePermissionsReady: boolean;
   fetchFlights: () => Promise<void>;
   fetchCommissionAgents: () => Promise<void>;
+  fetchCommissionAgentsForSale: () => Promise<void>;
   fetchSettlements: () => Promise<void>;
   refreshData: () => void;
   addUser: (user: Omit<User, 'id'>) => Promise<User>;
@@ -108,20 +108,17 @@ interface DataContextType {
   addCommissionAgent: (agent: any) => Promise<any>;
   updateCommissionAgent: (id: number, agent: any) => Promise<void>;
   deleteCommissionAgent: (id: number) => Promise<void>;
-  updateRolePermissions: (role: 'asesor' | 'freelancer', permissions: RolePermissions) => Promise<void>;
+  updateRolePermissions: (role: 'asesor' | 'freelancer', permissions: PermisosEfectivos) => Promise<void>;
 }
 
 const emptyData: AppData = {
   users: [], clients: [], responsables: [], sales: [], flights: [],
-  commissionAgents: [], commissionSettlements: [],
+  commissionAgents: [], commissionAgentsForSale: [], commissionSettlements: [],
   config: {
     cards: [], paymentMethods: [], documentTypes: [],
     airlines: [], suppliers: [], airports: [],
     baggage: [], packages: [], cities: [],
-    rolePermissions: {
-      asesor: DEFAULT_ASESOR_PERMISSIONS,
-      freelancer: DEFAULT_FREELANCER_PERMISSIONS,
-    },
+    rolePermissions: {},
   },
   salesHistory: [],
 };
@@ -286,6 +283,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchRolePermissions = useCallback(async () => {
+    // Leer los permisos de un rol es solo del admin (requireAdmin en el backend).
+    if (user?.role !== 'admin') return;
     try {
       const [asesorPerms, freelancerPerms] = await Promise.all([
         api.getRolePermissions('asesor'),
@@ -295,10 +294,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ...prev,
         config: {
           ...prev.config,
-          rolePermissions: {
-            asesor: normalizeRolePermissions(asesorPerms),
-            freelancer: normalizeRolePermissions(freelancerPerms),
-          },
+          rolePermissions: { asesor: asesorPerms, freelancer: freelancerPerms },
         },
       }));
       setRolePermissionsReady(true);
@@ -307,7 +303,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // pantalla de permisos se niega a guardar en vez de escribir el default sobre la BD.
       setRolePermissionsReady(false);
     }
-  }, []);
+  }, [user?.role]);
 
   const fetchFlights = useCallback(async () => {
     try {
@@ -324,6 +320,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const res = await api.listCommissionAgents({ perPage: 5000 }).catch(falloAlCargar('los comisionistas'));
       if (!res) return;
       setData(prev => ({ ...prev, commissionAgents: res.data || [] }));
+    } catch {}
+  }, []);
+
+  // El asistente de ventas elige entre todos los comisionistas aunque el modulo de comisiones
+  // muestre solo los propios (decision 16 del diseno de permisos).
+  const fetchCommissionAgentsForSale = useCallback(async () => {
+    try {
+      const res = await api.listCommissionAgents({ para: 'venta' }).catch(falloAlCargar('los comisionistas'));
+      if (!res) return;
+      setData(prev => ({ ...prev, commissionAgentsForSale: res.data || [] }));
     } catch {}
   }, []);
 
@@ -677,17 +683,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const updateRolePermissions = async (role: 'asesor' | 'freelancer', permissions: RolePermissions) => {
-    const normalized = normalizeRolePermissions(permissions);
-    await api.updateRolePermissions(role, normalized as any);
+  const updateRolePermissions = async (role: 'asesor' | 'freelancer', permissions: PermisosEfectivos) => {
+    await api.updateRolePermissions(role, permissions);
     setData(prev => ({
       ...prev,
       config: {
         ...prev.config,
-        rolePermissions: {
-          ...prev.config.rolePermissions,
-          [role]: normalized
-        }
+        rolePermissions: { ...prev.config.rolePermissions, [role]: permissions }
       }
     }));
   };
@@ -709,6 +711,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       fetchFlights,
       fetchResponsables,
       fetchCommissionAgents,
+      fetchCommissionAgentsForSale,
       fetchSettlements,
       refreshData,
       addUser,

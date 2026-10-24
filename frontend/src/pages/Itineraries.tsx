@@ -20,7 +20,11 @@ const DAYS = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
 
 export default function Itineraries() {
   const { data, updateFlight, fetchFlights, fetchClients } = useData();
-  const { canEdit: canEditItinerary, canView } = usePermissions();
+  const { puede } = usePermissions();
+  // shortcut: el vuelo no trae quien hizo la venta, asi que con "Ver: Todos" y "Editar: Propios"
+  // el boton de check-in se muestra en vuelos ajenos y el backend lo rechaza (404). Si eso
+  // molesta, el listado de vuelos tiene que devolver el usuario de la venta.
+  const canEditItinerary = (modulo: string) => puede(modulo, 'edit');
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'calendar' | 'checkin'>('calendar');
   const [calendarTab, setCalendarTab] = useState<'ida' | 'regreso'>('ida');
@@ -214,7 +218,7 @@ export default function Itineraries() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  if (!canView('itineraries')) {
+  if (!puede('itineraries', 'view')) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] text-gray-500">
         <AlertCircle size={48} className="mb-4 opacity-20" />

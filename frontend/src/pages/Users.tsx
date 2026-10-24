@@ -30,7 +30,7 @@ import { Badge } from "../components/ui/Badge";
 import { Input, Select, FormField } from "../components/ui/Form";
 import {
   User,
-  RolePermissions,
+  PermisosEfectivos,
 } from "../types";
 import StatCard from "../components/ui/StatCard";
 import PermissionsGrid from "../components/users/PermissionsGrid";
@@ -41,6 +41,7 @@ import LoadingScreen from "../components/ui/LoadingScreen";
 
 import { capitalizeName, formatId, todayStr } from "../utils/formatters";
 import { mensajeDeError } from "../utils/errors";
+import { usePermissions } from "../context/PermissionsContext";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -65,6 +66,12 @@ export default function Users() {
     fetchRolePermissions,
   } = useData();
   const { user: currentUser } = useAuth();
+  const { puede } = usePermissions();
+  // La pagina ya no es solo del admin: se ve con `users.view`. El panel de roles y tocar a un
+  // admin siguen siendo del admin (decisiones 18 y 19 del diseno de permisos).
+  const isAdmin = currentUser?.role === 'admin';
+  const puedeSobre = (accion: string, u: User) =>
+    (isAdmin || u.role !== 'admin') && puede('users', accion, u.createdBy);
 
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"users" | "permissions">("users");
@@ -205,7 +212,7 @@ export default function Users() {
   // `roleDraft ?? lo del servidor`, calculado en el render: antes se copiaba el valor a un
   // estado al pulsar la pestana, y si los permisos del servidor aun no habian llegado (o no
   // se habian pedido) se copiaban los defaults del codigo, y "Guardar" los escribia en la BD.
-  const [roleDraft, setRoleDraft] = useState<RolePermissions | null>(null);
+  const [roleDraft, setRoleDraft] = useState<PermisosEfectivos | null>(null);
   const rolePerms = roleDraft ?? data.config.rolePermissions[editingRole];
 
   // Cada vez que se entra a esta pantalla, los permisos del servidor, no los que quedaron.
@@ -597,12 +604,14 @@ export default function Users() {
             Administra los accesos, roles y permisos de tu equipo corporativo.
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenModal()}
-          className="shadow-lg shadow-primary/20 w-full sm:w-auto justify-center"
-        >
-          <Plus size={18} /> Nuevo Usuario
-        </Button>
+        {puede('users', 'create') && (
+          <Button
+            onClick={() => handleOpenModal()}
+            className="shadow-lg shadow-primary/20 w-full sm:w-auto justify-center"
+          >
+            <Plus size={18} /> Nuevo Usuario
+          </Button>
+        )}
       </div>
 
 
@@ -614,7 +623,7 @@ export default function Users() {
         >
           Lista de Usuarios
         </button>
-        <button
+        {isAdmin && <button
           onClick={() => {
             setActiveTab("permissions");
             setEditingRole('asesor');
@@ -623,7 +632,7 @@ export default function Users() {
           className={`flex-1 sm:flex-initial text-center whitespace-nowrap px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === "permissions" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-primary"}`}
         >
           Permisos por Rol
-        </button>
+        </button>}
       </div>
 
       {activeTab === "users" ? (
@@ -741,15 +750,17 @@ export default function Users() {
                     >
                       <Eye size={14} />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleOpenModal(user)}
-                      title="Editar"
-                    >
-                      <Pencil size={14} />
-                    </Button>
-                    <Button
+                    {puedeSobre('edit', user) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenModal(user)}
+                        title="Editar"
+                      >
+                        <Pencil size={14} />
+                      </Button>
+                    )}
+                    {puedeSobre('toggle', user) && <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleToggleStatus(user)}
@@ -765,8 +776,8 @@ export default function Users() {
                       ) : (
                         <UserCheck size={14} className="text-green-500" />
                       )}
-                    </Button>
-                    <Button
+                    </Button>}
+                    {puedeSobre('delete', user) && <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleDeleteRequest(user)}
@@ -774,7 +785,7 @@ export default function Users() {
                       title={motivoBloqueo(user, "eliminar") ?? "Eliminar: baja definitiva"}
                     >
                       <Trash2 size={14} className="text-red-400" />
-                    </Button>
+                    </Button>}
                   </div>
                 </TableCell>
               </TableRow>
@@ -969,7 +980,8 @@ export default function Users() {
               }
               disabled={editingUser?.role === "admin"}
               options={[
-                { value: "admin", label: "Administrador" },
+                // Solo un admin crea o promueve a un admin.
+                ...(isAdmin || editingUser?.role === "admin" ? [{ value: "admin", label: "Administrador" }] : []),
                 { value: "asesor", label: "Asesor" },
                 { value: "freelancer", label: "Freelancer" },
               ]}
@@ -1058,7 +1070,7 @@ export default function Users() {
           <FormField label="Estado">
             <Select
               value={formData.status}
-              disabled={editingUser?.role === "admin"}
+              disabled={editingUser?.role === "admin" || (!!editingUser && !puede('users', 'toggle', editingUser.createdBy))}
               onChange={(e) =>
                 setFormData({
                   ...formData,

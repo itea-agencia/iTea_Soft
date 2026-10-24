@@ -24,7 +24,7 @@ import { DatePicker } from '../components/sales/forms/TicketForm';
 export default function Clients() {
   const { data, addClient, updateClient, toggleClientStatus, fetchClients, fetchSales } = useData();
   const { user } = useAuth();
-  const { permissions, canCreate, canEdit } = usePermissions();
+  const { puede, alcance } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -160,7 +160,7 @@ export default function Clients() {
 
 
   const handleOpenModal = (client?: Client) => {
-    if (client && !canEdit('clients')) return;
+    if (client && !puede('clients', 'edit', client.createdBy)) return;
     if (client) {
       setEditingClient(client);
       setFormData({
@@ -294,7 +294,7 @@ export default function Clients() {
   };
 
   const handleToggleStatus = (client: Client) => {
-    if (!canEdit('clients')) return;
+    if (!puede('clients', 'toggle', client.createdBy)) return;
     setConfirmToggle({
       id: client.id,
       name: client.name,
@@ -333,7 +333,7 @@ export default function Clients() {
   };
 
   const stats = useMemo(() => {
-    const clientsToCalc = permissions.clients.view === 'own' 
+    const clientsToCalc = alcance('clients', 'view') === 'own' 
       ? data.clients.filter(c => c.createdBy === user?.id)
       : data.clients;
 
@@ -348,7 +348,7 @@ export default function Clients() {
     }).length;
 
     return { total, active, inactive, recent };
-  }, [data.clients, permissions.clients.view, user?.id]);
+  }, [data.clients, alcance, user?.id]);
 
   const requestSort = (key: keyof Client) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -359,7 +359,7 @@ export default function Clients() {
   };
 
   const filteredClients = useMemo(() => {
-    const clientsToFilter = permissions.clients.view === 'own'
+    const clientsToFilter = alcance('clients', 'view') === 'own'
       ? data.clients.filter(c => c.createdBy === user?.id)
       : data.clients;
 
@@ -379,7 +379,7 @@ export default function Clients() {
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data.clients, searchTerm, statusFilter, sortConfig, permissions.clients.view, user?.id]);
+  }, [data.clients, searchTerm, statusFilter, sortConfig, alcance, user?.id]);
 
   const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
   const paginatedClients = filteredClients.slice(
@@ -522,7 +522,7 @@ export default function Clients() {
               <option value="active">Solo Activos</option>
               <option value="inactive">Solo Inactivos</option>
             </select>
-            {canCreate('clients') && (
+            {puede('clients', 'create') && (
               <Button onClick={() => handleOpenModal()}>
                 <Plus size={18} />
                 Nuevo Cliente
@@ -574,11 +574,14 @@ export default function Clients() {
                   <Button variant="outline" size="sm" onClick={() => handleViewDetail(client)} title="Ver detalle">
                     <Eye size={14} />
                   </Button>
-                  {canEdit('clients') && (
+                  {puede('clients', 'edit', client.createdBy) && (
+                    <Button variant="outline" size="sm" onClick={() => handleOpenModal(client)} title="Editar">
+                      <Pencil size={14} />
+                    </Button>
+                  )}
+                  {/* Activar/desactivar es su propio permiso desde el catalogo de permisos. */}
+                  {puede('clients', 'toggle', client.createdBy) && (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => handleOpenModal(client)} title="Editar">
-                        <Pencil size={14} />
-                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 

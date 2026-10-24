@@ -35,7 +35,7 @@ import { comisionPendiente } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
   const { data, addCommissionAgent, updateCommissionAgent, deleteCommissionAgent, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
-  const { canCreate, canEdit, canDelete } = usePermissions();
+  const { puede } = usePermissions();
   const [isLoading, setIsLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -314,7 +314,7 @@ export default function CommissionAgents() {
           </p>
         </div>
         <div className="w-full sm:w-auto">
-          {canCreate('commissions') && (
+          {puede('commissions', 'create') && (
             <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto h-12 sm:h-14 px-6 sm:px-8 bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl sm:rounded-2xl transition-all hover:scale-105 active:scale-95 font-bold justify-center text-xs sm:text-sm">
               <Plus size={20} /> Registrar Comisionista
             </Button>
@@ -406,12 +406,12 @@ export default function CommissionAgents() {
                              <button onClick={() => handleViewDetails(agent)} className="p-2 text-gray-400 hover:text-sky-500 hover:bg-sky-50 rounded-lg transition-colors" title="Ver detalles">
                                <Eye size={16} />
                              </button>
-                             {canEdit('commissions') && (
+                             {puede('commissions', 'edit', agent.createdBy) && (
                                <button onClick={() => handleOpenModal(agent)} className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
                                   <Pencil size={16} />
                                </button>
                              )}
-                             {canDelete('commissions') && (
+                             {puede('commissions', 'delete', agent.createdBy) && (
                                <button onClick={() => setDeleteConfirm(agent)} className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
                                   <Trash2 size={16} />
                                </button>
@@ -438,7 +438,7 @@ export default function CommissionAgents() {
                                 style={{ width: `${progress}%` }} 
                               />
                             </div>
-                            {isReady && (
+                            {isReady && puede('commissions', 'settle', agent.createdBy) && (
                               <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 p-2 rounded-xl border border-amber-100 animate-pulse">
                                 <AlertCircle size={12} />
                                 <span className="text-[10px] font-bold uppercase tracking-tight">Listo para liquidar</span>
@@ -462,7 +462,7 @@ export default function CommissionAgents() {
                               <span className="text-[9px] text-gray-400 font-bold uppercase">Documento</span>
                               <span className="text-xs font-medium text-gray-600">{agent.docType} {agent.docNumber}</span>
                             </div>
-                            {isReady && (
+                            {isReady && puede('commissions', 'settle', agent.createdBy) && (
                               <button 
                                 onClick={() => openSettleModal(agent)}
                                 className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all hover:shadow-lg shadow-amber-200"
@@ -509,9 +509,11 @@ export default function CommissionAgents() {
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <p className="text-2xl sm:text-3xl font-black text-gray-800 dark:text-white">{formatCurrency(agent.accumulated)}</p>
-                          <Button onClick={() => openSettleModal(agent)} className="bg-amber-500 hover:bg-amber-600 text-white px-6 rounded-xl font-bold h-12 w-full sm:w-auto justify-center">
-                            Pagar Ahora
-                          </Button>
+                          {puede('commissions', 'settle', agent.createdBy) && (
+                            <Button onClick={() => openSettleModal(agent)} className="bg-amber-500 hover:bg-amber-600 text-white px-6 rounded-xl font-bold h-12 w-full sm:w-auto justify-center">
+                              Pagar Ahora
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}

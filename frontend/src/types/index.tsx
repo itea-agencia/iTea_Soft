@@ -16,76 +16,29 @@ export interface User {
   status: "active" | "inactive";
   createdAt?: string;
   lastLogin?: string;
-  permisos?: { modulo: string; accion: string }[];
+  createdBy?: number | null;
+  permisosEfectivos?: PermisosEfectivos;
 }
 
-export interface RolePermissions {
-  dashboard: { view: "all" | "own" | "none" };
-  sales: { view: "all" | "own" | "none"; create: boolean; edit: "all" | "own" | "none" };
-  clients: { view: "all" | "own" | "none"; create: boolean; edit: "all" | "own" | "none" };
-  responsables: { view: "all" | "own" | "none"; create: boolean; edit: "all" | "own" | "none"; delete: boolean };
-  itineraries: { view: "all" | "own" | "none"; edit: "all" | "own" | "none" };
-  commissions: { view: boolean; create: boolean; edit: boolean; delete: boolean };
-  config: { view: boolean; create: boolean; edit: boolean };
+// Permisos del usuario tal como los lee el backend (backend/src/config/permisos.js):
+// 'all' | 'own' | 'none' en las acciones con alcance, true/false en las de si/no. El frontend
+// ya no tiene su propia copia de la estructura ni su propia lectura: la que tenia no coincidia
+// con la del backend (para un `sales.edit = 'true'` decia "Todas" y el servidor aplicaba
+// "Propias").
+export type ValorPermiso = 'all' | 'own' | 'none' | boolean;
+export type PermisosEfectivos = Record<string, Record<string, ValorPermiso>>;
+
+/** Una accion del catalogo, como la devuelve GET /roles/catalogo. */
+export interface AccionCatalogo {
+  accion: string;
+  etiqueta: string;
+  tipo: 'alcance' | 'sino';
 }
 
-export const DEFAULT_ASESOR_PERMISSIONS: RolePermissions = {
-  dashboard: { view: "own" },
-  sales: { view: "own", create: true, edit: "own" },
-  clients: { view: "own", create: true, edit: "own" },
-  responsables: { view: "own", create: true, edit: "own", delete: false },
-  itineraries: { view: "own", edit: "own" },
-  commissions: { view: false, create: false, edit: false, delete: false },
-  config: { view: false, create: false, edit: false },
-};
-export const DEFAULT_FREELANCER_PERMISSIONS: RolePermissions = {
-  dashboard: { view: "own" },
-  sales: { view: "own", create: true, edit: "own" },
-  clients: { view: "own", create: true, edit: "own" },
-  responsables: { view: "own", create: true, edit: "own", delete: false },
-  itineraries: { view: "own", edit: "own" },
-  commissions: { view: false, create: false, edit: false, delete: false },
-  config: { view: false, create: false, edit: false },
-};
-
-export const ADMIN_PERMISSIONS: RolePermissions = {
-  dashboard: { view: "all" },
-  sales: { view: "all", create: true, edit: "all" },
-  clients: { view: "all", create: true, edit: "all" },
-  responsables: { view: "all", create: true, edit: "all", delete: true },
-  itineraries: { view: "all", edit: "all" },
-  commissions: { view: true, create: true, edit: true, delete: true },
-  config: { view: true, create: true, edit: true },
-};
-
-const SCOPED_MODULES = ['dashboard', 'sales', 'clients', 'responsables', 'itineraries'];
-
-export function normalizeRolePermissions(perms: Partial<RolePermissions>, baseTemplate: RolePermissions = DEFAULT_ASESOR_PERMISSIONS): RolePermissions {
-  const normalized = JSON.parse(JSON.stringify(baseTemplate)) as RolePermissions;
-  if (!perms) return normalized;
-
-  for (const mod of Object.keys(normalized) as (keyof RolePermissions)[]) {
-    if (perms[mod]) {
-      const src = perms[mod] as any;
-      const dst = normalized[mod] as any;
-      for (const key of Object.keys(dst)) {
-        if (src[key] !== undefined) {
-          const val = src[key];
-          if ((key === 'view' || key === 'edit') && SCOPED_MODULES.includes(mod)) {
-            // Manejar migración de booleanos a strings
-            if (typeof val === 'boolean') {
-              dst[key] = val ? (mod === 'dashboard' ? 'all' : 'own') : 'none';
-            } else {
-              dst[key] = val;
-            }
-          } else {
-            dst[key] = typeof val === 'string' ? val !== 'none' && val !== 'false' : !!val;
-          }
-        }
-      }
-    }
-  }
-  return normalized;
+export interface ModuloCatalogo {
+  modulo: string;
+  etiqueta: string;
+  acciones: AccionCatalogo[];
 }
 
 export interface Client {
@@ -124,6 +77,8 @@ export interface Responsable {
   creadoAt: string;
   deudaTotal: number;
   ventas?: any[];
+  /** Quien lo creo: el duenio para el alcance "Propios". */
+  createdBy?: number | null;
 }
 
 export type SaleProductId =
@@ -832,6 +787,8 @@ export interface CommissionAgent {
   accumulated?: number;
   paymentThreshold?: number;
   observacion?: string;
+  /** Quien lo creo: el duenio para el alcance "Propios". */
+  createdBy?: number | null;
 }
 
 export interface TravelPackage {
@@ -938,10 +895,8 @@ export interface ConfigData {
   packages: TravelPackage[];
   /** Catálogo DANE de solo lectura. `code` es el que exige Siigo. */
   cities: { code: string; name: string; state: string }[];
-  rolePermissions: {
-    asesor: RolePermissions;
-    freelancer: RolePermissions;
-  };
+  /** Solo los carga el admin: es el panel de permisos. */
+  rolePermissions: Partial<Record<'asesor' | 'freelancer', PermisosEfectivos>>;
 }
 
 export interface AppData {
@@ -951,6 +906,8 @@ export interface AppData {
   sales: Sale[];
   flights: Flight[];
   commissionAgents: CommissionAgent[];
+  /** Para elegir comisionista en el asistente: todos, solo id/nombre/estado (?para=venta). */
+  commissionAgentsForSale: Pick<CommissionAgent, 'id' | 'name' | 'status'>[];
   commissionSettlements: CommissionSettlement[];
   config: ConfigData;
   salesHistory: MonthlySale[];

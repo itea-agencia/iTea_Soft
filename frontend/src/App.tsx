@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
-import { PermissionsProvider } from './context/PermissionsContext';
+import { PermissionsProvider, usePermissions } from './context/PermissionsContext';
 import { Layout } from './components/layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -25,9 +25,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <PermissionsProvider user={user}>{children}</PermissionsProvider>;
 }
 
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return <Navigate to="/" replace />;
+// Usuarios dejo de ser solo del admin: se ve con `users.view` (decision 18 del diseno de
+// permisos). El panel de roles, dentro de esa pagina, sigue siendo del admin.
+function ConPermiso({ modulo, children }: { modulo: string; children: React.ReactNode }) {
+  const { puede } = usePermissions();
+  if (!puede(modulo, 'view')) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -44,7 +46,7 @@ function AppRoutes() {
         <Route path="clients" element={<Clients />} />
         <Route path="responsables" element={<Responsables />} />
         <Route path="itineraries" element={<Itineraries />} />
-        <Route path="users" element={<AdminRoute><Users /></AdminRoute>} />
+        <Route path="users" element={<ConPermiso modulo="users"><Users /></ConPermiso>} />
         <Route path="config" element={<Config />} />
         <Route path="commissions" element={<CommissionAgents />} />
       </Route>

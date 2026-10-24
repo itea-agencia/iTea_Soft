@@ -80,7 +80,7 @@ const STEPS = [
 ] as const;
 
 export default function NewSaleWizard({ onClose, onSuccess }: Props) {
-  const { data, addSale, fetchClients, fetchUsers, fetchCommissionAgents, fetchResponsables } = useData();
+  const { data, addSale, fetchClients, fetchUsers, fetchCommissionAgentsForSale, fetchResponsables } = useData();
   const { user } = useAuth();
 
   const draftKey = `itea_new_sale_draft_v2_${user?.id || 'unknown'}`;
@@ -306,9 +306,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   useEffect(() => {
     fetchClients();
     fetchUsers();
-    fetchCommissionAgents();
+    fetchCommissionAgentsForSale();
     fetchResponsables();
-  }, [fetchClients, fetchUsers, fetchCommissionAgents, fetchResponsables]);
+  }, [fetchClients, fetchUsers, fetchCommissionAgentsForSale, fetchResponsables]);
 
   // Compute Totals Automatically
   useEffect(() => {
@@ -414,7 +414,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       if (form.commissionAgentName && !form.commissionAgentId) {
         errs.commissionAgent = "El comisionista ingresado no está registrado";
       } else if (form.commissionAgentId) {
-        const agentExists = (data.commissionAgents || []).some(
+        const agentExists = (data.commissionAgentsForSale || []).some(
           (a: any) => String(a.id) === String(form.commissionAgentId)
         );
         if (!agentExists) {

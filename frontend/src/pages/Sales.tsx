@@ -39,7 +39,7 @@ export default function Sales() {
   const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, salesLoading, fetchSales, fetchClients } = useData();
   const responsables = data.responsables || [];
   const { user, isAdmin } = useAuth();
-  const { canCreate, canEdit, permissions } = usePermissions();
+  const { puede, alcance } = usePermissions();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
@@ -82,8 +82,7 @@ export default function Sales() {
   const [endDate, setEndDate] = useState("");
 
   const filteredSales = useMemo(() => {
-    const salesView = (permissions.sales as any)?.view;
-    const seeAll = isAdmin || salesView === 'all';
+    const seeAll = alcance('sales', 'view') === 'all';
     const list = seeAll ? data.sales : data.sales.filter((s) => s.asesorId === user?.id);
     return list.filter((sale) => {
       // 1. Text Search Filter (client name, status, asesor, commissionAgent, id)
@@ -110,7 +109,7 @@ export default function Sales() {
 
       return matchesText && matchesStatus && matchesDate;
     }).sort((a, b) => b.id - a.id);
-  }, [data.sales, isAdmin, user?.id, searchTerm, statusFilter, startDate, endDate]);
+  }, [data.sales, alcance, user?.id, searchTerm, statusFilter, startDate, endDate]);
 
   // Lazy Load Fetch
   useEffect(() => {
@@ -140,12 +139,11 @@ export default function Sales() {
     }
   };
 
+  // El modal de abonos sirve para registrar pagos: lo abre quien tiene `sales.pay` sobre esa
+  // venta, y solo mientras no este pagada ni anulada.
   const canEditThis = (sale: Sale): boolean => {
-    if (!canEdit("sales")) return false;
-    // Solo permitir edición si NO está pagada ni anulada
     if (sale.status === "pagado" || sale.status === "anulado") return false;
-    if (isAdmin) return true;
-    return sale.asesorId === user?.id;
+    return puede("sales", "pay", sale.asesorId);
   };
 
   const handleOpenNewSale = () => {
@@ -619,7 +617,7 @@ export default function Sales() {
                       </button>
                     )}
                   </div>
-                  {canCreate("sales") && (
+                  {puede("sales", "create") && (
                     <Button onClick={handleOpenNewSale} className="w-full sm:w-auto justify-center">
                       <Plus size={18} />
                       Nueva Venta
@@ -628,7 +626,7 @@ export default function Sales() {
                 </div>
               }
             >
-              Lista de Ventas {isAdmin ? "(Todas)" : "(Mis Ventas)"}
+              Lista de Ventas {alcance("sales", "view") === "all" ? "(Todas)" : "(Mis Ventas)"}
             </CardHeader>
 
             {/* Skeleton de carga — solo se muestra en el primer fetch sin caché */}
