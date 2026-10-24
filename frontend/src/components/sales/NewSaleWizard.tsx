@@ -295,8 +295,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
 
   useEffect(() => {
     try {
-      // Intentar guardar el draft en localStorage
-      localStorage.setItem(draftKey, JSON.stringify(form));
+      // El borrador es para no perder lo tipeado, sin los adjuntos: los vouchers en base64 son
+      // datos de clientes y llenaban la cuota hasta que el guardado fallaba.
+      localStorage.setItem(draftKey, JSON.stringify(form, (k, v) => (k === 'voucher' || k === 'vouchers' ? undefined : v)));
     } catch (error) {
       console.warn("No se pudo guardar el borrador en localStorage (probablemente los archivos adjuntos son muy grandes):", error);
     }

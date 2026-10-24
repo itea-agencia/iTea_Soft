@@ -67,6 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('itea_user');
     localStorage.removeItem('itea_session_expiry');
     localStorage.removeItem('itea_remember');
+    // El borrador del asistente de ventas no se queda para quien use el equipo despues.
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('itea_new_sale_draft_'))
+      .forEach((k) => localStorage.removeItem(k));
   };
 
   return (
