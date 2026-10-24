@@ -212,14 +212,14 @@ SELECT status, (SELECT count(*) FROM pagos_venta WHERE venta_id = v.id) AS pagos
 
 Hallazgo 4. Depende de D4.
 
-- [ ] **T3.1** `createSettlement`: dentro de la transacción, `SELECT ... FOR UPDATE` de las
+- [x] **T3.1** `createSettlement`: dentro de la transacción, `SELECT ... FOR UPDATE` de las
   ventas pedidas; 409 si alguna no es del comisionista, ya está liquidada, está anulada o
   tiene `deleted_at`. El monto es la suma de `monto_comision_neto`; `data.amount` se ignora.
-- [ ] **T3.2** `create` y `update` de ventas: `montoComisionNeto` se calcula en el servidor
+- [x] **T3.2** `create` y `update` de ventas: `montoComisionNeto` se calcula en el servidor
   con el bruto y el porcentaje de retención. Se ignora el neto que llega.
-- [ ] **T3.3** `CommissionAgents.tsx:122`: excluir `status === 'anulado'` del acumulado. Es
+- [x] **T3.3** `CommissionAgents.tsx:122`: excluir `status === 'anulado'` del acumulado. Es
   la causa de las ventas 84 y 86.
-- [ ] **T3.4** Registrar las ventas 84 y 86 en "Lo que queda abierto" de la spec, para que
+- [x] **T3.4** Registrar las ventas 84 y 86 en "Lo que queda abierto" de la spec, para que
   alguien decida si se recupera la comisión.
 
 **Verificación** (las cuatro deben dar 0, salvo la de anuladas, que hoy da 2 y no debe
@@ -318,4 +318,11 @@ Depende de D6.
   `voidSale` respondía sus errores con `{ status, message }` y el frontend no veía el
   motivo; pasó a la forma estándar. Los avisos se muestran en el mensaje de éxito, 12
   segundos en vez de 3.
-- **F3–F7**: sin empezar.
+- **F3**: implementada en `fix/liquidacion-derivada`, que sale de `feat-bayrol` (F1 y F2
+  ya mergeadas ahí). Verificada el 2026-10-24 con una colección de Postman (12 casos), en verde. `tsc` y
+  `node --check` en verde.
+  *Notas de implementación:* la causa de las ventas 84 y 86 estaba en dos lugares, el
+  acumulado de `CommissionAgents.tsx` y la lista de ventas que arma `settleCommissions`
+  en el `DataContext`; los dos usan ahora `comisionPendiente()`. Una liquidación sin
+  ventas se rechaza (400): con el monto derivado valdría cero.
+- **F4–F7**: sin empezar.

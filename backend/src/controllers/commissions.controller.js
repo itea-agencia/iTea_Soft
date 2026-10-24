@@ -382,32 +382,59 @@ exports.listSettlements = async (req, res, next) => {
 exports.createSettlement = async (req, res, next) => {
   try {
     const data = req.body;
+    const agentId = parseInt(data.agentId, 10);
+    const salesIds = [...new Set((Array.isArray(data.salesIds) ? data.salesIds : []).map(id => parseInt(id, 10)))];
+    if (!Number.isInteger(agentId) || salesIds.length === 0 || salesIds.some(id => !Number.isInteger(id))) {
+      return error(res, 'Una liquidación necesita un comisionista y al menos una venta', 400, 'VALIDATION_ERROR');
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const metodoPagoId = data.paymentMethod ? parseInt(data.paymentMethod) : null;
 
+      // El monto y las ventas no se toman del navegador tal cual. Antes se guardaba
+      // `data.amount` y se marcaban liquidadas las ventas que llegaran, sin mirar de quien
+      // eran ni si estaban anuladas: el 2026-09-09 se liquido comision de las ventas 84 y 86,
+      // anuladas, porque la pantalla sumaba lo pendiente sin excluirlas.
+      //
+      // FOR UPDATE: dos liquidaciones casi simultaneas de las mismas ventas (un doble clic)
+      // esperan una a la otra, y la segunda ya las ve liquidadas.
+      const ventas = await tx.$queryRaw`
+        SELECT id, comisionista_id AS "comisionistaId", comision_liquidada AS liquidada,
+               status::text AS status, deleted_at AS "deletedAt", monto_comision_neto AS neto
+        FROM ventas WHERE id IN (${Prisma.join(salesIds)}) FOR UPDATE`;
+
+      const encontradas = new Set(ventas.map(v => v.id));
+      const noLiquidables = [
+        ...salesIds.filter(id => !encontradas.has(id)),
+        ...ventas
+          .filter(v => v.comisionistaId !== agentId || v.liquidada || v.status === 'anulado' || v.deletedAt)
+          .map(v => v.id),
+      ];
+      if (noLiquidables.length > 0) {
+        throw Object.assign(
+          new Error(`No se pueden liquidar las ventas ${noLiquidables.join(', ')}: no existen, son de otro comisionista, ya están liquidadas o están anuladas`),
+          { statusCode: 409, code: 'VENTAS_NO_LIQUIDABLES' }
+        );
+      }
+
       const settlement = await tx.liquidacionesComision.create({
         data: {
-          comisionistaId: data.agentId,
+          comisionistaId: agentId,
           fecha: data.date ? new Date(data.date) : new Date(),
-          monto: data.amount,
+          monto: ventas.reduce((t, v) => t + (Number(v.neto) || 0), 0),
           metodoPagoId,
           referencia: data.reference || null,
           notas: data.notes || null
         }
       });
 
-      if (data.salesIds && data.salesIds.length > 0) {
-        for (const ventaId of data.salesIds) {
-          await tx.liquidacionVentas.create({
-            data: { liquidacionId: settlement.id, ventaId }
-          });
-          await tx.ventas.update({
-            where: { id: ventaId },
-            data: { comisionLiquidada: true }
-          });
-        }
-      }
+      await tx.liquidacionVentas.createMany({
+        data: salesIds.map(ventaId => ({ liquidacionId: settlement.id, ventaId }))
+      });
+      await tx.ventas.updateMany({
+        where: { id: { in: salesIds } },
+        data: { comisionLiquidada: true }
+      });
 
       const fullSettlement = await tx.liquidacionesComision.findUnique({
         where: { id: settlement.id },
@@ -429,7 +456,7 @@ exports.createSettlement = async (req, res, next) => {
         paymentMethod: fullSettlement.metodoPago?.nombre || null,
         reference: fullSettlement.referencia,
         notes: fullSettlement.notas,
-        salesIds: data.salesIds || [],
+        salesIds,
       };
     });
 

@@ -71,6 +71,8 @@ sumaban **$8.165.000**.
 | Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción; `create` guarda la suma de los pagos con que nace la venta |
 | Estado de la venta | `estadoDeVenta()` en `sales.controller.js`, la usan `create`, `registerPayment` y `deletePayment`. **Ningún endpoint acepta `status` ni `isCredit` del cliente**; `esCredito` sale del estado. En el frontend, `estadoDeVenta()` de `wizardData.ts` es solo vista previa |
 | Una venta anulada se queda anulada | `registerPayment`, `deletePayment` y `generateSiigoInvoice` responden 409 `VENTA_ANULADA`; `voidSale` también, si ya estaba anulada. Antes, borrar un pago de una anulada la devolvía a `credito` y volvía a sumar a la deuda. Anular con factura emitida o comisión liquidada se permite, pero la respuesta trae `avisos`: lo que hay que deshacer a mano |
+| Neto de la comisión | `comisionDe()` en `sales.controller.js`: bruto × (1 − retención/100), con la retención entre 0 y 100. `create` y `update` ignoran `commissionAgentNetPayment` |
+| Liquidación de comisiones | `createSettlement` en `commissions.controller.js` bloquea las ventas con `FOR UPDATE`, rechaza (409 `VENTAS_NO_LIQUIDABLES`) las que no existen, son de otro comisionista, ya están liquidadas o están anuladas, y guarda como monto la suma de sus netos. `data.amount` se ignora. En el frontend, `comisionPendiente()` de `creditUtils.ts` decide qué ventas se mandan |
 | Pagos al crear | `create` rechaza un pago que no sea mayor a cero (400) y pagos que superen el total (409 `SALDO_INSUFICIENTE`) |
 | Que lo pagado no supere el total | `registerPayment` calcula el saldo pendiente y rechaza (409) lo que lo exceda, o cualquier pago si el saldo ya es cero. `SELECT ... FOR UPDATE` sobre la venta serializa dos registros casi simultáneos del mismo pago |
 | Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda** |
@@ -105,6 +107,11 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
 `backend/db-manual/backfill_pagos_proveedor_paquetes.sql`, que aborta si algo no cuadra.
 
 ## Lo que queda abierto
+
+- **Las ventas 84 y 86 tienen la comisión liquidada estando anuladas** ($161.367 y
+  $125.350, liquidación del 2026-09-09). La pantalla de comisiones sumaba lo pendiente sin
+  excluir las anuladas. El código ya no lo permite, pero esas dos no se tocaron: si la
+  comisión se recupera lo decide el negocio, no un script.
 
 - **El `useEffect` de totales del wizard sigue escribiendo estado derivado.** Ahora que el
   servidor calcula el que persiste, ese cálculo es solo vista previa; reescribirlo arrastra

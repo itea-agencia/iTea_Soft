@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { AppData, User, Client, Sale, Flight, RolePermissions, normalizeRolePermissions, DEFAULT_ASESOR_PERMISSIONS, DEFAULT_FREELANCER_PERMISSIONS } from '../types';
+import { comisionPendiente } from '../utils/creditUtils';
 import * as api from '../api';
 import { useAuth } from './AuthContext';
 import { getCurrentMonth } from '../utils/formatters';
@@ -543,7 +544,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const settleCommissions = async (agentId: number, settlement: any) => {
     const salesIds = data.sales
-      .filter(s => s.commissionAgentId === agentId && !s.isSettled)
+      .filter(s => comisionPendiente(s, agentId))
       .map(s => s.id);
 
     const created = await api.createSettlement({ ...settlement, agentId, salesIds });
@@ -551,7 +552,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       commissionSettlements: [...(prev.commissionSettlements || []), created],
       sales: prev.sales.map(s =>
-        s.commissionAgentId === agentId && !s.isSettled
+        salesIds.includes(s.id)
           ? { ...s, isSettled: true, settlementDate: settlement.date }
           : s
       ),

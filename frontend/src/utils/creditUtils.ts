@@ -47,6 +47,12 @@ export function getCreditSaleStatus(sale: Sale): 'pending' | 'partial' | 'paid' 
 const esCreditoVigente = (s: Sale) =>
   s.status !== 'anulado' && (s.isCredit === true || s.status === 'credito' || s.status === 'abonado');
 
+// Comisión que todavía se le debe al comisionista. Sin excluir las anuladas, el acumulado
+// las sumaba y la liquidación las incluía: así se pagó comisión de las ventas 84 y 86.
+// El servidor rechaza (409) liquidar una anulada, así que este filtro tiene que coincidir.
+export const comisionPendiente = (s: Sale, agentId: number | string) =>
+  String(s.commissionAgentId) === String(agentId) && !s.isSettled && s.status !== 'anulado';
+
 export function getClientsWithCredit(clients: Client[], sales: Sale[]): ClientCreditSummary[] {
   const creditSales = sales.filter(esCreditoVigente);
   

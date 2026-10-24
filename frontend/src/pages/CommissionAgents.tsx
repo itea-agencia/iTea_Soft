@@ -31,6 +31,7 @@ import { formatCurrency, capitalizeName, todayStr } from "../utils/formatters";
 import StatCard from "../components/ui/StatCard";
 import LoadingScreen from "../components/ui/LoadingScreen";
 import { mensajeDeError } from "../utils/errors";
+import { comisionPendiente } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
   const { data, addCommissionAgent, updateCommissionAgent, deleteCommissionAgent, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
@@ -120,7 +121,7 @@ export default function CommissionAgents() {
     
     const mapped = agents.map((agent: any) => {
       const accumulated = sales
-        .filter((s) => s.commissionAgentId?.toString() === agent.id?.toString() && !s.isSettled)
+        .filter((s) => comisionPendiente(s, agent.id))
         .reduce((sum, s) => sum + (s.commissionAgentNetPayment || 0), 0);
       return { ...agent, accumulated };
     });

@@ -2130,9 +2130,7 @@ exports.create = async (req, res, next) => {
         taCreTotal: totales.taCre,
         comisionistaId: data.commissionAgentId || null,
         responsableId: data.responsableId || null,
-        montoComisionBruto: data.commissionAgentAmount || 0,
-        porcentajeRetencionComision: data.commissionAgentRetentionPercentage || 0,
-        montoComisionNeto: data.commissionAgentNetPayment || 0,
+        ...comisionDe(data.commissionAgentAmount, data.commissionAgentRetentionPercentage),
         metodoPagoPrincipalId: metodoPagoId,
         status,
         esCredito: status !== 'pagado',
@@ -2329,9 +2327,12 @@ exports.update = async (req, res, next) => {
     if (data.paymentMethod) updateData.metodoPagoPrincipalId = await resolvePaymentMethodId(prisma, data.paymentMethod);
     if (data.commissionAgentId !== undefined) updateData.comisionistaId = data.commissionAgentId || null;
     if (data.responsableId !== undefined) updateData.responsableId = data.responsableId || null;
-    if (data.commissionAgentAmount !== undefined) updateData.montoComisionBruto = data.commissionAgentAmount;
-    if (data.commissionAgentRetentionPercentage !== undefined) updateData.porcentajeRetencionComision = data.commissionAgentRetentionPercentage;
-    if (data.commissionAgentNetPayment !== undefined) updateData.montoComisionNeto = data.commissionAgentNetPayment;
+    if (data.commissionAgentAmount !== undefined || data.commissionAgentRetentionPercentage !== undefined) {
+      Object.assign(updateData, comisionDe(
+        data.commissionAgentAmount ?? venta.montoComisionBruto,
+        data.commissionAgentRetentionPercentage ?? venta.porcentajeRetencionComision,
+      ));
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.ventas.update({ where: { id }, data: updateData });
@@ -2676,6 +2677,20 @@ const TOLERANCIA_PAGO = 1;
 function estadoDeVenta(montoTotal, pagado) {
   if (montoTotal - pagado <= TOLERANCIA_PAGO) return 'pagado';
   return pagado > 0 ? 'abonado' : 'credito';
+}
+
+// El neto de la comision sale del bruto y la retencion, con la misma formula del paso de
+// pagos (que lo muestra de solo lectura). Antes se guardaba el neto que mandara el
+// navegador, y es el que suma la liquidacion. Las 76 ventas con comisionista de produccion
+// cuadraban con la formula al 2026-10-24, asi que derivarlo no cambia ninguna.
+function comisionDe(bruto, porcentajeRetencion) {
+  const montoComisionBruto = Math.max(0, Number(bruto) || 0);
+  const porcentajeRetencionComision = Math.min(100, Math.max(0, Number(porcentajeRetencion) || 0));
+  return {
+    montoComisionBruto,
+    porcentajeRetencionComision,
+    montoComisionNeto: montoComisionBruto * (1 - porcentajeRetencionComision / 100),
+  };
 }
 
 exports.registerPayment = async (req, res, next) => {
