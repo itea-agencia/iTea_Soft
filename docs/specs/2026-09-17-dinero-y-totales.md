@@ -64,7 +64,7 @@ sumaban **$8.165.000**.
 
 | Regla | Dónde |
 |---|---|
-| Totales de la venta al crear | `calcularTotales()` en `sales.controller.js`, recorre `PRODUCT_HANDLERS` para que un producto nuevo no quede fuera por olvido |
+| Totales de la venta al crear | `calcularTotales()` en `sales.controller.js`, recorre `PRODUCT_HANDLERS` para que un producto nuevo no quede fuera por olvido. Una venta sin productos se rechaza (400): antes tomaba el total que mandara el cliente |
 | Totales al actualizar | se recalculan desde las filas al cerrar la transacción de `update` |
 | Totales al tocar un producto suelto | `recalcularTotalesVenta()` en `products.controller.js`, llamado por create, update y delete |
 | Importes de un ítem | `financierosDe()` en el backend, `importesDe()` en `wizardData.ts`. **Una función por lado**, no dieciocho |

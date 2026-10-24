@@ -325,4 +325,7 @@ Depende de D6.
   acumulado de `CommissionAgents.tsx` y la lista de ventas que arma `settleCommissions`
   en el `DataContext`; los dos usan ahora `comisionPendiente()`. Una liquidación sin
   ventas se rechaza (400): con el monto derivado valdría cero.
+- **Punto 8** (fuera del plan original, aceptado el 2026-10-24): `create` rechaza una venta
+  sin productos (400) en vez de tomar el total del cliente. En `fix/liquidacion-derivada`;
+  verificada el 2026-10-24 con una colección de Postman (3 casos), en verde.
 - **F4–F7**: sin empezar.

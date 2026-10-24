@@ -1524,6 +1524,9 @@ function calcularTotales(data) {
   for (const field of Object.keys(PRODUCT_HANDLERS)) {
     const arr = Array.isArray(data[field]) ? data[field] : [];
     for (const item of arr) {
+      // Mismo criterio que el armado de detalles de `create`, que salta los items vacios:
+      // `[{}]` no puede contar como producto.
+      if (!item || Object.keys(item).length === 0) continue;
       items += 1;
       // Pasa por financierosDe y no por item.supplierCost: un paquete pagado a varios
       // proveedores tiene la plata en `supplierPayments`, y sumar el campo suelto dejaba
@@ -1535,18 +1538,10 @@ function calcularTotales(data) {
       taCre += fin.taCre;
     }
   }
-  // Sin items no hay de donde derivar: se respeta lo que mande el cliente en vez de
-  // dejar la venta en cero.
-  if (items === 0) {
-    return {
-      costoProveedor: Number(data.supplierCost) || 0,
-      ta: Number(data.ta) || 0,
-      taCre: Number(data.taCre) || 0,
-      total: Number(data.total) || 0,
-      derivado: false,
-    };
-  }
-  return { costoProveedor, ta, taCre, total: costoProveedor + ta + taCre, derivado: true };
+  // Sin items no hay de donde derivar. Antes se respetaba el total que mandara el cliente,
+  // lo que dejaba crear por la API una venta de cualquier monto sin ningun producto; ahora
+  // `create` la rechaza con `items === 0`.
+  return { costoProveedor, ta, taCre, total: costoProveedor + ta + taCre, items };
 }
 
 const CATEGORIAS_CON_BOOKING_POR_PASAJERO = ['hoteleria', 'planes'];
@@ -1880,6 +1875,11 @@ exports.create = async (req, res, next) => {
     // esto lo guardaba tal cual. Los pagos pasan por la misma guarda de saldo que
     // registerPayment.
     const totales = calcularTotales(data);
+    // El asistente ya exige un producto (NewSaleWizard), pero el endpoint aceptaba una venta
+    // vacia con el total que dijera el cliente, y con total 0 el estado derivado es `pagado`.
+    if (totales.items === 0) {
+      return error(res, 'Una venta necesita al menos un producto', 400, 'VALIDATION_ERROR');
+    }
     const pagos = Array.isArray(data.payments) ? data.payments : [];
     if (pagos.some(p => !(Number(p.amount) > 0))) {
       return error(res, 'Cada pago debe ser mayor a cero', 400, 'VALIDATION_ERROR');
