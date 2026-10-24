@@ -35,7 +35,13 @@
       "source": "dietrichgebert/ponytail",
       "sourceType": "github",
       "skillPath": "skills/ponytail/SKILL.md",
-      "computedHash": "9e8d05cbbaf6dc38f0cffc924c09b3cbe76d94ba4ba0d09bde803da2f8c6b5a0"
+      "computedHash": "9feedbe220d039ba30720217b3fce16214817063fb54a48843d89368c86554e9"
+    },
+    "spec-kit": {
+      "source": "akillness/jeo-skills",
+      "sourceType": "github",
+      "skillPath": ".agent-skills/spec-kit/SKILL.md",
+      "computedHash": "a1cc39307629dad727a39409062a16088949c02162dd0ab1a26bc2c4d72591aa"
     },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",

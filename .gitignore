@@ -120,3 +120,10 @@ backend_logs.txt
 # Skills y config locales de agentes: cada uno las instala en su maquina
 .agents/
 .claude/
+
+# Sesiones de brainstorming del agente: son de quien las corre, no del proyecto
+.superpowers/
+
+# Colecciones y estado de Postman de las verificaciones: herramientas locales, no producto
+.postman/
+postman/
