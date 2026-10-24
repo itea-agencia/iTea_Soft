@@ -65,8 +65,7 @@ sumaban **$8.165.000**.
 | Regla | Dónde |
 |---|---|
 | Totales de la venta al crear | `calcularTotales()` en `sales.controller.js`, recorre `PRODUCT_HANDLERS` para que un producto nuevo no quede fuera por olvido. Una venta sin productos se rechaza (400): antes tomaba el total que mandara el cliente |
-| Totales al actualizar | se recalculan desde las filas al cerrar la transacción de `update` |
-| Totales al tocar un producto suelto | `recalcularTotalesVenta()` en `products.controller.js`, llamado por create, update y delete |
+| Totales después de crear | no hay forma de cambiarlos: desde el 2026-10-24 no existen `PUT /sales/:id` ni los endpoints de producto suelto, que tenían su propio recálculo y no los llamaba la interfaz |
 | Importes de un ítem | `financierosDe()` en el backend, `importesDe()` en `wizardData.ts`. **Una función por lado**, no dieciocho |
 | Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción; `create` guarda la suma de los pagos con que nace la venta |
 | Estado de la venta | `estadoDeVenta()` en `sales.controller.js`, la usan `create`, `registerPayment` y `deletePayment`. **Ningún endpoint acepta `status` ni `isCredit` del cliente**; `esCredito` sale del estado. En el frontend, `estadoDeVenta()` de `wizardData.ts` es solo vista previa |

@@ -94,8 +94,6 @@ interface DataContextType {
   deleteResponsable: (id: number) => Promise<void>;
   toggleResponsableStatus: (id: number, status: string) => Promise<void>;
   addSale: (sale: Omit<Sale, 'id'>) => Promise<Sale>;
-  updateSale: (id: number, sale: Partial<Sale>) => Promise<void>;
-  deleteSale: (id: number) => Promise<void>;
   voidSale: (id: number, reason: string) => Promise<string[]>;
   updateReviewStatus: (id: number, isReviewed: boolean) => Promise<void>;
   registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean, reference?: string) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
@@ -440,32 +438,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return created;
   };
 
-  const updateSale = async (id: number, saleUpdate: Partial<Sale>) => {
-    await api.updateSale(id, saleUpdate);
-    const updated = await api.getSale(id);
-    setData(prev => ({
-      ...prev,
-      sales: prev.sales.map(s => s.id === id ? { ...s, ...updated, ...saleUpdate } : s)
-    }));
-    invalidateSalesCache();
-    invalidateDashboardCache();
-    setDashboardData(null);
-    fetchFlights();
-  };
-
-  const deleteSale = async (id: number) => {
-    await api.deleteSale(id);
-    setData(prev => {
-      const updatedSales = prev.sales.filter(s => s.id !== id);
-      invalidateSalesCache();
-      invalidateDashboardCache();
-      return { ...prev, sales: updatedSales };
-    });
-    setDashboardData(null);
-    invalidateDashboardCache();
-    fetchFlights();
-  };
-
   // Devuelve los avisos del servidor: lo que anular no deshace (factura en Siigo, comisión pagada).
   const voidSale = async (id: number, reason: string): Promise<string[]> => {
     const result = await api.voidSale(id, reason);
@@ -727,8 +699,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteResponsable,
       toggleResponsableStatus,
       addSale,
-      updateSale,
-      deleteSale,
       voidSale,
       updateReviewStatus,
       settleCommissions,

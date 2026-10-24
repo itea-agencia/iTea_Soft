@@ -64,7 +64,7 @@ Siigo (que usan las credenciales del servidor).
 |---|---|
 | Token + sesión viva exigidos, sin excepción | `backend/src/middleware/auth.js` |
 | Permiso por módulo/acción, solo lo que hay en la base | `backend/src/middleware/authorize.js` (`authorize`, `authorizeAny`, `requireAdmin`) |
-| Propiedad del dato sobre una venta | `backend/src/middleware/ventaPropia.js`, en las 65 rutas de `sales.routes.js` que llevan `:id`/`:saleId` |
+| Propiedad del dato sobre una venta | `backend/src/middleware/ventaPropia.js`, en todas las rutas de `sales.routes.js` que llevan `:id`/`:saleId` (9 desde el 2026-10-24, cuando se quitaron `PUT`/`DELETE /sales/:id` y los 54 endpoints de producto suelto: la interfaz no los usaba, y el `PUT` de producto escribía el body crudo y no comprobaba que el producto fuera de la venta de la URL) |
 | Parámetros de búsqueda parametrizados | `Prisma.sql` en `sales.controller.js`, `clients.controller.js`, `responsables.controller.js`, `users.controller.js`, `commissions.controller.js` |
 | `/siigo/*` solo para admin | `requireAdmin` en `siigo.routes.js` |
 | `/stats/*`, `/commissions/*` con su propio permiso | `stats.routes.js`, `commissions.routes.js` |

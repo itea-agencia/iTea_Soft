@@ -11,8 +11,8 @@ export {
   listResponsables, getResponsable, createResponsable, updateResponsable, deleteResponsable, toggleResponsableStatus,
 } from './responsables';
 export {
-  listSales, getSale, createSale, updateSale, deleteSale, voidSale,
-  registerPayment, deletePayment, getSalePayments, createProduct, updateProduct, deleteProduct,
+  listSales, getSale, createSale, voidSale,
+  registerPayment, deletePayment, getSalePayments,
   sendVoucher, updateReviewStatus, createSiigoInvoice
 } from './sales';
 export {

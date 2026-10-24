@@ -239,16 +239,16 @@ SELECT count(*) FROM liquidacion_ventas lv JOIN ventas v ON v.id = lv.venta_id W
 Hallazgos 2, 6 y 7. Depende de D5. Es casi todo borrado, por eso va antes que lo menos
 urgente.
 
-- [ ] **T4.1** Quitar las 51 rutas de producto de `sales.routes.js` y borrar
+- [x] **T4.1** Quitar las 51 rutas de producto de `sales.routes.js` y borrar
   `products.controller.js`.
-- [ ] **T4.2** Quitar `createProduct`, `updateProduct` y `deleteProduct` de
+- [x] **T4.2** Quitar `createProduct`, `updateProduct` y `deleteProduct` de
   `frontend/src/api/sales.ts` y `api/index.ts`.
-- [ ] **T4.3** Borrar `createProductItems` y `deleteSale` de `sales.controller.js`, y la
+- [x] **T4.3** Borrar `createProductItems` y `deleteSale` de `sales.controller.js`, y la
   rama de productos de `update`.
-- [ ] **T4.4** Quitar `DELETE /sales/:id`, `remove`, y `deleteSale` del `DataContext` y de la
+- [x] **T4.4** Quitar `DELETE /sales/:id`, `remove`, y `deleteSale` del `DataContext` y de la
   API del frontend. Lo mismo con `PUT /sales/:id`, `update` y `updateSale`: desde F1 nadie
   los llama.
-- [ ] **T4.5** `CLAUDE.md`: la sección "Cuidado con los dos controladores" deja de aplicar.
+- [x] **T4.5** `CLAUDE.md`: la sección "Cuidado con los dos controladores" deja de aplicar.
   Spec de autenticación: corregir el conteo de rutas con `ventaPropia`.
 
 **Verificación**: `grep -rn "products/\|createProductItems\|deleteSale" backend/src frontend/src`
@@ -328,4 +328,11 @@ Depende de D6.
 - **Punto 8** (fuera del plan original, aceptado el 2026-10-24): `create` rechaza una venta
   sin productos (400) en vez de tomar el total del cliente. En `fix/liquidacion-derivada`;
   verificada el 2026-10-24 con una colección de Postman (3 casos), en verde.
-- **F4–F7**: sin empezar.
+- **F4**: implementada en `fix/quitar-endpoints-sin-uso`, que sale de `feat-bayrol`. Se
+  fueron 56 rutas (54 de producto suelto, `PUT` y `DELETE /sales/:id`),
+  `products.controller.js` entero y, del controlador de ventas, `update`, `remove`,
+  `deleteSale`, `createProductItems` y `crearPagosProveedor`, que quedó sin uso. En el
+  frontend, `updateSale`, `deleteSale` y las tres funciones de producto. `tsc` y
+  `node --check` en verde. Verificada el 2026-10-24 con una colección de Postman (6 rutas
+  quitadas dan 404 y 7 que quedan siguen andando), en verde.
+- **F5–F7**: sin empezar.

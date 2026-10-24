@@ -147,11 +147,6 @@ soportaba lo que se pedía y solo faltaba leerlo o mostrarlo. `parentDetalleId`,
 cuesta este ítem" estaba escrito a mano en dieciocho sitios; mover la plata de lugar le
 acertó a ninguno.
 
-**Cuidado con los dos controladores.** `sales.controller.js` y `products.controller.js`
-tienen transforms paralelos para los mismos productos, y divergieron: campos que uno guarda
-y el otro no, un método de pago que uno resuelve por nombre y el otro espera como id, un
-endpoint de seguros que nunca funcionó. Al tocar uno, revisá el otro.
-
 ## Gasto de tokens
 
 **El prompt caching es obligatorio**, tanto al trabajar en este repo con un agente como en
