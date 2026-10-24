@@ -396,8 +396,9 @@ exports.update = async (req, res, next) => {
       if (cambiaRol) {
         await auditar(tx, req.user.id, 'users', 'rol', `usuario ${id}: ${usuario.rol.nombre} -> ${nuevoRol.nombre}`);
       }
-      if (desactiva) {
-        await auditar(tx, req.user.id, 'users', 'toggle', `usuario ${id}: desactivado`);
+      if (data.status !== undefined && data.status !== usuario.status) {
+        await auditar(tx, req.user.id, 'users', 'toggle',
+          `usuario ${id}: ${data.status === 'inactive' ? 'desactivado' : 'reactivado'}`);
       }
       return guardado;
     });

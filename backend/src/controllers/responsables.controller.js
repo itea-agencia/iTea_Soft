@@ -354,8 +354,9 @@ exports.toggleStatus = async (req, res, next) => {
         where: { id },
         data: { status }
       });
-      if (status === 'inactive' && responsable.status !== 'inactive') {
-        await auditar(tx, req.user.id, 'responsables', 'toggle', `responsable ${id}: desactivado`);
+      if (status !== responsable.status) {
+        await auditar(tx, req.user.id, 'responsables', 'toggle',
+          `responsable ${id}: ${status === 'inactive' ? 'desactivado' : 'reactivado'}`);
       }
       return guardado;
     });

@@ -373,9 +373,9 @@ exports.toggleStatus = async (req, res, next) => {
         where: { id: cliente.personaId },
         data: { status: newStatus, updatedAt: new Date() }
       });
-      if (newStatus === 'inactive') {
-        await auditar(tx, req.user.id, 'clients', 'toggle', `cliente ${id}: desactivado`);
-      }
+      // Reactivar tambien: devuelve a alguien a la operacion, y no quedaba rastro de quien.
+      await auditar(tx, req.user.id, 'clients', 'toggle',
+        `cliente ${id}: ${newStatus === 'inactive' ? 'desactivado' : 'reactivado'}`);
     });
 
     success(res, { status: newStatus });
