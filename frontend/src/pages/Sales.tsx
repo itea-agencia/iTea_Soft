@@ -455,10 +455,11 @@ export default function Sales() {
     if (!voidConfirm || !voidReason.trim() || isVoiding) return;
     setIsVoiding(true);
     try {
-      await voidSale(voidConfirm.id, voidReason);
-      setSuccessMessage(`Venta #${voidConfirm.id} anulada correctamente`);
+      const avisos = await voidSale(voidConfirm.id, voidReason);
+      setSuccessMessage(`Venta #${voidConfirm.id} anulada correctamente. ${avisos.join(" ")}`);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      // Con avisos (factura en Siigo, comisión pagada) hay algo que hacer a mano: más tiempo para leerlo.
+      setTimeout(() => setShowSuccess(false), avisos.length > 0 ? 12000 : 3000);
       setVoidConfirm(null);
       setVoidReason("");
     } catch (err: any) {

@@ -2610,13 +2610,19 @@ exports.voidSale = async (req, res, next) => {
     const id = parseInt(req.params.id);
     const { reason } = req.body;
     
+    // Respondian `{ status, message }` en vez de la forma estandar, y el frontend, que lee
+    // `error.message`, mostraba su texto generico en lugar del motivo real.
     if (!reason) {
-      return res.status(400).json({ status: 'error', message: 'Debe proporcionar un motivo para anular la venta' });
+      return error(res, 'Debe proporcionar un motivo para anular la venta', 400, 'VALIDATION_ERROR');
     }
 
-    const venta = await prisma.ventas.findUnique({ where: { id } });
-    if (!venta) {
-      return res.status(404).json({ status: 'error', message: 'Venta no encontrada' });
+    const venta = await prisma.ventas.findUnique({
+      where: { id },
+      include: { facturaSiigo: { select: { estado: true, numero: true } } }
+    });
+    if (!venta) return error(res, 'Venta no encontrada', 404);
+    if (venta.status === 'anulado') {
+      return error(res, 'La venta ya está anulada', 409, 'VENTA_ANULADA');
     }
 
     const newObservaciones = venta.observaciones 
@@ -2631,7 +2637,17 @@ exports.voidSale = async (req, res, next) => {
       }
     });
     
-    success(res, { message: 'Venta anulada correctamente' });
+    // Anular no deshace lo que ya salio de la app. Se avisa en vez de bloquear: bloquear
+    // dejaria la venta viva aca y muerta en la realidad (decisiones D2 y D3 del plan).
+    const avisos = [];
+    if (venta.facturaSiigo?.estado === 'emitida') {
+      avisos.push(`La factura ${venta.facturaSiigo.numero || ''} sigue emitida en Siigo: hay que anularla allá con una nota crédito.`);
+    }
+    if (venta.comisionLiquidada) {
+      avisos.push('La comisión de esta venta ya se le liquidó al comisionista: anularla no la devuelve.');
+    }
+
+    success(res, { message: 'Venta anulada correctamente', avisos });
   } catch (err) {
     next(err);
   }
@@ -2676,9 +2692,14 @@ exports.registerPayment = async (req, res, next) => {
     // en el body por compatibilidad, pero ya no decide nada.
     const venta = await prisma.ventas.findUnique({
       where: { id },
-      select: { montoTotal: true }
+      select: { montoTotal: true, status: true }
     });
     if (!venta) return error(res, 'Venta no encontrada', 404);
+    // Un pago sobre una venta anulada la des-anulaba: el estado se recalculaba desde los
+    // pagos y volvia a `abonado` o `pagado`.
+    if (venta.status === 'anulado') {
+      return error(res, 'La venta está anulada: no admite pagos', 409, 'VENTA_ANULADA');
+    }
 
     const montoInput = Number(amount);
     if (!isTotal && (!Number.isFinite(montoInput) || montoInput <= 0)) {
@@ -2766,10 +2787,15 @@ exports.deletePayment = async (req, res, next) => {
     // Validate ownership quickly
     const payment = await prisma.pagosVenta.findUnique({
       where: { id: paymentId },
-      select: { id: true, ventaId: true, monto: true }
+      select: { id: true, ventaId: true, monto: true, venta: { select: { status: true } } }
     });
     if (!payment) return error(res, 'Pago no encontrado', 404);
     if (payment.ventaId !== saleId) return error(res, 'El pago no pertenece a esta venta', 400);
+    // Borrar un pago de una venta anulada la devolvia a `credito` o `abonado`, y volvia a
+    // sumar a la deuda del cliente.
+    if (payment.venta.status === 'anulado') {
+      return error(res, 'La venta está anulada: sus pagos no se modifican', 409, 'VENTA_ANULADA');
+    }
 
     let newPaidAmount = 0;
     let newStatus = 'credito';
@@ -3213,6 +3239,12 @@ exports.generateSiigoInvoice = async (req, res, next) => {
         publicUrl: venta.facturaSiigo.publicUrl,
         emitidaAt: venta.facturaSiigo.emitidaAt
       });
+    }
+
+    // Despues de la idempotencia: una venta anulada con factura ya emitida devuelve esa
+    // factura, pero no se le crea una nueva.
+    if (venta.status === 'anulado') {
+      return error(res, 'La venta está anulada: no se factura', 409, 'VENTA_ANULADA');
     }
 
     // Guardarrail, antes de tocar Siigo y antes de registrar el intento.

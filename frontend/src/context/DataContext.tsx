@@ -95,7 +95,7 @@ interface DataContextType {
   addSale: (sale: Omit<Sale, 'id'>) => Promise<Sale>;
   updateSale: (id: number, sale: Partial<Sale>) => Promise<void>;
   deleteSale: (id: number) => Promise<void>;
-  voidSale: (id: number, reason: string) => Promise<void>;
+  voidSale: (id: number, reason: string) => Promise<string[]>;
   updateReviewStatus: (id: number, isReviewed: boolean) => Promise<void>;
   registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean, reference?: string) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
   deleteSalePayment: (saleId: number, paymentId: string) => Promise<void>;
@@ -465,8 +465,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     fetchFlights();
   };
 
-  const voidSale = async (id: number, reason: string) => {
-    await api.voidSale(id, reason);
+  // Devuelve los avisos del servidor: lo que anular no deshace (factura en Siigo, comisión pagada).
+  const voidSale = async (id: number, reason: string): Promise<string[]> => {
+    const result = await api.voidSale(id, reason);
     const updated = await api.getSale(id);
     setData(prev => ({
       ...prev,
@@ -475,6 +476,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     invalidateSalesCache();
     invalidateDashboardCache();
     setDashboardData(null);
+    return result?.avisos || [];
   };
 
   const updateReviewStatus = async (id: number, isReviewed: boolean) => {

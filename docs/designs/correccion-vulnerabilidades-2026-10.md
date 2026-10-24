@@ -188,15 +188,15 @@ SELECT count(*) FROM ventas v WHERE v.status = 'pagado'
 
 Hallazgo 3. Depende de D2 y D3. Usa `estadoDeVenta` de F1.
 
-- [ ] **T2.1** `registerPayment` y `deletePayment` responden 409 `VENTA_ANULADA` si la venta
+- [x] **T2.1** `registerPayment` y `deletePayment` responden 409 `VENTA_ANULADA` si la venta
   está anulada.
-- [ ] **T2.2** `generateSiigoInvoice` responde 409 `VENTA_ANULADA` antes de registrar el
+- [x] **T2.2** `generateSiigoInvoice` responde 409 `VENTA_ANULADA` antes de registrar el
   intento.
-- [ ] **T2.3** `voidSale` responde 409 si ya está anulada; si tiene factura `emitida` o
+- [x] **T2.3** `voidSale` responde 409 si ya está anulada; si tiene factura `emitida` o
   `comisionLiquidada`, anula igual y devuelve los avisos.
-- [ ] **T2.4** El frontend muestra esos avisos al anular. **Interfaz: no verificable
+- [x] **T2.4** El frontend muestra esos avisos al anular. **Interfaz: no verificable
   visualmente.**
-- [ ] **T2.5** Spec `dinero-y-totales`: agregar "una venta anulada no sale de `anulado`" y la
+- [x] **T2.5** Spec `dinero-y-totales`: agregar "una venta anulada no sale de `anulado`" y la
   consulta de abajo.
 
 **Verificación**: con una venta anulada de prueba, `POST /:id/payments`,
@@ -313,4 +313,9 @@ Depende de D6.
   API local con una colección de Postman (8 casos: estado ignorado, pagos de más, pago
   completo, pago parcial, falta de responsable, pago en cero, PUT con estado y pagos), todos
   en verde. `tsc` y `node --check` en verde. Sin commitear.
-- **F2–F7**: sin empezar.
+- **F2**: implementada en `fix/reglas-de-anulacion`, que sale de la rama de F1. Verificada el 2026-10-23 con
+  una colección de Postman (13 casos), en verde. `tsc` y `node --check` en verde. *Notas de implementación:*
+  `voidSale` respondía sus errores con `{ status, message }` y el frontend no veía el
+  motivo; pasó a la forma estándar. Los avisos se muestran en el mensaje de éxito, 12
+  segundos en vez de 3.
+- **F3–F7**: sin empezar.

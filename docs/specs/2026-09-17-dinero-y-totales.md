@@ -70,6 +70,7 @@ sumaban **$8.165.000**.
 | Importes de un ítem | `financierosDe()` en el backend, `importesDe()` en `wizardData.ts`. **Una función por lado**, no dieciocho |
 | Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción; `create` guarda la suma de los pagos con que nace la venta |
 | Estado de la venta | `estadoDeVenta()` en `sales.controller.js`, la usan `create`, `registerPayment` y `deletePayment`. **Ningún endpoint acepta `status` ni `isCredit` del cliente**; `esCredito` sale del estado. En el frontend, `estadoDeVenta()` de `wizardData.ts` es solo vista previa |
+| Una venta anulada se queda anulada | `registerPayment`, `deletePayment` y `generateSiigoInvoice` responden 409 `VENTA_ANULADA`; `voidSale` también, si ya estaba anulada. Antes, borrar un pago de una anulada la devolvía a `credito` y volvía a sumar a la deuda. Anular con factura emitida o comisión liquidada se permite, pero la respuesta trae `avisos`: lo que hay que deshacer a mano |
 | Pagos al crear | `create` rechaza un pago que no sea mayor a cero (400) y pagos que superen el total (409 `SALDO_INSUFICIENTE`) |
 | Que lo pagado no supere el total | `registerPayment` calcula el saldo pendiente y rechaza (409) lo que lo exceda, o cualquier pago si el saldo ya es cero. `SELECT ... FOR UPDATE` sobre la venta serializa dos registros casi simultáneos del mismo pago |
 | Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda** |
