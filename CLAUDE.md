@@ -164,7 +164,8 @@ necesidad.
 - Agrupá llamadas a herramientas independientes en un mismo turno en lugar de una por una:
   cada ida y vuelta de más es contexto repetido.
 - Ante tareas o preguntas simples, andá directo: un `grep` o una lectura dirigida, no
-  recorrer el código entero.
+  recorrer el código entero. Si el usuario da un dato concreto (un número de venta, un
+  id), empezá por ese dato antes de rastrear el flujo completo.
 - No releas archivos completos cuando alcanza con un rango de líneas.
   `sales.controller.js` tiene más de 3.000.
 - Verificá solo lo afectado mientras trabajás; el chequeo completo (`tsc` del frontend,
