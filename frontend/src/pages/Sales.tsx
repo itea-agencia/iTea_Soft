@@ -36,7 +36,7 @@ import { VoucherPDF } from "../components/sales/VoucherPDF";
 import LoadingScreen from "../components/ui/LoadingScreen";
 
 export default function Sales() {
-  const { data, addSale, updateSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, salesLoading, fetchSales, fetchClients } = useData();
+  const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, salesLoading, fetchSales, fetchClients } = useData();
   const responsables = data.responsables || [];
   const { user, isAdmin } = useAuth();
   const { canCreate, canEdit, permissions } = usePermissions();
@@ -723,7 +723,6 @@ export default function Sales() {
         clients={data.clients}
         user={user}
         isAdmin={isAdmin}
-        onUpdateSale={updateSale}
         onAddSale={addSale}
         onRegisterPayment={(saleId, amount, method, reference) => registerCreditPayment(saleId, amount, method, false, reference)}
         onDeletePayment={(saleId, paymentId) => deleteSalePayment(saleId, paymentId)}

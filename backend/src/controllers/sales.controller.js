@@ -1875,10 +1875,25 @@ exports.create = async (req, res, next) => {
     }
     console.log('[CREATE VENTA] landTravelData received:', JSON.stringify(data.landTravelData, null, 2));
 
+    // El estado y lo abonado salen de los pagos y del total que calcula el servidor, no de
+    // `data.status`: el paso de pagos ofrecia "Completada" sin ningun pago registrado, y
+    // esto lo guardaba tal cual. Los pagos pasan por la misma guarda de saldo que
+    // registerPayment.
+    const totales = calcularTotales(data);
+    const pagos = Array.isArray(data.payments) ? data.payments : [];
+    if (pagos.some(p => !(Number(p.amount) > 0))) {
+      return error(res, 'Cada pago debe ser mayor a cero', 400, 'VALIDATION_ERROR');
+    }
+    const sumaPagos = pagos.reduce((t, p) => t + Number(p.amount), 0);
+    if (sumaPagos > totales.total + TOLERANCIA_PAGO) {
+      return error(res, 'Los pagos superan el total de la venta', 409, 'SALDO_INSUFICIENTE');
+    }
+    const status = estadoDeVenta(totales.total, sumaPagos);
+
     // El frontend ya lo exige, pero una venta en credito o abono sin responsable queda
     // sin nadie a quien reclamarle la deuda, y el endpoint es publico para cualquiera con
     // sesion: no alcanza con validarlo solo del lado del cliente.
-    if ((data.status === 'credito' || data.status === 'abonado') && !data.responsableId) {
+    if (status !== 'pagado' && !data.responsableId) {
       const err = new Error('El responsable es obligatorio para ventas en crédito o abonadas');
       err.statusCode = 400;
       err.code = 'VALIDATION_ERROR';
@@ -2106,8 +2121,6 @@ exports.create = async (req, res, next) => {
 
       const metodoPagoId = await resolvePaymentMethodId(tx, data.paymentMethod, memCache);
 
-      const totales = calcularTotales(data);
-
       const ventaCreateData = {
         clienteId: data.clientId,
         usuarioId: req.user.id,
@@ -2121,17 +2134,18 @@ exports.create = async (req, res, next) => {
         porcentajeRetencionComision: data.commissionAgentRetentionPercentage || 0,
         montoComisionNeto: data.commissionAgentNetPayment || 0,
         metodoPagoPrincipalId: metodoPagoId,
-        status: data.status || 'credito',
-        esCredito: data.isCredit || false,
-        fechaVenceCredito: data.creditDueDate ? new Date(data.creditDueDate) : null,
-        montoPagadoCredito: data.creditPaidAmount || 0,
+        status,
+        esCredito: status !== 'pagado',
+        fechaVenceCredito: status !== 'pagado' && data.creditDueDate ? new Date(data.creditDueDate) : null,
+        // Lo mismo que dejan registerPayment y deletePayment: la suma de los pagos.
+        montoPagadoCredito: sumaPagos,
         observaciones: data.observations || ''
       };
 
-      if (data.payments && data.payments.length > 0) {
+      if (pagos.length > 0) {
         ventaCreateData.pagosVenta = {
-          create: data.payments.map(p => ({
-            monto: p.amount,
+          create: pagos.map(p => ({
+            monto: Number(p.amount),
             metodoPagoId: parseInt(p.method) || null,
             referencia: p.reference || null
           }))
@@ -2304,10 +2318,13 @@ exports.update = async (req, res, next) => {
     // Los totales NO se toman del cliente: se recalculan desde las filas al final de la
     // transaccion, cuando ya estan creados los productos que trae este request. Un patch
     // parcial no puede traer un total correcto, y Siigo factura contra `montoTotal`.
+    //
+    // Tampoco el estado ni los pagos: aca se aceptaban `status` y `isCredit` sin mirar los
+    // pagos, y un arreglo `payments` que creaba y borraba pagos sin guarda de saldo, con el
+    // estado derivado contra `data.total`. Los pagos van por registerPayment y
+    // deletePayment, que son los que derivan el estado.
     const updateData = {};
-    if (data.status) updateData.status = data.status;
     if (data.observations !== undefined) updateData.observaciones = data.observations;
-    if (data.isCredit !== undefined) updateData.esCredito = data.isCredit;
     if (data.creditDueDate) updateData.fechaVenceCredito = new Date(data.creditDueDate);
     if (data.paymentMethod) updateData.metodoPagoPrincipalId = await resolvePaymentMethodId(prisma, data.paymentMethod);
     if (data.commissionAgentId !== undefined) updateData.comisionistaId = data.commissionAgentId || null;
@@ -2328,40 +2345,6 @@ exports.update = async (req, res, next) => {
         select: { personaId: true }
       });
       const personaId = clienteVenta?.personaId || null;
-
-      if (data.payments) {
-        const existingPayments = await tx.pagosVenta.findMany({ where: { ventaId: id } });
-        const existingIds = new Set(existingPayments.map(p => String(p.id)));
-        const incomingIds = new Set(data.payments.map(p => String(p.id)).filter(id => id !== 'NaN'));
-
-        for (const p of data.payments) {
-          const pid = String(p.id);
-          if (!existingIds.has(pid)) {
-            await tx.pagosVenta.create({
-              data: {
-                ventaId: id,
-                monto: p.amount,
-                metodoPagoId: await resolvePaymentMethodId(prisma, p.method),
-                referencia: p.reference || null
-              }
-            });
-          }
-        }
-
-        for (const existing of existingPayments) {
-          if (!incomingIds.has(String(existing.id))) {
-            await tx.pagosVenta.delete({ where: { id: existing.id } });
-          }
-        }
-
-        const totalPaid = data.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        const totalSale = data.total || venta.montoTotal;
-        const newStatus = totalPaid >= totalSale ? 'pagado' : totalPaid > 0 ? 'abonado' : 'credito';
-        await tx.ventas.update({
-          where: { id },
-          data: { montoPagadoCredito: totalPaid, status: newStatus }
-        });
-      }
 
       // Debe cubrir todas las claves de PRODUCT_HANDLERS: lo que falte aqui se ignora
       // en silencio al editar y el endpoint responde success igual.
@@ -2671,6 +2654,14 @@ exports.remove = async (req, res, next) => {
 // de un `Float` sin dejar pasar un sobrepago real.
 const TOLERANCIA_PAGO = 1;
 
+// El estado de una venta es funcion de su total y de lo pagado. Es la unica definicion:
+// create, registerPayment y deletePayment la usan, y ningun endpoint acepta `status` del
+// cliente.
+function estadoDeVenta(montoTotal, pagado) {
+  if (montoTotal - pagado <= TOLERANCIA_PAGO) return 'pagado';
+  return pagado > 0 ? 'abonado' : 'credito';
+}
+
 exports.registerPayment = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
@@ -2742,7 +2733,7 @@ exports.registerPayment = async (req, res, next) => {
       // `isTotal` salda la venta de una: el importe queda en el total sin importar que
       // sumen las filas. Hoy la interfaz siempre manda false, pero el endpoint lo soporta.
       newPaidAmount = isTotal ? venta.montoTotal : sumaExistente + montoInput;
-      newStatus = newPaidAmount >= venta.montoTotal ? 'pagado' : 'abonado';
+      newStatus = estadoDeVenta(venta.montoTotal, newPaidAmount);
 
       await tx.ventas.update({
         where: { id },
@@ -2803,9 +2794,7 @@ exports.deletePayment = async (req, res, next) => {
         where: { id: saleId },
         select: { montoTotal: true }
       });
-      newStatus = newPaidAmount >= venta.montoTotal
-        ? 'pagado'
-        : newPaidAmount > 0 ? 'abonado' : 'credito';
+      newStatus = estadoDeVenta(venta.montoTotal, newPaidAmount);
 
       await tx.ventas.update({
         where: { id: saleId },

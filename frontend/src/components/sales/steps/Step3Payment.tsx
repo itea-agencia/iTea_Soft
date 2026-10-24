@@ -4,6 +4,7 @@ import { FormField, Input, Select, Textarea, Combobox, CurrencyInput } from "../
 import { Button } from "../../ui/Button";
 import { DatePicker } from "../forms/TicketForm";
 import { todayStr } from "../../../utils/formatters";
+import { estadoDeVenta } from "../wizardData";
 
 export function Step3Payment({ form, set, data, errors }: any) {
   // Local state for the new payment item being added
@@ -97,58 +98,10 @@ export function Step3Payment({ form, set, data, errors }: any) {
     set("payments", updated);
   };
 
-  // Automated state handler based on payment progress
-  useEffect(() => {
-    if (totalSale === 0) {
-      // Si el valor total de la venta es $0 (pago proveedor 0 y TA 0), no forzar "credito" automáticamente
-      // Permitir que el usuario conserve la opción "pagado" (Completada) o "credito"
-      if (form.status !== "credito" && form.status !== "pagado") {
-        set("status", "pagado");
-        set("isCredit", false);
-      }
-      return;
-    }
-
-    if (totalPaid === 0) {
-      if (form.status !== "credito" && form.status !== "pagado") {
-        set("status", "credito");
-        set("isCredit", true);
-      }
-    } else if (totalPaid >= totalSale) {
-      if (form.status !== "pagado") {
-        set("status", "pagado");
-        set("isCredit", false);
-      }
-    } else {
-      // Partial payment: if currently on completed (pagado) state, force it back to abonado (Abonada)
-      if (form.status !== "abonado" && form.status !== "credito") {
-        set("status", "abonado");
-        set("isCredit", true);
-      }
-    }
-  }, [totalPaid, totalSale, form.status, set]);
-
-  const getStatusOptions = () => {
-    if (totalSale === 0 || totalPaid === 0) {
-      return [
-        { value: "credito", label: "Crédito" },
-        { value: "pagado", label: "Completada" },
-      ];
-    }
-    if (totalSale > 0 && totalPaid >= totalSale) {
-      return [{ value: "pagado", label: "Completada" }];
-    }
-    if (totalPaid > 0 && totalPaid < totalSale) {
-      return [
-        { value: "credito", label: "Crédito" },
-        { value: "abonado", label: "Abonada" },
-      ];
-    }
-    return [
-      { value: "credito", label: "Crédito" },
-      { value: "pagado", label: "Completada" },
-    ];
-  };
+  // El estado no se elige: sale de los pagos. Antes se podia marcar "Completada" sin
+  // ningun pago, y el servidor lo guardaba asi.
+  const estado = estadoDeVenta(form);
+  const enCredito = estado !== "pagado";
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -318,20 +271,14 @@ export function Step3Payment({ form, set, data, errors }: any) {
 
       {/* CONFIGURACIÓN DEL ESTADO Y CRÉDITO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField label="Estado de la Venta *" error={errors.status}>
-          <Combobox
-            value={form.status}
-            onChange={(val) => {
-              set("status", val);
-              set("isCredit", val === "credito" || val === "abonado");
-            }}
-            placeholder="Selecciona un estado..."
-            options={getStatusOptions()}
-            error={errors.status}
+        <FormField label="Estado de la Venta">
+          <Input
+            value={{ credito: "Crédito", abonado: "Abonada", pagado: "Completada" }[estado]}
+            disabled
           />
         </FormField>
 
-        {(form.status === "credito" || form.status === "abonado") && (
+        {enCredito && (
           <FormField label="Fecha Límite del Crédito *" error={errors.creditDueDate}>
             <DatePicker
               value={form.creditDueDate}
@@ -344,7 +291,7 @@ export function Step3Payment({ form, set, data, errors }: any) {
         )}
 
         {/* Responsable (Sólo si es crédito o abonado) */}
-        {(form.status === "credito" || form.status === "abonado") && (
+        {enCredito && (
           <FormField label="Responsable del Crédito *" error={errors.responsableId}>
             <Combobox
               value={form.responsableId || ""}

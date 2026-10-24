@@ -68,7 +68,9 @@ sumaban **$8.165.000**.
 | Totales al actualizar | se recalculan desde las filas al cerrar la transacción de `update` |
 | Totales al tocar un producto suelto | `recalcularTotalesVenta()` en `products.controller.js`, llamado por create, update y delete |
 | Importes de un ítem | `financierosDe()` en el backend, `importesDe()` en `wizardData.ts`. **Una función por lado**, no dieciocho |
-| Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción |
+| Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción; `create` guarda la suma de los pagos con que nace la venta |
+| Estado de la venta | `estadoDeVenta()` en `sales.controller.js`, la usan `create`, `registerPayment` y `deletePayment`. **Ningún endpoint acepta `status` ni `isCredit` del cliente**; `esCredito` sale del estado. En el frontend, `estadoDeVenta()` de `wizardData.ts` es solo vista previa |
+| Pagos al crear | `create` rechaza un pago que no sea mayor a cero (400) y pagos que superen el total (409 `SALDO_INSUFICIENTE`) |
 | Que lo pagado no supere el total | `registerPayment` calcula el saldo pendiente y rechaza (409) lo que lo exceda, o cualquier pago si el saldo ya es cero. `SELECT ... FOR UPDATE` sobre la venta serializa dos registros casi simultáneos del mismo pago |
 | Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda** |
 
@@ -91,6 +93,13 @@ WHERE v.monto_total IS DISTINCT FROM
       (SELECT COALESCE(sum(costo_proveedor + ta + ta_cre),0) FROM detalle_venta WHERE venta_id = v.id);
 ```
 
+Ninguna venta `pagado` puede deber plata (el estado se derivó mal o llegó del cliente):
+
+```sql
+SELECT id, monto_total FROM ventas v WHERE v.status = 'pagado'
+   AND v.monto_total - COALESCE((SELECT sum(monto) FROM pagos_venta p WHERE p.venta_id = v.id), 0) > 1;
+```
+
 Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación está dentro de
 `backend/db-manual/backfill_pagos_proveedor_paquetes.sql`, que aborta si algo no cuadra.
 
@@ -101,8 +110,9 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
   la comisión, que también se escribe desde `Step3Payment` y `Step1Client`.
 - **`monto_pagado_credito` difiere de la suma de pagos en varias ventas `pagado` y
   `anulado`** (39 y 2 al 17 de septiembre). Ahí queda en cero y la suma de pagos es el
-  total, lo que es coherente con que esa columna siga solo los abonos a crédito, no un pago
-  completo al vender. Si esa lectura no es la correcta, hay que revisarlo.
+  total, porque `create` guardaba `creditPaidAmount`, que el asistente nunca mandaba. Desde
+  el 2026-10-23 `create` guarda la suma de los pagos, igual que `registerPayment`; las
+  ventas anteriores quedan como estaban.
 - **La venta 64 queda por encima del total** (ver arriba): es el único caso conocido, y se
   decidió no corregirlo. Conviene repetir esta consulta de vez en cuando por si aparece
   otro, ya que el guardarraíl es nuevo y no repara lo que pasó antes de él:

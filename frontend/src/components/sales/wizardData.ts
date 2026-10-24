@@ -39,6 +39,15 @@ export interface PaymentData {
   reference: string;
 }
 
+// Vista previa del estado que va a guardar el servidor (estadoDeVenta en
+// sales.controller.js, con el mismo peso de margen). El estado no se elige: sale de los pagos.
+export function estadoDeVenta(form: Pick<WizardFormData, "total" | "payments">) {
+  const total = Number(form.total) || 0;
+  const pagado = (form.payments || []).reduce((t, p) => t + Number(p.amount), 0);
+  if (total - pagado <= 1) return "pagado";
+  return pagado > 0 ? "abonado" : "credito";
+}
+
 export interface WizardFormData {
   clientId: string;
   commissionAgentId: string;
@@ -58,8 +67,6 @@ export interface WizardFormData {
   ta: string;
   taCre: string;
   supplierCost: string;
-  status: string;
-  isCredit: boolean;
   creditDueDate: string;
   tickets: TicketData[];
   hotels: HotelData[];
@@ -487,8 +494,6 @@ export const INITIAL_FORM: WizardFormData = {
   ta: "",
   taCre: "",
   supplierCost: "",
-  status: "",
-  isCredit: false,
   creditDueDate: "",
   tickets: [],
   hotels: [],

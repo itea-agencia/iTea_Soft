@@ -8,7 +8,7 @@ import {
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
-import { Input, Select, Combobox, FormField, CurrencyInput } from "../ui/Form";
+import { Input, Select, CurrencyInput } from "../ui/Form";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { Sale, Client, User, PaymentRecord } from "../../types";
 import * as api from "../../api";
@@ -20,7 +20,6 @@ interface SaleEditModalProps {
   clients: Client[];
   user: User | null;
   isAdmin: boolean;
-  onUpdateSale?: (id: number, data: any) => void;
   onAddSale?: (data: any) => void;
   onRegisterPayment: (saleId: number, amount: number, methodId: string, reference?: string) => Promise<any>;
   onDeletePayment: (saleId: number, paymentId: string) => Promise<void>;
@@ -100,7 +99,6 @@ export default function SaleEditModal({
   clients,
   user,
   isAdmin,
-  onUpdateSale,
   onRegisterPayment,
   onDeletePayment,
   onDownloadVoucher,
@@ -111,10 +109,6 @@ export default function SaleEditModal({
     method: "Efectivo",
     reference: "",
   });
-  const [localStatus, setLocalStatus] = useState<string>("");
-  const [localCreditDueDate, setLocalCreditDueDate] = useState<string>("");
-  const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
-  const [isSaving, setIsSaving] = useState(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
   const [paymentsError, setPaymentsError] = useState("");
 
@@ -131,14 +125,6 @@ export default function SaleEditModal({
    */
   useEffect(() => {
     if (!editingSale) return;
-
-    setLocalStatus(editingSale.status);
-    setLocalCreditDueDate(
-      editingSale.creditDueDate
-        ? new Date(editingSale.creditDueDate).toISOString().split("T")[0]
-        : ""
-    );
-    setLocalErrors({});
 
     if (editingSale.payments) {
       setPayments(editingSale.payments as PaymentRecord[]);
@@ -168,24 +154,9 @@ export default function SaleEditModal({
   const totalPaidAmount = payments.reduce((acc, p) => acc + p.amount, 0);
   const remainingBalance = totalSaleAmount - totalPaidAmount;
 
-  // Automatically force 'Finalizada' (pagado) state when sale total is covered by payments
-  useEffect(() => {
-    if (totalSaleAmount === 0) return;
-
-    if (totalPaidAmount >= totalSaleAmount) {
-      if (localStatus !== "pagado") {
-        setLocalStatus("pagado");
-      }
-    } else if (totalPaidAmount === 0) {
-      if (localStatus !== "credito") {
-        setLocalStatus("credito");
-      }
-    } else {
-      if (localStatus !== "abonado" && localStatus !== "credito") {
-        setLocalStatus("abonado");
-      }
-    }
-  }, [totalPaidAmount, totalSaleAmount, localStatus]);
+  // Lo mismo que deriva el servidor al registrar o borrar un pago (estadoDeVenta). Antes era
+  // un selector que este modal mandaba por PUT, y el servidor lo guardaba sin mirar los pagos.
+  const estado = remainingBalance <= 1 ? "pagado" : totalPaidAmount > 0 ? "abonado" : "credito";
 
   if (!isOpen || !editingSale) return null;
 
@@ -231,40 +202,6 @@ export default function SaleEditModal({
     });
   };
 
-  const getStatusOptions = () => {
-    if (totalSaleAmount > 0 && totalPaidAmount >= totalSaleAmount) {
-      return [{ value: "pagado", label: "Completada" }];
-    }
-    if (totalPaidAmount > 0 && totalPaidAmount < totalSaleAmount) {
-      return [
-        { value: "credito", label: "Crédito" },
-        { value: "abonado", label: "Abonada" },
-      ];
-    }
-    return [{ value: "credito", label: "Crédito" }];
-  };
-
-  const handleUpdate = async () => {
-    // Sin abonos no hay nada que guardar. Se corta tambien mientras se estan cargando:
-    // guardar en ese momento tomaria la lista vacia por buena.
-    if (loadingPayments || payments.length === 0) return;
-    setIsSaving(true);
-    try {
-      if (onUpdateSale) {
-        await onUpdateSale(sale.id, {
-          status: localStatus,
-          isCredit: localStatus === "credito" || localStatus === "abonado"
-        });
-      }
-      onClose();
-    } catch (err) {
-      console.error("Error al actualizar abonos:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-
   return (
     <Modal
       isOpen={isOpen}
@@ -272,23 +209,15 @@ export default function SaleEditModal({
       title="Gestión de Abonos y Pagos"
       size="lg"
       footer={
-        <>
-           <Button 
-            variant="outline" 
-            onClick={onClose} 
-            className="px-8 border-gray-200 text-gray-500 hover:bg-gray-50 font-medium"
-            disabled={isSaving}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleUpdate} 
-            className="px-8 font-medium bg-[#0b396b] hover:bg-[#072445] disabled:bg-slate-400 disabled:hover:bg-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSaving || loadingPayments || payments.length === 0}
-          >
-            {isSaving ? "Actualizando..." : "Actualizar"}
-          </Button>
-        </>
+        // Sin "Actualizar": cada pago ya se guarda al registrarlo o borrarlo, y el botón solo
+        // mandaba un estado elegido en el navegador.
+        <Button
+          variant="outline"
+          onClick={onClose}
+          className="px-8 border-gray-200 text-gray-500 hover:bg-gray-50 font-medium"
+        >
+          Cerrar
+        </Button>
       }
     >
       <div className="space-y-6">
@@ -298,10 +227,10 @@ export default function SaleEditModal({
               <h4 className="font-bold text-primary flex items-center gap-2">
                 <Receipt size={18} /> Resumen de Venta #{sale.id}
               </h4>
-              <Badge variant={sale.status}>
-                {sale.status === "pagado"
+              <Badge variant={estado}>
+                {estado === "pagado"
                   ? "Finalizado"
-                  : sale.status === "abonado"
+                  : estado === "abonado"
                     ? "Abonado"
                     : "Crédito"}
               </Badge>
@@ -555,21 +484,6 @@ export default function SaleEditModal({
                 )}
               </div>
             </div>
-            {/* CONFIGURACIÓN DEL ESTADO editable (Al final de la modal) */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
-              <FormField label="Estado de la Venta *" error={localErrors.status}>
-                <Combobox
-                  value={localStatus}
-                  onChange={(val) => {
-                    setLocalStatus(val);
-                  }}
-                  placeholder="Selecciona un estado..."
-                  options={getStatusOptions()}
-                  error={localErrors.status}
-                />
-              </FormField>
-            </div>
-
             {/* Barra de progreso de pago */}
             {(() => {
               const progress =

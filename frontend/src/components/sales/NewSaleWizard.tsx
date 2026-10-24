@@ -61,7 +61,7 @@ import {
   INITIAL_VISA,
   INITIAL_PASSPORT,
   INITIAL_PET_SERVICE,
-  PRODUCTOS, vinculosReindexados, importesDe,
+  PRODUCTOS, vinculosReindexados, importesDe, estadoDeVenta,
 } from "./wizardData";
 import { Step1Client } from "./steps/Step1Client";
 import { Step2Products } from "./steps/Step2Products";
@@ -1223,17 +1223,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         errs.total = "El valor total no puede ser negativo";
       }
       
-      const hasPayments = form.payments && form.payments.length > 0;
-      if (form.status !== "credito" && form.status !== "pagado" && !form.paymentMethod && !hasPayments) {
-        errs.paymentMethod = "La forma de pago es obligatoria";
-      }
-      
-      if (!form.status) {
-        errs.status = "El estado de la venta es obligatorio";
-      }
-      
-      const isCreditState = form.status === "credito" || form.status === "abonado";
-      if (isCreditState) {
+      if (estadoDeVenta(form) !== "pagado") {
         if (!form.responsableId) {
           errs.responsableId = "El responsable es obligatorio para ventas en crédito o abonadas";
         }
@@ -1908,11 +1898,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       ? (form.payments.length === 1 ? form.payments[0].methodName : "Mixto")
       : form.paymentMethod;
 
-    let finalStatus = form.status;
-    if (form.status === "credito" && form.payments && form.payments.length > 0) {
-      finalStatus = "abonado";
-    }
-
     const mappedInsurances = form.insurances.map(ins => ({
       ...ins,
       phone: ins.phone ? ins.phone.replace(/\D/g, "") : ""
@@ -1931,7 +1916,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         method: p.methodId,
         reference: p.reference
       })),
-      status: finalStatus as Sale["status"],
       responsableId: form.responsableId ? Number(form.responsableId) : undefined,
       observations: fullObservations,
       products: form.selectedProducts,
@@ -1952,8 +1936,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       visaData: form.visas.length > 0 ? form.visas : undefined,
       passportData: form.passports.length > 0 ? form.passports : undefined,
       petServiceData: form.petServices.length > 0 ? form.petServices : undefined,
-      isCredit: form.isCredit,
-      creditDueDate: form.isCredit ? form.creditDueDate : undefined,
+      // El servidor la descarta si la venta queda pagada.
+      creditDueDate: form.creditDueDate || undefined,
       commissionAgentId: Number(form.commissionAgentId) || undefined,
       commissionAgentName: form.commissionAgentName || undefined,
       commissionAgentAmount: Number(form.commissionAgentAmount) || undefined,
