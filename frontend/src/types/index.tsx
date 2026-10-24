@@ -759,6 +759,8 @@ export interface Sale {
 export interface Flight {
   id: string;
   originalTramoId?: string;
+  /** Quien hizo la venta: el duenio para "Editar check-in: Propios". */
+  asesorId?: number | null;
   pasajeroId?: string | null;
   email?: string | null;
   passenger: string;

@@ -21,10 +21,6 @@ const DAYS = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
 export default function Itineraries() {
   const { data, updateFlight, fetchFlights, fetchClients } = useData();
   const { puede } = usePermissions();
-  // shortcut: el vuelo no trae quien hizo la venta, asi que con "Ver: Todos" y "Editar: Propios"
-  // el boton de check-in se muestra en vuelos ajenos y el backend lo rechaza (404). Si eso
-  // molesta, el listado de vuelos tiene que devolver el usuario de la venta.
-  const canEditItinerary = (modulo: string) => puede(modulo, 'edit');
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'calendar' | 'checkin'>('calendar');
   const [calendarTab, setCalendarTab] = useState<'ida' | 'regreso'>('ida');
@@ -108,8 +104,8 @@ export default function Itineraries() {
   };
 
   const handleMarkCheckin = (flightId: string, passenger: string) => {
-    if (!canEditItinerary('itineraries')) return;
     const flight = data.flights.find(f => f.id === flightId);
+    if (!flight || !puede('itineraries', 'edit', flight.asesorId)) return;
     if (flight) {
       setSelectedFlightForCheckin(flight);
       setIsCheckinModalOpen(true);
@@ -579,7 +575,7 @@ export default function Itineraries() {
                                 </div>
                               </div>
                             </div>
-                            {canEditItinerary('itineraries') && (
+                            {puede('itineraries', 'edit', flight.asesorId) && (
                               <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-2">
                                 <Button 
                                   variant="outline"

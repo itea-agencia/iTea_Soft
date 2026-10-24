@@ -134,6 +134,8 @@ exports.list = async (req, res, next) => {
         data.push({
           id: `${t.id}__${p.idSuffix}`,
           originalTramoId: t.id,
+          // Quien hizo la venta: el frontend decide con esto el boton de check-in con "Propios".
+          asesorId: venta?.usuarioId ?? null,
           pasajeroId: p.pasajeroId,
           passenger: p.name,
           email: p.email,
@@ -227,6 +229,8 @@ exports.list = async (req, res, next) => {
             data.push({
               id: `plan-ida-${p.id}__${pas.idSuffix}`,
               originalTramoId: `plan-ida-${p.id}`,
+              // Quien hizo la venta: el frontend decide con esto el boton de check-in con "Propios".
+              asesorId: venta?.usuarioId ?? null,
               pasajeroId: pas.pasajeroId,
               passenger: pas.name,
               email: pas.email,
@@ -255,6 +259,8 @@ exports.list = async (req, res, next) => {
             data.push({
               id: `plan-ret-${p.id}__${pas.idSuffix}`,
               originalTramoId: `plan-ret-${p.id}`,
+              // Quien hizo la venta: el frontend decide con esto el boton de check-in con "Propios".
+              asesorId: venta?.usuarioId ?? null,
               pasajeroId: pas.pasajeroId,
               passenger: pas.name,
               email: pas.email,
