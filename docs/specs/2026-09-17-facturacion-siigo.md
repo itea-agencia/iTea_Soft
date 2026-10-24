@@ -101,6 +101,14 @@ FROM facturas_siigo GROUP BY estado;
 
 ## Lo que queda abierto
 
+- **El lock de facturación vive en memoria** (`facturacionEnCurso` en `sales.controller.js`).
+  Con una sola instancia del backend, como hoy en Render, alcanza. Con varias, dos podrían
+  facturar la misma venta a la vez. Un advisory lock de Postgres no sirve tal cual: el backend
+  entra por el transaction pooler de Supabase (pgbouncer), donde un lock de sesión no se
+  sostiene y uno de transacción obliga a tenerla abierta mientras se habla con Siigo. La
+  alternativa evaluada es usar la fila de `facturas_siigo` como lock con un `INSERT ... ON
+  CONFLICT ... WHERE` atómico. Se decidió (2026-10-24) no hacerlo mientras haya una instancia.
+
 - **Una emisión sin respuesta no se busca en Siigo antes de reintentar.** Desde el
   2026-10-24 el cliente HTTP tiene timeout de 30 s, y si la creación de la factura se queda
   sin respuesta (timeout o conexión cortada) la fila queda `fallida` con

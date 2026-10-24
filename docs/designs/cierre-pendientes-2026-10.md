@@ -100,9 +100,9 @@ el dueño (Postman); el botón se revisa en pantalla.
 
 ### C3 — Lock de facturación en Postgres (D2)
 
-- [ ] **C3.1** `generateSiigoInvoice` toma `pg_try_advisory_xact_lock` por venta en vez del
+- [ ] ~~**C3.1**~~ (descartado por ahora) `generateSiigoInvoice` toma `pg_try_advisory_xact_lock` por venta en vez del
   `Set` en memoria; si no lo obtiene, responde el mismo 409 de hoy.
-- [ ] **C3.2** Spec de facturación: se quita "una sola instancia" de lo que queda abierto para
+- [x] **C3.2** Spec de facturación: se quita "una sola instancia" de lo que queda abierto para
   la facturación; se deja para la caché de sesiones.
 
 **Verificación**: dos peticiones simultáneas de facturar la misma venta en dry run: una da 409
@@ -148,4 +148,12 @@ y subiendo el timeout de Prisma. No son "unas líneas" como decía la propuesta.
 Commiteados el 2026-10-24: **C1** (verificado por la API; el botón en pantalla, pendiente
 porque el frontend no se había reconstruido), **C2** (clientes y responsables verificados con
 SQL; repetir la reactivación de un usuario, que no llegó con `status: active`), **C5** y
-**C6**. **C4** implementado y sin commitear: falta probarlo con el frontend reconstruido.
+**C6**. Después, con el frontend reconstruido, el usuario probó **C4**, el botón de C1 y la
+reactivación de un usuario (C2), que quedó en `logs_usuarios`.
+
+**C3 descartado por ahora** (2026-10-24): queda documentado en la spec de facturación y no se
+implementa mientras el backend corra en una sola instancia.
+
+**C7 sin decidir:** el subdominio propio (D1) se descartó porque pide un cambio de DNS. Las
+alternativas sin DNS (CSP en el frontend, o el backend detrás de un proxy de Vercel) están
+esperando decisión.
