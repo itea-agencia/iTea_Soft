@@ -8,7 +8,10 @@ const cfg = env.siigo;
 // Instancia dedicada. El interceptor de reintento vive AQUI y no en la instancia global de
 // axios: antes se registraba con `axios.interceptors.response.use(...)`, asi que cualquier
 // peticion HTTP del backend heredaba la pausa de 2 segundos y el reintento ante un 429.
-const http = axios.create({ baseURL: cfg.baseUrl });
+//
+// Sin timeout, una peticion a Siigo que nunca respondia dejaba la facturacion de esa venta
+// colgada (y su lugar en `facturacionEnCurso` tomado) hasta reiniciar el backend.
+const http = axios.create({ baseURL: cfg.baseUrl, timeout: 30000 });
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -471,6 +474,23 @@ class SiigoService {
       const { data } = await http.post('/v1/invoices', payload, { headers });
       return { dryRun: false, payload, advertencias, respuesta: data };
     } catch (error) {
+      // Sin respuesta (timeout o conexion cortada) no se sabe si Siigo creo la factura: la
+      // peticion pudo llegar y perderse la respuesta. Un "Reintentar" a ciegas crearia una
+      // segunda factura real, asi que el error lo dice para que alguien lo revise en Siigo.
+      // Buscarla automaticamente antes de reintentar queda pendiente: no se puede probar,
+      // porque las credenciales de sandbox no autentican (ver spec de facturacion).
+      if (!error.response) {
+        console.error('Siigo: sin respuesta al emitir la factura:', error.code || error.message);
+        throw Object.assign(
+          new Error(
+            'Siigo no respondió (tiempo agotado o conexión cortada) y puede haber creado la ' +
+            'factura igual. Revisala en Siigo antes de reintentar: si ya existe, reintentar ' +
+            'crearía otra.'
+          ),
+          { statusCode: 504, code: 'SIIGO_SIN_RESPUESTA', siigoPayload: payload }
+        );
+      }
+
       const detalle = error.response?.data;
       console.error('Siigo: fallo la emision de la factura:', JSON.stringify(detalle, null, 2));
       // Con `statusCode` el errorHandler devuelve el motivo real de Siigo. Sin el caia al

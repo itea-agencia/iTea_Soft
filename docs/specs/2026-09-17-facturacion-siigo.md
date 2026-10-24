@@ -101,6 +101,14 @@ FROM facturas_siigo GROUP BY estado;
 
 ## Lo que queda abierto
 
+- **Una emisión sin respuesta no se busca en Siigo antes de reintentar.** Desde el
+  2026-10-24 el cliente HTTP tiene timeout de 30 s, y si la creación de la factura se queda
+  sin respuesta (timeout o conexión cortada) la fila queda `fallida` con
+  `SIIGO_SIN_RESPUESTA` y un `ultimoError` que pide revisarla en Siigo antes de reintentar:
+  la petición pudo llegar y perderse la respuesta, y reintentar crearía otra factura real.
+  Buscarla sola antes de reintentar no se hizo porque no se puede probar sin credenciales de
+  sandbox que autentiquen.
+
 - **`render.yaml` declara `SIIGO_DRY_RUN: "true"` y el valor real es `false`**, porque
   manda el dashboard de Render. Queda anotado en el archivo, pero sigue siendo una trampa.
 - **El dry run no evita del todo llamar a Siigo:** `getOrCreateCustomer` consulta la API en

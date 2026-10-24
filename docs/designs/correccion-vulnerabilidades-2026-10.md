@@ -259,11 +259,11 @@ sin resultados; `node --check` y `npx tsc --noEmit` en verde; con permiso,
 
 Hallazgo 8.
 
-- [ ] **T5.1** `timeout` en la instancia `http` de `siigo.service.js`.
-- [ ] **T5.2** Si la llamada que crea la factura se corta por timeout o por red, la fila
+- [x] **T5.1** `timeout` en la instancia `http` de `siigo.service.js`.
+- [x] **T5.2** Si la llamada que crea la factura se corta por timeout o por red, la fila
   queda `fallida` con un `ultimoError` que diga que Siigo **pudo haberla creado** y que hay
   que revisarlo allá antes de reintentar. El detalle de la venta lo muestra.
-- [ ] **T5.3** Spec `facturacion-siigo`: el caso nuevo en "Lo que queda abierto". La
+- [x] **T5.3** Spec `facturacion-siigo`: el caso nuevo en "Lo que queda abierto". La
   búsqueda automática de la factura en Siigo antes de reintentar queda pendiente: no se
   puede probar, porque las credenciales de sandbox no autentican.
 
@@ -335,4 +335,9 @@ Depende de D6.
   frontend, `updateSale`, `deleteSale` y las tres funciones de producto. `tsc` y
   `node --check` en verde. Verificada el 2026-10-24 con una colección de Postman (6 rutas
   quitadas dan 404 y 7 que quedan siguen andando), en verde.
-- **F5–F7**: sin empezar.
+- **F5**: implementada en `fix/siigo-timeout`. Timeout de 30 s en el cliente HTTP de Siigo;
+  una emisión sin respuesta da 504 `SIIGO_SIN_RESPUESTA` y queda `fallida` con el aviso de
+  revisar en Siigo. Verificada el 2026-10-24 con una autoverificación contra un servidor
+  HTTP local que hace de Siigo: uno que nunca responde da `SIIGO_SIN_RESPUESTA` a los 32 s,
+  y uno que responde 400 sigue dando `SIIGO_RECHAZO`. El camino real de Siigo no se probó.
+- **F6–F7**: sin empezar.
