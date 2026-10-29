@@ -241,7 +241,14 @@ const untransformBody = async (section, body) => {
       data.tipo = body.type || 'Hotel';
       data.emailContacto = body.email || '';
       data.telefono = body.phone || '';
-      data.web = body.website || null;
+
+      // El sitio web es opcional. Si viene, tiene que ser http(s): la grilla de
+      // proveedores lo dibuja como enlace, y un "javascript:..." se ejecutaria al clic.
+      const web = (body.website || '').trim();
+      if (web && !/^https?:\/\//i.test(web)) {
+        throw Object.assign(new Error('El enlace del sitio web debe iniciar con http:// o https://'), { statusCode: 400, code: 'VALIDATION_ERROR' });
+      }
+      data.web = web || null;
       data.observaciones = body.observations || null;
 
       // La identificacion del proveedor es obligatoria: Siigo referencia al Tercero de la
