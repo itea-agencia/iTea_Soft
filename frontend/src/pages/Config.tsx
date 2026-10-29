@@ -37,6 +37,7 @@ import ConfigGrids from '../components/config/ConfigGrids';
 import { formatCurrency } from '../utils/formatters';
 import LoadingScreen from '../components/ui/LoadingScreen';
 import { mensajeDeError } from "../utils/errors";
+import { etiquetaTipoHotel } from "../utils/tiposHotel";
 
 type ConfigSection = 'cards' | 'paymentMethods' | 'documentTypes' | 'airlines' | 'suppliers' | 'airports' | 'baggage' | 'packages';
 
@@ -669,7 +670,7 @@ export default function Config() {
                     <div className="space-y-3">
                       <div>
                         <p className="text-[10px] text-emerald-400 uppercase font-bold">Hotel / Tipo</p>
-                        <p className="text-xs font-semibold text-emerald-800">{viewingPackage.accommodation?.hotel || '-'} | {viewingPackage.accommodation?.hotelType || '-'}</p>
+                        <p className="text-xs font-semibold text-emerald-800">{viewingPackage.accommodation?.hotel || '-'} | {etiquetaTipoHotel(viewingPackage.accommodation?.hotelType) || '-'}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-emerald-400 uppercase font-bold">Régimen</p>

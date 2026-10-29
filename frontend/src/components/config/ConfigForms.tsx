@@ -2,6 +2,7 @@ import { Boxes, PlaneTakeoff, Building2, Coins, Database, MapPin, Luggage, Shiel
 import * as LuIcons from "react-icons/lu";
 import { FormField, Input, Select, Combobox } from '../ui/Form';
 import { Button } from '../ui/Button';
+import { TIPOS_HOTEL } from '../../utils/tiposHotel';
 
 // Opciones estaticas fuera del componente: dentro del render se recreaban en cada
 // pulsacion de tecla, dandole una prop nueva al Select sin que nada hubiera cambiado.
@@ -680,15 +681,7 @@ export default function ConfigForms({ section, formData, setFormData, errors, se
                 <Select
                   value={formData.accommodation?.hotelType || ""}
                   onChange={(e) => setFormData({ ...formData, accommodation: { ...formData.accommodation, hotelType: e.target.value } })}
-                  options={[
-                    { value: "", label: "Seleccionar tipo..." },
-                    { value: "hotel", label: "Hotel" },
-                    { value: "resort", label: "Resort / Todo Incluido" },
-                    { value: "boutique", label: "Hotel Boutique" },
-                    { value: "apartamento", label: "Apartamento / AirBnB" },
-                    { value: "hostal", label: "Hostal / Albergue" },
-                    { value: "fincas", label: "Finca / Casa Rural" },
-                  ]}
+                  options={[{ value: "", label: "Seleccionar tipo..." }, ...TIPOS_HOTEL]}
                 />
               </FormField>
               <FormField label="Régimen Alimenticio">

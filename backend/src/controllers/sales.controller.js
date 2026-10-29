@@ -10,6 +10,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
 const { auditar } = require('../utils/auditoria');
+const { tipoHotelDe } = require('../utils/tipoHotel');
 const siigoService = require('../services/siigo.service');
 
 exports.list = async (req, res, next) => {
@@ -1175,7 +1176,7 @@ const PRODUCT_HANDLERS = {
     transform: (d, detalleId) => ({
       detalleVentaId: detalleId,
       hotelNombre: d.hotelName || null,
-      tipoHotel: d.hotelType || 'hotel',
+      tipoHotel: tipoHotelDe(d.hotelType),
       destino: d.destination || null,
       nroReserva: d.reservationNumber || null,
       fechaEntrada: d.startDate ? new Date(d.startDate) : null,

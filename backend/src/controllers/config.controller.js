@@ -2,6 +2,7 @@ const prisma = require('../config/db');
 const ciudadesDane = require('../config/ciudades-dane');
 const catalogoSiigo = require('../config/siigo-catalog');
 const { success, error } = require('../utils/apiResponse');
+const { tipoHotelDe } = require('../utils/tipoHotel');
 
 const SECTION_MAP = {
   'cards': {
@@ -338,7 +339,7 @@ const createPackageRelations = async (tx, paqueteId, body) => {
       data: {
         paqueteId,
         hotelNombre: body.accommodation.hotel || '',
-        tipoHotel: body.accommodation.hotelType || 'hotel',
+        tipoHotel: tipoHotelDe(body.accommodation.hotelType),
         regimen: body.accommodation.mealPlan || 'todo_incluido',
         noches: body.nights || 0
       }

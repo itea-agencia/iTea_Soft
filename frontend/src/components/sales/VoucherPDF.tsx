@@ -3,6 +3,7 @@ import { Sale, TicketData } from '../../types';
 import { formatDate, formatDateTime, formatCurrency, formatSaleId } from '../../utils/formatters';
 import { type AirportInfo } from '../../utils/airportInfo';
 import './VoucherPDF.css';
+import { etiquetaTipoHotel } from '../../utils/tiposHotel';
 
 const formatTimeAMPM = (time24: string) => {
   if (!time24) return "";
@@ -456,7 +457,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 <div className="v-data-grid">
                   <DataCell label="Hotel" value={hotel.hotelName} highlight />
                   <DataCell label="Destino" value={hotel.destination} />
-                  <DataCell label="Tipo" value={hotel.hotelType} />
+                  <DataCell label="Tipo" value={etiquetaTipoHotel(hotel.hotelType)} />
                   <DataCell label="Ingreso" value={hotel.startDate ? formatDateTime(hotel.startDate) : null} />
                   <DataCell label="Salida" value={hotel.endDate ? formatDateTime(hotel.endDate) : null} />
                   <DataCell label="Ref. hotel" value={hotel.reservationNumber} highlight />

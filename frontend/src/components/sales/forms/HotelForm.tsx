@@ -6,6 +6,7 @@ import { Button } from "../../ui/Button";
 import { HotelData, HotelGuestInfo } from "../../../types";
 import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
 import { DateTimePicker } from "./TicketForm";
+import { TIPOS_HOTEL } from "../../../utils/tiposHotel";
 
 interface HotelFormProps {
   hotel: HotelData;
@@ -115,16 +116,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
             <Combobox
               value={hotel.hotelType || ""}
               onChange={(val) => onChange({ hotelType: val })}
-              options={[
-                { value: "", label: "Seleccionar..." },
-                { value: "hotel", label: "Hotel" },
-                { value: "hotel_turistico", label: "Hotel Turístico" },
-                { value: "resort", label: "Resort / Todo Incluido" },
-                { value: "boutique", label: "Hotel Boutique" },
-                { value: "apartamento", label: "Apartamento / AirBnB" },
-                { value: "hostal", label: "Hostal / Albergue" },
-                { value: "finca", label: "Finca / Casa Rural" },
-              ]}
+              options={[{ value: "", label: "Seleccionar..." }, ...TIPOS_HOTEL]}
               placeholder="Seleccionar tipo..."
             />
           </FormField>
