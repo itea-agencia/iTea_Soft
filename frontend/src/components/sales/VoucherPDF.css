@@ -411,6 +411,19 @@
   font-weight: 700;
 }
 
+/* Observaciones: un bloque por párrafo (ver Observaciones en VoucherPDF.tsx). */
+.itea-voucher .v-obs {
+  padding: 0 18px 10px;
+}
+
+.itea-voucher .v-obs-inicio {
+  padding-top: 14px;
+}
+
+.itea-voucher .v-obs .v-data-cell-value {
+  white-space: pre-line;
+}
+
 /* divider between items in same product category */
 .itea-voucher .v-item-divider {
   border-top: 2px dashed #e2e8f0;

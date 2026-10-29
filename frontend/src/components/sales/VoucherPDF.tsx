@@ -31,6 +31,28 @@ function DataCell({ label, value, highlight, fullWidth }: { label: string; value
   );
 }
 
+/**
+ * Observaciones con sus saltos de línea, un bloque por párrafo.
+ *
+ * Iban en una sola celda sin `pre-line`: el itinerario de la venta 189 (DÍA 1, DÍA 2,
+ * NO INCLUYE...) salía como un párrafo corrido. Con los saltos esa celda medía casi una
+ * hoja, y la paginación de Sales.tsx solo corta entre hijos directos de la tarjeta, así
+ * que se habría recortado por abajo. Partida por párrafos, puede cortar entre ellos.
+ */
+function Observaciones({ texto }: { texto: string }) {
+  const parrafos = texto.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  return (
+    <>
+      {parrafos.map((p, i) => (
+        <div key={i} className={`v-obs${i === 0 ? ' v-obs-inicio' : ''}`}>
+          {i === 0 && <div className="v-data-cell-label">Observaciones</div>}
+          <div className="v-data-cell-value">{p}</div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function ProductCard({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) {
   return (
     <div className="v-product-block">
@@ -465,11 +487,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 {/* La lista unida por comas descartaba el booking de cada huesped, que es
                     el codigo con el que se presenta en la recepcion. */}
                 <PassengerTable title="Huéspedes" passengers={hotel.guests || []} columns={COLUMNAS_HUESPEDES} />
-                {hotel.observations && (
-                  <div className="v-data-grid">
-                    <DataCell label="Observaciones" value={hotel.observations} fullWidth />
-                  </div>
-                )}
+                {hotel.observations && <Observaciones texto={hotel.observations} />}
               </React.Fragment>
             ))}
           </ProductCard>
@@ -564,11 +582,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                     pasajero se presenta en el mostrador. */}
                 <PassengerTable title="Integrantes" passengers={plan.guests || []} columns={COLUMNAS_INTEGRANTES} />
 
-                {plan.observations && (
-                  <div className="v-data-grid">
-                    <DataCell label="Observaciones" value={plan.observations} fullWidth />
-                  </div>
-                )}
+                {plan.observations && <Observaciones texto={plan.observations} />}
 
                 {getChildrenForPlan(plan.detalleVentaId ?? '').length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>

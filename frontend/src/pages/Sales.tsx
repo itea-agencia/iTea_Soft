@@ -253,13 +253,21 @@ export default function Sales() {
      * se iba entera a la hoja siguiente y dejaba la anterior con el encabezado y nada
      * más; y una más alta que la hoja se recortaba en silencio. Ahora se parte por sus
      * bloques internos y la etiqueta se repite con "(continuación)".
+     *
+     * El bloque de vuelo entra por aca igual que una tarjeta de producto: antes no, y
+     * un tiquete ida y vuelta de 5 pasajeros (venta 189) medía más que lo que queda
+     * debajo del encabezado, así que se iba entero a la hoja 2 y la 1 salía con el logo,
+     * la barra del pasajero y el resto en blanco.
      */
     const repartirTarjeta = (tarjeta: HTMLElement) => {
-      const etiqueta = tarjeta.querySelector('.v-product-label') as HTMLElement | null;
+      const etiqueta = tarjeta.querySelector('.v-product-label, .v-flight-header') as HTMLElement | null;
       const altoEtiqueta = etiqueta ? getElementHeightWithMargins(etiqueta) : 0;
       const bloques = (Array.from(tarjeta.children) as HTMLElement[]).filter(el => el !== etiqueta);
       const alturaDe = (els: HTMLElement[]) =>
         els.reduce((total, el) => total + getElementHeightWithMargins(el), 0);
+      // Margen y borde de la tarjeta: cada trozo es una tarjeta clonada y los repite.
+      // Sin sumarlos, cada trozo medía ~26px menos de lo que ocupa y podía pisar el pie.
+      const marco = getElementHeightWithMargins(tarjeta) - altoEtiqueta - alturaDe(bloques);
 
       let acumulados: HTMLElement[] = [];
       let continuacion = false;
@@ -281,7 +289,7 @@ export default function Sales() {
 
         agregar({
           el: armarTrozo(tarjeta, etiqueta, acumulados, continuacion),
-          alto: altoEtiqueta + alturaDe(acumulados),
+          alto: marco + altoEtiqueta + alturaDe(acumulados),
         });
         acumulados = arrastrados;
         continuacion = true;
@@ -289,7 +297,7 @@ export default function Sales() {
 
       for (const bloque of bloques) {
         const alto = getElementHeightWithMargins(bloque);
-        const ocupado = altoEtiqueta + alturaDe(acumulados);
+        const ocupado = marco + altoEtiqueta + alturaDe(acumulados);
 
         if (ocupado + alto > maxContentHeight - currentPageHeight) {
           const habiaContenido = acumulados.length > 0;
@@ -311,7 +319,7 @@ export default function Sales() {
         continue;
       }
 
-      if (child.classList.contains('v-product-block')) {
+      if (child.classList.contains('v-product-block') || child.classList.contains('v-flight-block')) {
         repartirTarjeta(child);
       } else if (currentPageContent.length > 0) {
         cerrarPagina();
