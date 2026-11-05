@@ -179,6 +179,10 @@ Script `backend/db-manual/rellenar_tipo_tramo.sql` y `.sh`, con el patrón de si
 conteo antes y después, y una guarda que aborta si algo no cuadra. **Escribe en producción: se
 confirma con el usuario antes de correrlo.**
 
+**Escrito y verificado en local el 2026-11-05** (pendiente correr en producción): 132 filas
+actualizadas, 0 en `NULL` al final, y 0 tramos cambiaron de pestaña en `flights.list` comparando
+los 144 tramos locales uno por uno antes y después del script.
+
 - Solo toca filas con `tipo_tramo IS NULL`. Si no cambia nada, no falla al repetirlo.
 - Según **D1**: solo ida → `ida`. Ida y vuelta → el primer día es `ida` y el resto `regreso`; si
   todo es un mismo día, el tramo 1 es `ida` y el resto `regreso`.
