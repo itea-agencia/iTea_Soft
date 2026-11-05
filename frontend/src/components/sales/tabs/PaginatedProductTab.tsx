@@ -233,25 +233,35 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           let outboundLegs = [...actualLegs];
           let returnLegs: any[] = [];
 
-          if (flightMode === "round_trip" && actualLegs.length >= 2) {
+          // El servidor guarda en cada tramo si es ida, escala de ida, regreso o escala de
+          // regreso (docs/designs/escalas-por-tramo-2026-11.md): no hace falta adivinar por
+          // ruta. La deduccion por patron de abajo confundia el regreso con una escala en el
+          // medio, porque asumia que el regreso es siempre el ultimo tramo del arreglo.
+          const tieneTipoTramo = actualLegs.length > 0 && actualLegs.every((l: any) => l.tipoTramo);
+
+          if (tieneTipoTramo) {
+            outboundLegs = actualLegs.filter((l: any) => l.tipoTramo === 'ida' || l.tipoTramo === 'escala_ida');
+            returnLegs = actualLegs.filter((l: any) => l.tipoTramo === 'regreso' || l.tipoTramo === 'escala_regreso');
+          } else if (flightMode === "round_trip" && actualLegs.length >= 2) {
+            // Venta anterior a esa columna (tipo_tramo NULL): misma regla de siempre.
             const outboundMain = actualLegs[0];
             // Find index of the return segment
-            let splitIdx = actualLegs.findIndex((leg, idx) => 
-              idx > 0 && 
-              leg.origin === outboundMain.destination && 
+            let splitIdx = actualLegs.findIndex((leg, idx) =>
+              idx > 0 &&
+              leg.origin === outboundMain.destination &&
               leg.destination === outboundMain.origin
             );
 
             if (splitIdx === -1) {
-              splitIdx = actualLegs.findIndex((leg, idx) => 
-                idx > 0 && 
+              splitIdx = actualLegs.findIndex((leg, idx) =>
+                idx > 0 &&
                 leg.origin === outboundMain.destination
               );
             }
 
             if (splitIdx === -1) {
-              splitIdx = actualLegs.findIndex((leg, idx) => 
-                idx > 0 && 
+              splitIdx = actualLegs.findIndex((leg, idx) =>
+                idx > 0 &&
                 leg.destination === outboundMain.origin
               );
             }
@@ -281,13 +291,13 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
 
           outboundLegs = deduplicateLegs(outboundLegs).map((leg, index) => ({
             ...leg,
-            isStop: index > 0,
+            isStop: leg.tipoTramo ? leg.tipoTramo === 'escala_ida' : index > 0,
             ticketNumber: index === 0 ? (leg.ticketNumber || ticket.ticketNumber || mainPassenger?.nroTiquete || "-") : (leg.ticketNumber || "-")
           }));
 
           returnLegs = deduplicateLegs(returnLegs).map((leg, index) => ({
             ...leg,
-            isStop: index > 0,
+            isStop: leg.tipoTramo ? leg.tipoTramo === 'escala_regreso' : index > 0,
             ticketNumber: index === 0 ? (leg.ticketNumber || ticket.ticketNumber || mainPassenger?.nroTiquete || "-") : (leg.ticketNumber || "-")
           }));
 
