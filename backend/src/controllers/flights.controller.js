@@ -91,8 +91,10 @@ exports.list = async (req, res, next) => {
           }
         }
       } else {
+        // Un solo ida no tiene regreso. Con `orden === 1` el segundo tramo de una conexion
+        // (venta 150: PSO-BOG-UIB) caia en la pestana de regresos.
         for (const t of ptramos) {
-          tramoType[t.id] = t.orden === 1 ? 'ida' : 'regreso';
+          tramoType[t.id] = 'ida';
         }
       }
     }
