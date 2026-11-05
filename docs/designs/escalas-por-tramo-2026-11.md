@@ -90,10 +90,25 @@ ida o regreso, con la regla de hoy. Ninguna queda marcada como escala.
 check-in) y en los modales de cliente y responsable. No toca el voucher ni el detalle de venta.
 
 **D3. ¿Una escala necesita su propio check-in?** → **B**, la escala hereda el check-in de su tramo
-principal. Esto se aparta de la recomendación del plan (que era no cambiar nada) y es **trabajo
-adicional no detallado todavía**: falta decidir, por tramo, cuál es "su tramo principal" (el
-`escala_ida` hereda del `ida` más próximo, no de cualquier `ida` del mismo producto) y cómo se
-muestra un check-in que ahora representa a dos o más tramos. Se detalla antes de empezar la Fase 3.
+principal. Se aparta de la recomendación del plan (que era no cambiar nada), porque en la práctica
+una escala no tiene check-in propio: si todos los tramos van en una misma reserva, el check-in del
+primer vuelo emite las tarjetas de embarque de todo el trayecto. Diseño detallado el 2026-11-05:
+
+- **Quién es "el tramo principal".** El `ida`/`regreso` con el `orden` más próximo por debajo,
+  dentro del mismo producto. En la práctica hay uno solo por sentido, así que no hay ambigüedad.
+  Esto no toca los `ida` de "Añadir Tramo" (multidestino, D4): esos siguen con su check-in propio,
+  como hoy — la escala es otra sección del formulario, no la misma.
+- **Se deriva, no se guarda** (mismo invariante que el total de una venta). La columna
+  `checkinStatus` propia de la fila de la escala **queda sin usar**: nunca se lee ni se escribe.
+  El estado que se muestra sale siempre del tramo principal, calculado al leer — en
+  `flights.controller.js`, en el mismo lugar donde ya se calcula `esEscala` (Fase 2), agrupando por
+  producto como ya se hace ahí.
+- **En pantalla.** La escala desaparece de "Pendientes de check-in" (D2): no hay botón, no hay
+  accion. En el calendario y la lista de Itinerarios sigue apareciendo con la marca "Escala",
+  mostrando el mismo estado que su tramo principal.
+- **Servidor.** `PUT /flights/:id/checkin` rechaza (400) un intento directo sobre una escala: aunque
+  la interfaz no ofrezca el boton, el servidor no acepta una escritura en un dato que ya se decidio
+  que no significa nada.
 
 **D4. ¿"Añadir Tramo" sigue en el formulario?** → **A**, se conserva. Verificado contra el código
 (`TicketForm.tsx:957`): hoy "Añadir Tramo" solo existe en la sección de Ida, no hay equivalente en
@@ -144,11 +159,13 @@ los que hoy fallan.
 
 ### Fase 3. Mostrarlo
 
-- **Antes de arrancar esta fase**, detallar el diseño de **D3** (check-in heredado): qué tramo es
-  "el principal" de cada escala y cómo se ve un check-in que cubre varios tramos.
 - `types/index.tsx`: `esEscala` en `Flight`.
 - Marca "Escala" en las pantallas que resulte de **D2**.
-- Check-in de una escala según **D3**: hereda el de su tramo principal.
+- `flights.controller.js`: el `checkin` de una escala sale del tramo principal (**D3**), calculado
+  al leer, agrupando por producto igual que `esEscala`. Las escalas se excluyen de "Pendientes de
+  check-in".
+- `flights.controller.js` (`updateCheckin`): rechaza con 400 un intento de check-in directo sobre
+  una escala.
 - `TicketForm.tsx`: "Vuelta" → "Regreso" en los títulos, y la ayuda de **D4**.
 - Verificación: `tsc` y `build`. Lo visual lo confirma el usuario en pantalla.
 
