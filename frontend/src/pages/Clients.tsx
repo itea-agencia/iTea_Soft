@@ -306,8 +306,7 @@ export default function Clients() {
     if (!confirmToggle) return;
     setIsToggling(true);
     try {
-      await toggleClientStatus(confirmToggle.id);
-      const activated = confirmToggle.newStatus === 'active';
+      const activated = (await toggleClientStatus(confirmToggle.id)) === 'active';
       setToggleAction(activated ? 'activated' : 'deactivated');
       setToggledClientId(confirmToggle.id);
       setSuccessMessage(activated ? 'Cliente activado exitosamente' : 'Cliente desactivado exitosamente');
@@ -425,11 +424,11 @@ export default function Clients() {
 
       {showSuccess && createPortal(
         <div className="fixed top-20 right-6 z-[200] bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl shadow-xl flex items-center gap-3 animate-slide-in-right">
-          <div className={`rounded-full p-1 ${toggleAction === 'activated' ? 'bg-green-500 animate-pop-in' : toggleAction === 'deactivated' ? 'bg-orange-500' : 'bg-green-500'}`}>
-            {toggleAction === 'activated' ? <UserCheck size={18} /> : toggleAction === 'deactivated' ? <UserX size={18} /> : <CheckCircle size={18} />}
+          <div className="bg-green-500 text-white rounded-full p-1">
+            <CheckCircle size={18} />
           </div>
           <div>
-            <p className="font-bold text-sm">{toggleAction === 'activated' ? 'Cliente Activado' : toggleAction === 'deactivated' ? 'Cliente Desactivado' : 'Operación Exitosa'}</p>
+            <p className="font-bold text-sm">Operación Exitosa</p>
             <p className="text-xs opacity-90">{successMessage}</p>
           </div>
         </div>,
@@ -792,16 +791,6 @@ export default function Clients() {
                   onChange={val => setFormData({ ...formData, cityCode: val })}
                   options={cityOptions}
                   placeholder="Buscar ciudad..."
-                />
-              </FormField>
-              <FormField label="Estado">
-                <Select
-                  value={formData.status}
-                  onChange={e => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
-                  options={[
-                    { value: 'active', label: 'Activo' },
-                    { value: 'inactive', label: 'Inactivo' }
-                  ]}
                 />
               </FormField>
             </div>

@@ -89,7 +89,7 @@ interface DataContextType {
   deleteUser: (id: number) => Promise<void>;
   addClient: (client: Omit<Client, 'id'>) => Promise<Client>;
   updateClient: (id: number, client: Partial<Client>) => Promise<void>;
-  toggleClientStatus: (id: number) => Promise<void>;
+  toggleClientStatus: (id: number) => Promise<'active' | 'inactive'>;
   addResponsable: (responsable: any) => Promise<any>;
   updateResponsable: (id: number, responsable: any) => Promise<void>;
   deleteResponsable: (id: number) => Promise<void>;
@@ -426,9 +426,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  // Esto solo recargaba la lista y nunca llamaba a la API: desde junio el toast decia
+  // "desactivado" y el cliente seguia activo. Devuelve el estado que quedo en el servidor,
+  // que invierte el que tiene guardado: la pantalla no debe suponerlo.
   const toggleClientStatus = async (id: number) => {
-    // Optimistic toggle implemented in component if needed, else refetch
-    await fetchClients();
+    const { status } = await api.toggleClientStatus(id);
+    setData(prev => ({
+      ...prev,
+      clients: prev.clients.map(c => c.id === id ? { ...c, status } : c)
+    }));
+    return status;
   };
 
   const addResponsable = async (responsable: any) => {
