@@ -42,6 +42,7 @@ exports.list = async (req, res, next) => {
               aerolinea: true
             }
           },
+          aerolinea: true,
           aeropuertoOrigen: true,
           aeropuertoDestino: true
         },
@@ -102,7 +103,10 @@ exports.list = async (req, res, next) => {
       const venta = detalleVenta?.venta;
       
       const route = `${t.aeropuertoOrigen?.codigoIata || '?'} - ${t.aeropuertoDestino?.codigoIata || '?'}`;
-      const airline = t.prodTiqueteria?.aerolinea?.nombre || '';
+      // Cada tramo tiene su aerolinea. Leer la del producto ponia la de la ida en el regreso
+      // (venta 192: EOH-UIB es CLIC AIR y salia Satena) y el "Link Check-in" llevaba a la web
+      // equivocada. La del producto queda de respaldo para los tramos viejos que no la tienen.
+      const airline = t.aerolinea?.nombre || t.prodTiqueteria?.aerolinea?.nombre || '';
       const date = formatLocalDate(t.salida);
       const time = formatLocalTime(t.salida);
       const type = tramoType[t.id] || 'ida';
