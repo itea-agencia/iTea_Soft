@@ -81,29 +81,23 @@ no se puede saber (invariante 4).
 
 ## Decisiones
 
-**D1. ¿Qué se hace con las ventas viejas de varios tramos?**
-- **A (recomendada):** solo se les pone el sentido, ida o regreso, con la regla de hoy. Ninguna
-  queda marcada como escala. El resultado en pantalla es idéntico al actual.
-- B: revisar a mano las 18 ventas y marcar las escalas en una lista explícita dentro del script.
-  Da un historial más rico, pero para vuelos que ya pasaron y basándose en una deducción.
+Tomadas por el usuario el 2026-11-05.
 
-**D2. ¿Dónde se muestra la marca "Escala"?**
-- **A (recomendada):** en Itinerarios (calendario, lista y modal de check-in) y en los modales de
-  cliente y responsable. Las escalas siguen en la pestaña de su sentido y suman a su contador.
-- B: además, en el voucher y en el detalle de la venta. El voucher lo ve el cliente y su
-  paginación es delicada, por eso conviene hacerlo aparte.
+**D1. ¿Qué se hace con las ventas viejas de varios tramos?** → **A**, solo se les pone el sentido,
+ida o regreso, con la regla de hoy. Ninguna queda marcada como escala.
 
-**D3. ¿Una escala necesita su propio check-in?**
-- **A (recomendada):** sí, no se cambia nada. Cada tramo sigue con su check-in pendiente.
-- B: que la escala herede el de su tramo principal. Depende de cómo opera cada aerolínea y cambia
-  las alertas de pendientes, así que sería otro trabajo.
+**D2. ¿Dónde se muestra la marca "Escala"?** → **A**, en Itinerarios (calendario, lista y modal de
+check-in) y en los modales de cliente y responsable. No toca el voucher ni el detalle de venta.
 
-**D4. ¿"Añadir Tramo" sigue en el formulario?** Esa sección y "Con Escalas" hacen casi lo mismo,
-y un asesor que cargue una conexión con "Añadir Tramo" no verá la marca de escala.
-- **A (recomendada):** se conserva, porque un viaje con varios destinos la necesita (venta 27). Se
-  agrega una línea de ayuda que explique la diferencia. Lo de "Añadir Tramo" queda como `ida`.
-- B: quitarla y dejar solo "Con Escalas". Más simple, pero un viaje con estadías quedaría marcado
-  como si fueran escalas.
+**D3. ¿Una escala necesita su propio check-in?** → **B**, la escala hereda el check-in de su tramo
+principal. Esto se aparta de la recomendación del plan (que era no cambiar nada) y es **trabajo
+adicional no detallado todavía**: falta decidir, por tramo, cuál es "su tramo principal" (el
+`escala_ida` hereda del `ida` más próximo, no de cualquier `ida` del mismo producto) y cómo se
+muestra un check-in que ahora representa a dos o más tramos. Se detalla antes de empezar la Fase 3.
+
+**D4. ¿"Añadir Tramo" sigue en el formulario?** → **A**, se conserva. Verificado contra el código
+(`TicketForm.tsx:957`): hoy "Añadir Tramo" solo existe en la sección de Ida, no hay equivalente en
+Regreso, así que lo que agregue queda marcado `ida` sin ambigüedad.
 
 ### Decidido por el agente, para revisar
 
@@ -150,8 +144,11 @@ los que hoy fallan.
 
 ### Fase 3. Mostrarlo
 
+- **Antes de arrancar esta fase**, detallar el diseño de **D3** (check-in heredado): qué tramo es
+  "el principal" de cada escala y cómo se ve un check-in que cubre varios tramos.
 - `types/index.tsx`: `esEscala` en `Flight`.
 - Marca "Escala" en las pantallas que resulte de **D2**.
+- Check-in de una escala según **D3**: hereda el de su tramo principal.
 - `TicketForm.tsx`: "Vuelta" → "Regreso" en los títulos, y la ayuda de **D4**.
 - Verificación: `tsc` y `build`. Lo visual lo confirma el usuario en pantalla.
 
