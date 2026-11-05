@@ -200,6 +200,22 @@ async function verificarDocumentoProveedorLibre(tx, documento, idExcluido) {
   }
 }
 
+// El sitio web es opcional (aerolineas y proveedores). Si viene, tiene que ser http(s):
+// la grilla lo dibuja como enlace, y un "javascript:..." se ejecutaria al clic. Un valor
+// que no sea texto (un numero, un array) no tiene .trim y antes tiraba un 500 en vez de
+// avisar con un 400 de validacion.
+const normalizarSitioWebOpcional = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string') {
+    throw Object.assign(new Error('El enlace del sitio web debe ser texto'), { statusCode: 400, code: 'VALIDATION_ERROR' });
+  }
+  const web = value.trim();
+  if (web && !/^https?:\/\//i.test(web)) {
+    throw Object.assign(new Error('El enlace del sitio web debe iniciar con http:// o https://'), { statusCode: 400, code: 'VALIDATION_ERROR' });
+  }
+  return web || null;
+};
+
 const untransformBody = async (section, body) => {
   const data = {};
   switch (section) {
@@ -229,26 +245,20 @@ const untransformBody = async (section, body) => {
       data.abreviatura = body.abreviatura || body.name.slice(0, 3).toUpperCase();
       break;
 
-    case 'airlines':
+    case 'airlines': {
       data.nombre = body.name;
       data.codigoIata = body.code || null;
       data.tipo = body.type || 'Internacional';
-      data.web = body.website || null;
+      data.web = normalizarSitioWebOpcional(body.website);
       break;
+    }
 
     case 'suppliers': {
       data.nombre = body.name;
       data.tipo = body.type || 'Hotel';
       data.emailContacto = body.email || '';
       data.telefono = body.phone || '';
-
-      // El sitio web es opcional. Si viene, tiene que ser http(s): la grilla de
-      // proveedores lo dibuja como enlace, y un "javascript:..." se ejecutaria al clic.
-      const web = (body.website || '').trim();
-      if (web && !/^https?:\/\//i.test(web)) {
-        throw Object.assign(new Error('El enlace del sitio web debe iniciar con http:// o https://'), { statusCode: 400, code: 'VALIDATION_ERROR' });
-      }
-      data.web = web || null;
+      data.web = normalizarSitioWebOpcional(body.website);
       data.observaciones = body.observations || null;
 
       // La identificacion del proveedor es obligatoria: Siigo referencia al Tercero de la
