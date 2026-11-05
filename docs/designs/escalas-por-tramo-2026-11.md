@@ -118,7 +118,7 @@ primer vuelo emite las tarjetas de embarque de todo el trayecto. Diseño detalla
 (`TicketForm.tsx:957`): hoy "Añadir Tramo" solo existe en la sección de Ida, no hay equivalente en
 Regreso, así que lo que agregue queda marcado `ida` sin ambigüedad.
 
-### Decidido por el agente, para revisar
+### Decidido por el agente, confirmado por el usuario el 2026-11-05
 
 - **El nombre visible es "Escala de regreso"**, no "de vuelta": la spec de vocabulario dice
   "Regreso, nunca Vuelta". El formulario hoy dice "Trayecto de Vuelta" y "Escalas de Vuelta", y
