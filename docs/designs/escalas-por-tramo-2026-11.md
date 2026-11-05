@@ -73,8 +73,12 @@ Los productos de un solo tramo y los ida y vuelta de dos no tienen duda. En los 
 información se perdió al guardar. Las 18 activas ya volaron, la última el 2026-10-27, así que no
 afectan la operación.
 
-Fuera de `flights.controller.js`, ningún código supone que el tramo 2 es el regreso: el resto solo
-usa `orden` para ordenar.
+**Corrección post-implementación (2026-11-05):** esto era incorrecto. `PaginatedProductTab.tsx`
+(el detalle de tiquetería del modal de venta) tenía su propia heurística, separada de la de
+`flights.controller.js` y no detectada al escribir este plan: con una escala de por medio,
+confundía el regreso real con una escala de ida. Se encontró revisando en pantalla la primera
+venta de prueba y se corrigió en la Fase 3 (commit `5546f96`) usando `tipoTramo` en vez de
+adivinar por ruta.
 
 Recomendación en **D1**: conservar su sentido y no marcarles escala, en lugar de afirmar algo que
 no se puede saber (invariante 4).
