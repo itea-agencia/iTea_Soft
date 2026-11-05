@@ -186,5 +186,57 @@ Solo con la Fase 4 aplicada en producción y verificada:
 
 ## Lo que queda abierto
 
-- El formulario acepta una llegada anterior a la salida (ventas 18 y 190).
-- `POST /sales` no rechaza un cliente inactivo: el bloqueo está solo en la pantalla (`f142cbd`).
+Hallazgos sin resolver al 2026-11-05, comprobados contra el código de ese día. Ninguno se arregla
+con este plan. El orden es por lo que conviene mirar primero, y es propuesta del agente.
+
+### Pueden causar un daño real
+
+1. **El sitio web de una aerolínea no se valida.** Se guarda lo que llegue (`config.controller.js:236`)
+   y la grilla lo dibuja como enlace: un `javascript:...` guardado se ejecutaría al hacer clic. En
+   proveedores ya se corrigió (`6d79b6a`). Tampoco se valida en el formulario (`Config.tsx`).
+2. **`POST /sales` acepta un cliente inactivo.** El bloqueo está solo en los selectores de la
+   pantalla; el servidor solo comprueba que el cliente exista (`sales.controller.js:1716`).
+3. **Un tiquete acepta una llegada anterior a la salida.** `NewSaleWizard.tsx:450` solo exige que
+   las fechas estén; los paquetes sí las comparan (línea 630). Ya hay datos así en producción (ventas
+   18 y 190), y esas fechas salen en el voucher.
+4. **El token sigue en `localStorage` (C7).** Falta decidir entre una CSP en el frontend, que es la
+   opción recomendada, y un proxy en Vercel. Se descartó el subdominio propio. Ver
+   [`cierre-pendientes-2026-10.md`](cierre-pendientes-2026-10.md).
+
+### Sin probar
+
+5. **Borrador de venta con un cliente que se desactivó después.** Puede quedar sin titular válido.
+6. **Tres arreglos desplegados sin confirmación en pantalla:** la aerolínea por tramo en el check-in
+   (`1a03057`), solo ida sin regreso (`5355e58`) y el sitio web opcional del proveedor (`6d79b6a`).
+   Los dos primeros se verificaron contra datos de producción; el tercero, solo con la regla aislada.
+
+### Visuales
+
+7. **Al desactivar un cliente, la fila destella en rojo.** El toast ya es verde, y falta decidir si
+   el destello se queda (`Clients.tsx:556`).
+8. **Los toasts no tienen variante de modo oscuro**, y están copiados en cada pantalla (Usuarios,
+   Clientes y Responsables, además de Configuración).
+9. **Voucher:** las observaciones de los tours ("Toures") siguen sin respetar los saltos de línea
+   (`VoucherPDF.tsx:827`). Un párrafo o una tabla más altos que una hoja no se pueden partir y se
+   recortan.
+
+### Menores
+
+10. **`flights.list` no usa el total que calcula.** `total` se consulta y se ignora; la paginación
+    que devuelve se calcula con `data.length` (`flights.controller.js:27` y `:292`). El frontend pide
+    5.000 filas, así que hoy no se nota.
+11. **`.gitignore:115`** parece dos reglas pegadas: `frontend/pdf_formatobackend/test*.js`.
+12. **Tramos sin aerolínea:** 37 no tienen aerolínea propia y usan la del tiquete, y hay 1 tiquete
+    sin ninguna.
+
+### Del entorno, no del código
+
+13. **La base local es una copia de producción** desde el 2026-10-28, con correos reales de clientes:
+    desde local no hay que disparar nada que envíe correos. Los volcados están fuera del repo, en
+    `ITEA/backups-produccion/`, incluida la base de pruebas anterior.
+
+### Descartado a propósito, para no volver a evaluarlo
+
+- **Lock de facturación en Postgres (C3):** documentado, no implementado, porque el pooler de
+  Supabase no lo soporta.
+- **Ventas 84, 86 y 93, y buscar la factura en Siigo antes de reintentar:** el usuario las dejó fuera.
