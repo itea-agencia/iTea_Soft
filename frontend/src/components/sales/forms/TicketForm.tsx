@@ -1063,7 +1063,7 @@ export function TicketForm({
           <div className="rounded-xl border-2 border-blue-100 bg-blue-50/20 p-4 space-y-4 animate-fade-in">
             {/* Pills: Directo / Con Escalas — para la VUELTA */}
             <div>
-              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                 <ArrowLeft size={11} /> Tipo de Trayecto de Regreso
               </p>
               <div className="flex gap-2">
@@ -1091,8 +1091,11 @@ export function TicketForm({
             </div>
 
             {/* Campos del Trayecto de Regreso */}
-            <div className="bg-white rounded-lg border border-blue-100 p-3 space-y-3">
-              <h5 className="text-[10px] font-bold text-blue-700 uppercase tracking-widest flex items-center gap-2">
+            {/* bg-blue-50 en vez de bg-white: un override global en index.css convierte
+                bg-white a gris plano en modo oscuro, y esta tarjeta va dentro de una
+                sección azul -- en gris quedaba como una tarjeta gris metida en otra azul. */}
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900/40 p-3 space-y-3">
+              <h5 className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-widest flex items-center gap-2">
                 <Plane size={11} className="rotate-180" /> Trayecto de Regreso
               </h5>
               <div className="space-y-3">
