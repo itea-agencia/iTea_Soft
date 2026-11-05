@@ -1715,12 +1715,20 @@ exports.create = async (req, res, next) => {
 
       const cliente = await tx.clientes.findUnique({
         where: { id: data.clientId },
-        select: { personaId: true }
+        select: { personaId: true, persona: { select: { status: true } } }
       });
       if (!cliente) {
         const err = new Error('El cliente seleccionado no existe o fue eliminado');
         err.statusCode = 400;
         err.code = 'CLIENT_NOT_FOUND';
+        throw err;
+      }
+      // La pantalla ya oculta a los clientes inactivos, pero el endpoint es publico para
+      // cualquiera con sesion: no alcanza con validarlo solo del lado del cliente.
+      if (cliente.persona.status !== 'active') {
+        const err = new Error('El cliente seleccionado está inactivo');
+        err.statusCode = 400;
+        err.code = 'CLIENT_INACTIVE';
         throw err;
       }
       const personaId = cliente.personaId;
@@ -1733,6 +1741,31 @@ exports.create = async (req, res, next) => {
           const err = new Error('El comisionista seleccionado no existe o fue eliminado');
           err.statusCode = 400;
           err.code = 'COMMISSION_AGENT_NOT_FOUND';
+          throw err;
+        }
+        if (comisionista.status !== 'Activo') {
+          const err = new Error('El comisionista seleccionado está inactivo');
+          err.statusCode = 400;
+          err.code = 'COMMISSION_AGENT_INACTIVE';
+          throw err;
+        }
+      }
+
+      if (data.responsableId) {
+        const responsable = await tx.responsables.findUnique({
+          where: { id: data.responsableId },
+          select: { status: true }
+        });
+        if (!responsable) {
+          const err = new Error('El responsable seleccionado no existe o fue eliminado');
+          err.statusCode = 400;
+          err.code = 'RESPONSIBLE_NOT_FOUND';
+          throw err;
+        }
+        if (responsable.status !== 'active') {
+          const err = new Error('El responsable seleccionado está inactivo');
+          err.statusCode = 400;
+          err.code = 'RESPONSIBLE_INACTIVE';
           throw err;
         }
       }
