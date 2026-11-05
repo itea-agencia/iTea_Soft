@@ -1060,7 +1060,7 @@ export function TicketForm({
 
         {/* ── Sección de Regreso (solo si Ida y Vuelta) ─────── */}
         {isRoundTrip && (
-          <div className="rounded-xl border-2 border-blue-100 bg-blue-50/20 p-4 space-y-4 animate-fade-in">
+          <div className="rounded-xl border-2 border-blue-100 dark:border-blue-900/40 bg-blue-50/20 dark:bg-blue-950/20 p-4 space-y-4 animate-fade-in">
             {/* Pills: Directo / Con Escalas — para la VUELTA */}
             <div>
               <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
