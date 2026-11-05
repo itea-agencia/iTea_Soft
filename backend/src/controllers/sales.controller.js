@@ -436,7 +436,8 @@ function mapLegs(legs) {
       arrivalTime: formatColombiaTime(l.llegada),
       airline: l.aerolinea?.nombre || null,
       baggagePlan: l.planEquipaje ? `${l.planEquipaje.aerolinea?.nombre || l.aerolinea?.nombre || ''} - ${l.planEquipaje.tipoTarifa}` : null,
-      orden: l.orden
+      orden: l.orden,
+      tipoTramo: l.tipoTramo || null
     };
   });
 }

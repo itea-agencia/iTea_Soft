@@ -75,9 +75,23 @@ exports.list = async (req, res, next) => {
       productTramos[pid].push(t);
     }
     const tramoType = {};
+    const tramoEsEscala = {};
     for (const ptramos of Object.values(productTramos)) {
       const modo = ptramos[0]?.prodTiqueteria?.modoVuelo;
       ptramos.sort((a, b) => a.orden - b.orden);
+
+      // Ventas creadas despues de la migracion de tipo_tramo (docs/designs/escalas-por-tramo-2026-11.md):
+      // el tipo ya lo guardo el servidor segun la seccion del formulario, no hace falta adivinar.
+      if (ptramos.every(t => t.tipoTramo)) {
+        for (const t of ptramos) {
+          tramoType[t.id] = t.tipoTramo === 'regreso' || t.tipoTramo === 'escala_regreso' ? 'regreso' : 'ida';
+          tramoEsEscala[t.id] = t.tipoTramo === 'escala_ida' || t.tipoTramo === 'escala_regreso';
+        }
+        continue;
+      }
+
+      // Venta anterior a esa migracion (tipo_tramo NULL): misma regla de siempre, sin marca
+      // de escala porque no se puede saber cual lo fue (D1).
       if (modo === 'round_trip') {
         const dates = [...new Set(ptramos.map(t => formatLocalDate(t.salida)))];
         if (dates.length >= 2) {
@@ -112,6 +126,7 @@ exports.list = async (req, res, next) => {
       const date = formatLocalDate(t.salida);
       const time = formatLocalTime(t.salida);
       const type = tramoType[t.id] || 'ida';
+      const esEscala = tramoEsEscala[t.id] || false;
       const checkin = t.checkinStatus || t.prodTiqueteria?.checkinStatus || 'pendiente';
       const flightNumber = t.nroVueloTramo;
       const reservationNumber = t.prodTiqueteria?.nroReserva || '';
@@ -150,6 +165,7 @@ exports.list = async (req, res, next) => {
           date,
           time,
           type,
+          esEscala,
           checkin,
           flightNumber,
           seat: null,
