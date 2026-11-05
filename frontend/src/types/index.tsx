@@ -185,6 +185,7 @@ export interface FlightLeg {
   ticketNumber?: string;
   airline?: string;
   baggagePlan?: string;
+  tipoTramo?: "ida" | "escala_ida" | "regreso" | "escala_regreso" | null;
 }
 
 export interface GuestInfo {
@@ -769,6 +770,7 @@ export interface Flight {
   date: string;
   time: string;
   type: "ida" | "regreso";
+  esEscala?: boolean;
   checkin: "pendiente" | "realizado" | "critico" | "omitido";
   flightNumber?: string;
   seat?: string | null;

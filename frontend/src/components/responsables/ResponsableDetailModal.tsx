@@ -94,6 +94,9 @@ export default function ResponsableDetailModal({ isOpen, onClose, responsable, r
                   <div className="flex items-center gap-2">
                     <Plane size={12} className={flight.type === 'ida' ? 'text-blue-500' : 'text-indigo-500 rotate-180'} />
                     <span className="font-semibold">{flight.route}</span>
+                    {flight.esEscala && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 font-bold">Escala</span>
+                    )}
                     <span className="text-gray-500">{formatDate(flight.date)} · {flight.time}</span>
                     <span className="text-gray-500">{flight.airline}</span>
                   </div>

@@ -664,7 +664,7 @@ export function TicketForm({
         <div className="flex items-center justify-between">
           <span className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${c.title}`}>
             <MapPin size={11} />
-            Escalas {type === "outbound" ? "de Ida" : "de Vuelta"}
+            Escalas {type === "outbound" ? "de Ida" : "de Regreso"}
           </span>
           <button
             type="button"
@@ -957,6 +957,10 @@ export function TicketForm({
               <PlusCircle size={11} className="mr-1" /> Añadir Tramo
             </Button>
           </div>
+          <p className="text-[9px] text-gray-400 -mt-1">
+            Añadir Tramo es para un viaje con varios destinos propios (ej. Bogotá → Medellín → Cali).
+            Si es una conexión del mismo vuelo, usá "Con Escalas" arriba: ahí sí queda marcada como escala.
+          </p>
 
           {ticket.legs.map((leg, lIdx) => (
             <div key={lIdx} className="bg-gray-50 rounded-lg p-3 relative group border border-gray-100">
@@ -1060,7 +1064,7 @@ export function TicketForm({
             {/* Pills: Directo / Con Escalas — para la VUELTA */}
             <div>
               <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <ArrowLeft size={11} /> Tipo de Trayecto de Vuelta
+                <ArrowLeft size={11} /> Tipo de Trayecto de Regreso
               </p>
               <div className="flex gap-2">
                 {STOP_TYPE_PILLS.map((pill) => {
@@ -1176,7 +1180,7 @@ export function TicketForm({
                 </div>
               </div>
 
-              {/* Escalas de Vuelta: solo visibles si returnHasStops = true */}
+              {/* Escalas de Regreso: solo visibles si returnHasStops = true */}
               {ticket.returnHasStops && (
                 <div className="pt-3 border-t border-dashed border-blue-100">
                   {renderStopList({ type: "return", color: "blue" })}
