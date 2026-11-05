@@ -47,6 +47,8 @@ compartido es que cada cosa se llame por su nombre, no que todo se llame igual.
 | Personas de un paquete | **Integrantes** | formulario, detalle, voucher |
 | Personas de un hotel | **Huéspedes** | formulario, detalle, voucher |
 | El tramo de vuelta | **Regreso**, nunca "Vuelta" | todo el sistema |
+| Conexión del trayecto de ida | **Escala de ida** | tiquetería |
+| Conexión del trayecto de regreso | **Escala de regreso**, nunca "de vuelta" | tiquetería |
 | Fechas de hotel | **Ingreso** / **Salida** | hotelería, paquetes |
 | Bloque de importes | **Finanzas** | todos los formularios |
 
