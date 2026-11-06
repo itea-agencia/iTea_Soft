@@ -567,7 +567,7 @@ model TramosVuelo {
   salida              DateTime
   llegada             DateTime
   nroVueloTramo       String?            @map("nro_vuelo_tramo")
-  tipoTramo           TipoTramo?         @map("tipo_tramo")
+  tipoTramo           TipoTramo          @map("tipo_tramo")
   orden               Int                @default(1)
   asiento             String?
   checkinStatus       CheckinStatus?     @default(pendiente) @map("checkin_status")
@@ -935,8 +935,8 @@ enum CheckinStatus {
   omitido
 }
 
-// Que seccion del formulario cargo el asesor. Nullable durante la transicion: las ventas
-// anteriores a esta columna no tienen como saberlo (ver docs/designs/escalas-por-tramo-2026-11.md).
+// Que seccion del formulario cargo el asesor. Las ventas anteriores a esta columna se
+// rellenaron solo con el sentido, sin escalas (D1 de docs/designs/escalas-por-tramo-2026-11.md).
 enum TipoTramo {
   ida
   escala_ida

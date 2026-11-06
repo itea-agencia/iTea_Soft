@@ -230,51 +230,12 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           const actualLegs = filterSummaryLegs(ticket.legs || []);
           const flightMode = ticket.flightMode || "one_way";
 
-          let outboundLegs = [...actualLegs];
-          let returnLegs: any[] = [];
-
           // El servidor guarda en cada tramo si es ida, escala de ida, regreso o escala de
-          // regreso (docs/designs/escalas-por-tramo-2026-11.md): no hace falta adivinar por
-          // ruta. La deduccion por patron de abajo confundia el regreso con una escala en el
-          // medio, porque asumia que el regreso es siempre el ultimo tramo del arreglo.
-          const tieneTipoTramo = actualLegs.length > 0 && actualLegs.every((l: any) => l.tipoTramo);
-
-          if (tieneTipoTramo) {
-            outboundLegs = actualLegs.filter((l: any) => l.tipoTramo === 'ida' || l.tipoTramo === 'escala_ida');
-            returnLegs = actualLegs.filter((l: any) => l.tipoTramo === 'regreso' || l.tipoTramo === 'escala_regreso');
-          } else if (flightMode === "round_trip" && actualLegs.length >= 2) {
-            // Venta anterior a esa columna (tipo_tramo NULL): misma regla de siempre.
-            const outboundMain = actualLegs[0];
-            // Find index of the return segment
-            let splitIdx = actualLegs.findIndex((leg, idx) =>
-              idx > 0 &&
-              leg.origin === outboundMain.destination &&
-              leg.destination === outboundMain.origin
-            );
-
-            if (splitIdx === -1) {
-              splitIdx = actualLegs.findIndex((leg, idx) =>
-                idx > 0 &&
-                leg.origin === outboundMain.destination
-              );
-            }
-
-            if (splitIdx === -1) {
-              splitIdx = actualLegs.findIndex((leg, idx) =>
-                idx > 0 &&
-                leg.destination === outboundMain.origin
-              );
-            }
-
-            if (splitIdx === -1) {
-              splitIdx = Math.ceil(actualLegs.length / 2);
-            }
-
-            outboundLegs = actualLegs.slice(0, splitIdx);
-            returnLegs = actualLegs.slice(splitIdx);
-          } else if (ticket.returnLeg && flightMode === "round_trip") {
-            returnLegs = [ticket.returnLeg];
-          }
+          // regreso (docs/designs/escalas-por-tramo-2026-11.md). Antes se adivinaba por ruta
+          // asumiendo que el regreso era el ultimo tramo, y una escala en el medio se confundia
+          // con el regreso. Las ventas viejas se rellenaron sin escalas (D1).
+          let outboundLegs: any[] = actualLegs.filter((l: any) => l.tipoTramo === 'ida' || l.tipoTramo === 'escala_ida');
+          let returnLegs: any[] = actualLegs.filter((l: any) => l.tipoTramo === 'regreso' || l.tipoTramo === 'escala_regreso');
 
           const deduplicateLegs = (legsToDedup: any[]) => {
             const unique = [];
@@ -291,13 +252,13 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
 
           outboundLegs = deduplicateLegs(outboundLegs).map((leg, index) => ({
             ...leg,
-            isStop: leg.tipoTramo ? leg.tipoTramo === 'escala_ida' : index > 0,
+            isStop: leg.tipoTramo === 'escala_ida',
             ticketNumber: index === 0 ? (leg.ticketNumber || ticket.ticketNumber || mainPassenger?.nroTiquete || "-") : (leg.ticketNumber || "-")
           }));
 
           returnLegs = deduplicateLegs(returnLegs).map((leg, index) => ({
             ...leg,
-            isStop: leg.tipoTramo ? leg.tipoTramo === 'escala_regreso' : index > 0,
+            isStop: leg.tipoTramo === 'escala_regreso',
             ticketNumber: index === 0 ? (leg.ticketNumber || ticket.ticketNumber || mainPassenger?.nroTiquete || "-") : (leg.ticketNumber || "-")
           }));
 

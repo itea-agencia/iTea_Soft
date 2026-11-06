@@ -37,9 +37,10 @@ de una variable que un entorno nuevo puede no tener.
 
 ## Lo que queda abierto
 
-1. **Las 25 facturas con la fecha de mañana ya están en Siigo.** Se crean en borrador y el
-   timbrado es manual, así que la fecha pudo haberse corregido al timbrar, o no. Hay que
-   revisarlas en Siigo; el código no las toca. Para listarlas (solo lectura):
+1. **Las 25 facturas con la fecha de mañana ya están en Siigo. Descartado a propósito**
+   (2026-11-05): el usuario decidió no revisarlas. Se crean en borrador y el timbrado es
+   manual, así que la fecha pudo haberse corregido al timbrar. Si alguna vez hace falta,
+   esta consulta las lista (solo lectura):
 
    ```sql
    SELECT venta_id, numero, payload_enviado->>'date' AS fecha_enviada,

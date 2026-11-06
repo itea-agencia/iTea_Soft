@@ -1,5 +1,8 @@
 # Escalas de ida y de regreso en cada tramo
 
+> **Estado (2026-11-05):** fases 0 a 4 en producción (merge a `main` `8b74ba0`; relleno de la Fase 4
+> aplicado, ver `backend/db-manual/README.md`). Fase 5 en la rama `feat/escalas-fase-5`.
+>
 > Plan escrito el 2026-11-05. Sale de dos arreglos previos: `1a03057` (cada tramo muestra su
 > aerolínea) y `5355e58` (un solo ida no tiene regreso). Las decisiones **D1…D4** las toma el
 > usuario antes de la fase que las necesita; cada una trae una recomendación, no una decisión.

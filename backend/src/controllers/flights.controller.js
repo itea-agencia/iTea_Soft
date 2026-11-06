@@ -78,48 +78,23 @@ exports.list = async (req, res, next) => {
     const tramoEsEscala = {};
     const tramoCheckin = {};
     for (const ptramos of Object.values(productTramos)) {
-      const modo = ptramos[0]?.prodTiqueteria?.modoVuelo;
       ptramos.sort((a, b) => a.orden - b.orden);
 
-      // Ventas creadas despues de la migracion de tipo_tramo (docs/designs/escalas-por-tramo-2026-11.md):
-      // el tipo ya lo guardo el servidor segun la seccion del formulario, no hace falta adivinar.
-      if (ptramos.every(t => t.tipoTramo)) {
-        for (const t of ptramos) {
-          tramoType[t.id] = t.tipoTramo === 'regreso' || t.tipoTramo === 'escala_regreso' ? 'regreso' : 'ida';
-          tramoEsEscala[t.id] = t.tipoTramo === 'escala_ida' || t.tipoTramo === 'escala_regreso';
-        }
-        // Una escala no tiene check-in propio (D3): hereda el de su tramo ida/regreso mas
-        // proximo. Se deriva aca, nunca se lee ni se escribe el checkinStatus de la escala.
-        for (const t of ptramos) {
-          if (!tramoEsEscala[t.id]) continue;
-          const tipoPrincipal = t.tipoTramo === 'escala_ida' ? 'ida' : 'regreso';
-          const principal = ptramos.filter(p => p.tipoTramo === tipoPrincipal && p.orden < t.orden).pop();
-          if (principal) {
-            tramoCheckin[t.id] = principal.checkinStatus || principal.prodTiqueteria?.checkinStatus || 'pendiente';
-          }
-        }
-        continue;
+      // El tipo lo guarda el servidor segun la seccion del formulario (docs/designs/escalas-por-tramo-2026-11.md).
+      // Antes se adivinaba por fecha y por orden, y una escala de ida que salia otro dia quedaba
+      // como regreso; las ventas viejas se rellenaron con esa misma regla (db-manual/rellenar_tipo_tramo).
+      for (const t of ptramos) {
+        tramoType[t.id] = t.tipoTramo === 'regreso' || t.tipoTramo === 'escala_regreso' ? 'regreso' : 'ida';
+        tramoEsEscala[t.id] = t.tipoTramo === 'escala_ida' || t.tipoTramo === 'escala_regreso';
       }
-
-      // Venta anterior a esa migracion (tipo_tramo NULL): misma regla de siempre, sin marca
-      // de escala porque no se puede saber cual lo fue (D1).
-      if (modo === 'round_trip') {
-        const dates = [...new Set(ptramos.map(t => formatLocalDate(t.salida)))];
-        if (dates.length >= 2) {
-          const firstDate = dates[0];
-          for (const t of ptramos) {
-            tramoType[t.id] = formatLocalDate(t.salida) === firstDate ? 'ida' : 'regreso';
-          }
-        } else {
-          for (const t of ptramos) {
-            tramoType[t.id] = t.orden === 1 ? 'ida' : 'regreso';
-          }
-        }
-      } else {
-        // Un solo ida no tiene regreso. Con `orden === 1` el segundo tramo de una conexion
-        // (venta 150: PSO-BOG-UIB) caia en la pestana de regresos.
-        for (const t of ptramos) {
-          tramoType[t.id] = 'ida';
+      // Una escala no tiene check-in propio (D3): hereda el de su tramo ida/regreso mas
+      // proximo. Se deriva aca, nunca se lee ni se escribe el checkinStatus de la escala.
+      for (const t of ptramos) {
+        if (!tramoEsEscala[t.id]) continue;
+        const tipoPrincipal = t.tipoTramo === 'escala_ida' ? 'ida' : 'regreso';
+        const principal = ptramos.filter(p => p.tipoTramo === tipoPrincipal && p.orden < t.orden).pop();
+        if (principal) {
+          tramoCheckin[t.id] = principal.checkinStatus || principal.prodTiqueteria?.checkinStatus || 'pendiente';
         }
       }
     }
