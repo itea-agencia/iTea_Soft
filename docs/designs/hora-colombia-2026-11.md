@@ -54,5 +54,6 @@ de una variable que un entorno nuevo puede no tener.
 2. **No se auditaron los 34 `toLocale*` sueltos del frontend.** Usan la zona del navegador:
    están bien mientras quien los mire esté en Colombia.
 3. **`todayStr()` del frontend** usa el día del navegador, con el mismo límite.
-4. Una liquidación cuya hora de creación cayera justo a las 00:00:00.000 UTC se leería como
+4. **Vencimiento de pasaporte** (Migración y Visas, `NewSaleWizard.tsx`): compara una fecha sola con `new Date()` y rechaza un pasaporte que vence hoy. Se dejó así: un pasaporte que vence el día del trámite no sirve.
+5. Una liquidación cuya hora de creación cayera justo a las 00:00:00.000 UTC se leería como
    fecha y no como instante. No es realista: `new Date()` tiene milisegundos.

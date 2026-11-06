@@ -67,6 +67,7 @@ import { Step1Client } from "./steps/Step1Client";
 import { Step2Products } from "./steps/Step2Products";
 import { Step3Payment } from "./steps/Step3Payment";
 import { todayStr } from "../../utils/formatters";
+import { getDaysUntilDue } from "../../utils/creditUtils";
 
 interface Props {
   onClose: () => void;
@@ -372,11 +373,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     if (key === "creditDueDate") {
       const dateStr = value as string;
       if (dateStr) {
-        const selectedDate = new Date(dateStr);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        selectedDate.setHours(0, 0, 0, 0);
-        if (selectedDate < today) {
+        // Por dia de Colombia: new Date('YYYY-MM-DD') es medianoche UTC, que en hora local cae
+        // el dia anterior, y elegir hoy daba "anterior al dia de hoy".
+        if (getDaysUntilDue(dateStr) < 0) {
           setErrors((prev) => ({ ...prev, creditDueDate: "La fecha de vencimiento no puede ser anterior al día de hoy" }));
         } else {
           setErrors((prev) => {
@@ -1231,11 +1230,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
         if (!form.creditDueDate) {
           errs.creditDueDate = "La fecha de vencimiento es obligatoria para crédito o abonos";
         } else {
-          const selectedDate = new Date(form.creditDueDate);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          selectedDate.setHours(0, 0, 0, 0);
-          if (selectedDate < today) {
+          if (getDaysUntilDue(form.creditDueDate) < 0) {
             errs.creditDueDate = "La fecha de vencimiento no puede ser anterior al día de hoy";
           }
         }
