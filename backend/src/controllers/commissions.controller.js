@@ -4,6 +4,14 @@ const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
 const { completarPersona } = require('../utils/personas');
+const { diaColombia } = require('../utils/fechas');
+
+// Una liquidacion guarda la fecha que manda el formulario ('YYYY-MM-DD', queda a 00:00 UTC) o,
+// sin ella, el instante de creacion. La primera ya es el dia; el instante hay que leerlo en
+// Colombia. getDate() usaba la hora del servidor (UTC) y una liquidacion de las 20:00 salia
+// con fecha de manana.
+const diaDeLiquidacion = (d) =>
+  d.toISOString().endsWith('T00:00:00.000Z') ? d.toISOString().slice(0, 10) : diaColombia(d);
 const { auditar } = require('../utils/auditoria');
 
 const splitFullName = (fullName) => {
@@ -403,7 +411,7 @@ exports.listSettlements = async (req, res, next) => {
 
     const data = settlementsRaw.map(s => {
       const d = s.date;
-      const dateStr = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : null;
+      const dateStr = d ? diaDeLiquidacion(d) : null;
 
       return {
         id: s.id,
@@ -501,7 +509,7 @@ exports.createSettlement = async (req, res, next) => {
       });
 
       const date = fullSettlement.fecha;
-      const dateStr = date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` : null;
+      const dateStr = date ? diaDeLiquidacion(date) : null;
 
       return {
         id: fullSettlement.id,

@@ -20,8 +20,9 @@ export function formatDate(dateStr: string): string {
     }
   }
 
+  // Un instante se muestra en hora de Colombia aunque el navegador este en otra zona.
   const date = new Date(dateStr);
-  return date.toLocaleDateString('es-CO');
+  return date.toLocaleDateString('es-CO', { timeZone: 'America/Bogota' });
 }
 
 export function formatDateTime(dateStr: string): string {
@@ -42,9 +43,9 @@ export function formatDateTime(dateStr: string): string {
   }
 
   const date = new Date(dateStr);
-  return date.toLocaleString('es-CO', { 
+  return date.toLocaleString('es-CO', {
     year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hour12: true 
+    hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Bogota'
   });
 }
 

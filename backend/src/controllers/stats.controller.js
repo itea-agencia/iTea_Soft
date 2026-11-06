@@ -1,10 +1,16 @@
 const prisma = require('../config/db');
 const { success } = require('../utils/apiResponse');
+const { diaColombia } = require('../utils/fechas');
+
+// creado_at es TIMESTAMP en UTC. Agrupar por anio o mes sin pasarlo a Colombia corta el dia a
+// las 19:00: una venta del 31 de octubre a las 20:00 contaba en noviembre.
+const CREADO_COL = `(creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`;
+const V_CREADO_COL = `(v.creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`;
 
 exports.dashboard = async (req, res, next) => {
   try {
     const { dateFrom, dateTo } = req.query;
-    const currentYear = new Date().getFullYear();
+    const currentYear = Number(diaColombia().slice(0, 4));
     let dateCondition = '';
     if (dateFrom && dateTo) {
       dateCondition = `AND creado_at >= '${new Date(dateFrom).toISOString()}' AND creado_at <= '${new Date(dateTo).toISOString()}'`;
@@ -43,8 +49,8 @@ exports.dashboard = async (req, res, next) => {
         COALESCE(SUM(CASE WHEN status = 'pagado' THEN monto_total ELSE 0 END), 0) as "paids",
         COALESCE(SUM(CASE WHEN status = 'credito' THEN monto_total ELSE 0 END), 0) as "credits",
         COALESCE(SUM(CASE WHEN status = 'abonado' THEN monto_total ELSE 0 END), 0) as "partPaids",
-        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM creado_at) = ${currentYear} THEN monto_total ELSE 0 END), 0) as "currentYearSales",
-        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM creado_at) = ${currentYear - 1} THEN monto_total ELSE 0 END), 0) as "prevYearSales",
+        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM ${CREADO_COL}) = ${currentYear} THEN monto_total ELSE 0 END), 0) as "currentYearSales",
+        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM ${CREADO_COL}) = ${currentYear - 1} THEN monto_total ELSE 0 END), 0) as "prevYearSales",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (costo_proveedor_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditProveedores",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN ((ta_total + COALESCE(ta_cre_total, 0)) * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditTa"
       FROM ventas
@@ -95,12 +101,12 @@ exports.dashboard = async (req, res, next) => {
     const userConditionTrend = req.permissionScope === 'own' ? `AND usuario_id = ${req.user.id}` : '';
     const trendSql = `
       SELECT 
-        EXTRACT(YEAR FROM creado_at)::int as year,
-        EXTRACT(MONTH FROM creado_at)::int as month,
+        EXTRACT(YEAR FROM ${CREADO_COL})::int as year,
+        EXTRACT(MONTH FROM ${CREADO_COL})::int as month,
         COALESCE(SUM(monto_total), 0) as total
       FROM ventas
       WHERE deleted_at IS NULL AND status != 'anulado' ${userConditionTrend}
-        AND EXTRACT(YEAR FROM creado_at) IN (${currentYear}, ${currentYear - 1})
+        AND EXTRACT(YEAR FROM ${CREADO_COL}) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC
     `;
@@ -109,13 +115,13 @@ exports.dashboard = async (req, res, next) => {
     const userConditionIva = req.permissionScope === 'own' ? `AND v.usuario_id = ${req.user.id}` : '';
     const ivaTrendSql = `
       SELECT 
-        EXTRACT(YEAR FROM v.creado_at)::int as year,
-        EXTRACT(MONTH FROM v.creado_at)::int as month,
+        EXTRACT(YEAR FROM ${V_CREADO_COL})::int as year,
+        EXTRACT(MONTH FROM ${V_CREADO_COL})::int as month,
         COALESCE(SUM((dv.ta + dv.ta_cre) * 0.19), 0) as total
       FROM ventas v
       JOIN detalle_venta dv ON v.id = dv.venta_id
       WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${userConditionIva}
-        AND EXTRACT(YEAR FROM v.creado_at) IN (${currentYear}, ${currentYear - 1})
+        AND EXTRACT(YEAR FROM ${V_CREADO_COL}) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC
     `;
@@ -296,12 +302,12 @@ exports.dashboard = async (req, res, next) => {
 
 exports.salesHistory = async (req, res, next) => {
   try {
-    const year = parseInt(req.query.year) || new Date().getFullYear();
+    const year = parseInt(req.query.year) || Number(diaColombia().slice(0, 4));
     let data = [];
     const userConditionSql = req.permissionScope === 'own' ? `AND v.usuario_id = ${req.user.id}` : '';
     const sql = `
       SELECT 
-        EXTRACT(MONTH FROM v.creado_at)::int as month,
+        EXTRACT(MONTH FROM ${V_CREADO_COL})::int as month,
         COUNT(v.id)::int as count,
         COALESCE(SUM(v.monto_total), 0) as total,
         COALESCE(SUM(CASE WHEN d.categoria = 'hoteleria' THEN d.subtotal ELSE 0 END), 0) as hoteles,
@@ -311,7 +317,7 @@ exports.salesHistory = async (req, res, next) => {
         COALESCE(SUM(CASE WHEN d.categoria = 'renta_vehiculos' THEN d.subtotal ELSE 0 END), 0) as transferencias
       FROM ventas v
       LEFT JOIN detalle_venta d ON v.id = d.venta_id
-      WHERE v.deleted_at IS NULL ${userConditionSql} AND EXTRACT(YEAR FROM v.creado_at) = ${year}
+      WHERE v.deleted_at IS NULL ${userConditionSql} AND EXTRACT(YEAR FROM ${V_CREADO_COL}) = ${year}
       GROUP BY 1
       ORDER BY 1 ASC
     `;

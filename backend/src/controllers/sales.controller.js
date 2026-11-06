@@ -2438,8 +2438,9 @@ exports.sendVoucher = async (req, res, next) => {
       ? serviciosIncluidos.map(s => `<li style="margin-bottom:6px;">✅ ${s}</li>`).join('')
       : '<li>Servicio de viaje contratado</li>';
 
+    // timeZone explicito: el servidor corre en UTC y despues de las 19:00 ponia la fecha de manana.
     const fechaEmision = new Date().toLocaleDateString('es-CO', {
-      day: '2-digit', month: 'long', year: 'numeric'
+      day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Bogota'
     });
 
     // URL pública del logo para el correo (la imagen debe estar accesible via internet)
