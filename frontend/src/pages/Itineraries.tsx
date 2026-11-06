@@ -63,7 +63,9 @@ export default function Itineraries() {
 
   // Estadísticas y filtros
   const pendingCheckins = useMemo(() => {
-    return data.flights.filter(f => f.checkin === 'pendiente').sort((a, b) => a.date.localeCompare(b.date));
+    // Una escala no tiene check-in propio (D3): no aparece en pendientes aunque su
+    // tramo principal todavia no se haya hecho.
+    return data.flights.filter(f => f.checkin === 'pendiente' && !f.esEscala).sort((a, b) => a.date.localeCompare(b.date));
   }, [data.flights]);
 
   const filteredPending = useMemo(() => {
@@ -381,7 +383,7 @@ export default function Itineraries() {
                             return (
                             <div
                               key={flight.id}
-                              title={`${isPlan ? '📦 ' : ''}${flight.passenger}${docInfo}\nHora: ${flight.time}\nCheck-in: ${isPlan ? 'N/A (Paquete)' : flight.checkin}${flight.reservationNumber ? `\nReserva: ${flight.reservationNumber}` : ''}${isPlan ? `\nPlan: ${flight.route}` : ''}${isPlan && flight.additionalPassengers ? `\nAcompañantes: ${flight.additionalPassengers}` : ''}`}
+                              title={`${isPlan ? '📦 ' : ''}${flight.esEscala ? 'Escala — ' : ''}${flight.passenger}${docInfo}\nHora: ${flight.time}\nCheck-in: ${isPlan ? 'N/A (Paquete)' : flight.esEscala ? `${flight.checkin} (del tramo principal)` : flight.checkin}${flight.reservationNumber ? `\nReserva: ${flight.reservationNumber}` : ''}${isPlan ? `\nPlan: ${flight.route}` : ''}${isPlan && flight.additionalPassengers ? `\nAcompañantes: ${flight.additionalPassengers}` : ''}`}
                               className={`px-2 py-1 rounded-md text-[10px] font-semibold border flex items-center gap-1 shadow-sm transition-transform hover:scale-[1.02] ${
                                  flight.checkin === 'omitido'
                                    ? 'bg-red-50 dark:bg-red-950/40 border-red-100 dark:border-red-800/50 text-red-700 dark:text-red-300 opacity-70 line-through decoration-red-300'
@@ -393,6 +395,9 @@ export default function Itineraries() {
                                }`}
                             >
                               {isPlan ? <Package size={10} className="shrink-0" /> : flight.type === 'ida' ? <PlaneTakeoff size={10} className="shrink-0" /> : <PlaneLanding size={10} className="shrink-0" />}
+                              {flight.esEscala && (
+                                <span className="shrink-0 px-1 rounded bg-black/10 dark:bg-white/10 text-[8px] font-bold">Esc.</span>
+                              )}
                               <span className="truncate flex-1">{flight.passenger}</span>
                               <span className="opacity-60 shrink-0">{flight.time}</span>
                               {!isPlan && (() => {
@@ -448,6 +453,9 @@ export default function Itineraries() {
                                   <span className="text-[8px] bg-gray-100 text-gray-500 px-1 py-0.2 rounded shrink-0 border border-gray-150">
                                     {client.docNumber}
                                   </span>
+                                )}
+                                {flight.esEscala && (
+                                  <span className="text-[8px] bg-gray-200 text-gray-600 px-1 py-0.2 rounded shrink-0 font-bold">Escala</span>
                                 )}
                               </div>
                               <p className="text-[10px] text-gray-500 truncate mt-0.5">{flight.route} · {flight.time} · {flight.airline}</p>

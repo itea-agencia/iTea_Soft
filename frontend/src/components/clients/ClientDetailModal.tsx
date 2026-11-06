@@ -87,6 +87,9 @@ export default function ClientDetailModal({ isOpen, onClose, client, clientSales
                   <div className="flex items-center gap-2">
                     <Plane size={12} className={flight.type === 'ida' ? 'text-blue-500 dark:text-blue-400' : 'text-indigo-500 dark:text-indigo-400 rotate-180'} />
                     <span className="font-semibold text-gray-900 dark:!text-[#ffffff]">{flight.route}</span>
+                    {flight.esEscala && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-300 font-bold">Escala</span>
+                    )}
                     <span className="text-gray-500 dark:text-slate-400">{formatDate(flight.date)} · {flight.time}</span>
                     <span className="text-gray-500 dark:text-slate-400">{flight.airline}</span>
                   </div>

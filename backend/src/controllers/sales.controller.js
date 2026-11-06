@@ -195,6 +195,35 @@ function financierosDe(item) {
   return { costoProveedor: suma('supplierCost'), ta: suma('ta'), taCre: suma('taCre') };
 }
 
+/**
+ * Arma un tramo de vuelo para `tramos_vuelo`, o null si no trae origen/destino.
+ * El tipo (`ida`, `escala_ida`, `regreso`, `escala_regreso`) lo decide el servidor segun la
+ * seccion del formulario de la que viene el tramo, no un dato que mande el navegador.
+ */
+async function construirTramoVuelo(tx, leg, item, tipoTramo, orden, memCache) {
+  if (!leg || !leg.origin || !leg.destination) return null;
+  const [originAirportId, destAirportId, legAirlineId, legBaggagePlanId] = await Promise.all([
+    resolveAirportId(tx, leg.origin, memCache),
+    resolveAirportId(tx, leg.destination, memCache),
+    (leg.airline || item.airline) ? resolveAirlineId(tx, leg.airline || item.airline) : null,
+    (leg.baggagePlan || item.baggagePlan) ? resolveBaggagePlanId(tx, leg.baggagePlan || item.baggagePlan) : null
+  ]);
+  if (!originAirportId || !destAirportId) return null;
+  return {
+    aeropuertoOrigenId: originAirportId,
+    aeropuertoDestinoId: destAirportId,
+    salida: leg.date ? new Date(leg.date) : new Date(),
+    llegada: leg.arrivalDate ? new Date(leg.arrivalDate) : (leg.date ? new Date(leg.date) : new Date()),
+    nroVueloTramo: leg.flightNumber || null,
+    asiento: leg.seat || null,
+    nroTiquete: leg.ticketNumber || null,
+    aerolineaId: legAirlineId,
+    planEquipajeId: legBaggagePlanId,
+    tipoTramo,
+    orden
+  };
+}
+
 /** Concepto de pago valido, o null si viene cualquier otra cosa. */
 const CONCEPTOS_PAGO = ['transporte', 'hotel', 'seguro', 'paquete'];
 const conceptoValido = (c) => (CONCEPTOS_PAGO.includes(c) ? c : null);
@@ -407,7 +436,8 @@ function mapLegs(legs) {
       arrivalTime: formatColombiaTime(l.llegada),
       airline: l.aerolinea?.nombre || null,
       baggagePlan: l.planEquipaje ? `${l.planEquipaje.aerolinea?.nombre || l.aerolinea?.nombre || ''} - ${l.planEquipaje.tipoTarifa}` : null,
-      orden: l.orden
+      orden: l.orden,
+      tipoTramo: l.tipoTramo || null
     };
   });
 }
@@ -1715,12 +1745,20 @@ exports.create = async (req, res, next) => {
 
       const cliente = await tx.clientes.findUnique({
         where: { id: data.clientId },
-        select: { personaId: true }
+        select: { personaId: true, persona: { select: { status: true } } }
       });
       if (!cliente) {
         const err = new Error('El cliente seleccionado no existe o fue eliminado');
         err.statusCode = 400;
         err.code = 'CLIENT_NOT_FOUND';
+        throw err;
+      }
+      // La pantalla ya oculta a los clientes inactivos, pero el endpoint es publico para
+      // cualquiera con sesion: no alcanza con validarlo solo del lado del cliente.
+      if (cliente.persona.status !== 'active') {
+        const err = new Error('El cliente seleccionado está inactivo');
+        err.statusCode = 400;
+        err.code = 'CLIENT_INACTIVE';
         throw err;
       }
       const personaId = cliente.personaId;
@@ -1733,6 +1771,31 @@ exports.create = async (req, res, next) => {
           const err = new Error('El comisionista seleccionado no existe o fue eliminado');
           err.statusCode = 400;
           err.code = 'COMMISSION_AGENT_NOT_FOUND';
+          throw err;
+        }
+        if (comisionista.status !== 'Activo') {
+          const err = new Error('El comisionista seleccionado está inactivo');
+          err.statusCode = 400;
+          err.code = 'COMMISSION_AGENT_INACTIVE';
+          throw err;
+        }
+      }
+
+      if (data.responsableId) {
+        const responsable = await tx.responsables.findUnique({
+          where: { id: data.responsableId },
+          select: { status: true }
+        });
+        if (!responsable) {
+          const err = new Error('El responsable seleccionado no existe o fue eliminado');
+          err.statusCode = 400;
+          err.code = 'RESPONSIBLE_NOT_FOUND';
+          throw err;
+        }
+        if (responsable.status !== 'active') {
+          const err = new Error('El responsable seleccionado está inactivo');
+          err.statusCode = 400;
+          err.code = 'RESPONSIBLE_INACTIVE';
           throw err;
         }
       }
@@ -1811,103 +1874,18 @@ exports.create = async (req, res, next) => {
 
           if (handler.table === 'prodTiqueteria' && item.legs && item.legs.length > 0) {
             const tramosVueloData = [];
-            for (let i = 0; i < item.legs.length; i++) {
-              const leg = item.legs[i];
-              if (!leg.origin && !leg.destination) continue;
-              const [originAirportId, destAirportId, legAirlineId, legBaggagePlanId] = await Promise.all([
-                leg.origin ? resolveAirportId(tx, leg.origin, memCache) : null,
-                leg.destination ? resolveAirportId(tx, leg.destination, memCache) : null,
-                (leg.airline || item.airline) ? resolveAirlineId(tx, leg.airline || item.airline) : null,
-                (leg.baggagePlan || item.baggagePlan) ? resolveBaggagePlanId(tx, leg.baggagePlan || item.baggagePlan) : null
-              ]);
-              if (originAirportId && destAirportId) {
-                tramosVueloData.push({
-                  aeropuertoOrigenId: originAirportId,
-                  aeropuertoDestinoId: destAirportId,
-                  salida: leg.date ? new Date(leg.date) : new Date(),
-                  llegada: leg.arrivalDate ? new Date(leg.arrivalDate) : (leg.date ? new Date(leg.date) : new Date()),
-                  nroVueloTramo: leg.flightNumber || null,
-                  asiento: leg.seat || null,
-                  nroTiquete: leg.ticketNumber || null,
-                  aerolineaId: legAirlineId,
-                  planEquipajeId: legBaggagePlanId,
-                  orden: i + 1
-                });
-              }
-            }
-            if (item.hasStops && item.outboundStops && item.outboundStops.length > 0) {
-              for (const stop of item.outboundStops) {
-                if (!stop.origin && !stop.destination) continue;
-                const [sOriginId, sDestId, stopAirlineId, stopBaggagePlanId] = await Promise.all([
-                  stop.origin ? resolveAirportId(tx, stop.origin, memCache) : null,
-                  stop.destination ? resolveAirportId(tx, stop.destination, memCache) : null,
-                  (stop.airline || item.airline) ? resolveAirlineId(tx, stop.airline || item.airline) : null,
-                  (stop.baggagePlan || item.baggagePlan) ? resolveBaggagePlanId(tx, stop.baggagePlan || item.baggagePlan) : null
-                ]);
-                if (sOriginId && sDestId) {
-                  tramosVueloData.push({
-                    aeropuertoOrigenId: sOriginId,
-                    aeropuertoDestinoId: sDestId,
-                    salida: stop.date ? new Date(stop.date) : new Date(),
-                    llegada: stop.arrivalDate ? new Date(stop.arrivalDate) : (stop.date ? new Date(stop.date) : new Date()),
-                    nroVueloTramo: stop.flightNumber || null,
-                    asiento: stop.seat || null,
-                    nroTiquete: stop.ticketNumber || null,
-                    aerolineaId: stopAirlineId,
-                    planEquipajeId: stopBaggagePlanId,
-                    orden: tramosVueloData.length + 1
-                  });
-                }
-              }
-            }
-
-            if (item.returnLeg && item.returnLeg.origin && item.returnLeg.destination) {
-              const rLeg = item.returnLeg;
-              const [rOriginId, rDestId, rAirlineId, rBaggagePlanId] = await Promise.all([
-                resolveAirportId(tx, rLeg.origin, memCache),
-                resolveAirportId(tx, rLeg.destination, memCache),
-                (rLeg.airline || item.airline) ? resolveAirlineId(tx, rLeg.airline || item.airline) : null,
-                (rLeg.baggagePlan || item.baggagePlan) ? resolveBaggagePlanId(tx, rLeg.baggagePlan || item.baggagePlan) : null
-              ]);
-              if (rOriginId && rDestId) {
-                tramosVueloData.push({
-                  aeropuertoOrigenId: rOriginId,
-                  aeropuertoDestinoId: rDestId,
-                  salida: rLeg.date ? new Date(rLeg.date) : new Date(),
-                  llegada: rLeg.arrivalDate ? new Date(rLeg.arrivalDate) : (rLeg.date ? new Date(rLeg.date) : new Date()),
-                  nroVueloTramo: rLeg.flightNumber || null,
-                  asiento: rLeg.seat || null,
-                  nroTiquete: rLeg.ticketNumber || null,
-                  aerolineaId: rAirlineId,
-                  planEquipajeId: rBaggagePlanId,
-                  orden: tramosVueloData.length + 1
-                });
-              }
-            }
-
-            if (item.returnHasStops && item.returnStops && item.returnStops.length > 0) {
-              for (const stop of item.returnStops) {
-                if (!stop.origin && !stop.destination) continue;
-                const [sOriginId, sDestId, stopAirlineId, stopBaggagePlanId] = await Promise.all([
-                  stop.origin ? resolveAirportId(tx, stop.origin, memCache) : null,
-                  stop.destination ? resolveAirportId(tx, stop.destination, memCache) : null,
-                  (stop.airline || item.airline) ? resolveAirlineId(tx, stop.airline || item.airline) : null,
-                  (stop.baggagePlan || item.baggagePlan) ? resolveBaggagePlanId(tx, stop.baggagePlan || item.baggagePlan) : null
-                ]);
-                if (sOriginId && sDestId) {
-                  tramosVueloData.push({
-                    aeropuertoOrigenId: sOriginId,
-                    aeropuertoDestinoId: sDestId,
-                    salida: stop.date ? new Date(stop.date) : new Date(),
-                    llegada: stop.arrivalDate ? new Date(stop.arrivalDate) : (stop.date ? new Date(stop.date) : new Date()),
-                    nroVueloTramo: stop.flightNumber || null,
-                    asiento: stop.seat || null,
-                    nroTiquete: stop.ticketNumber || null,
-                    aerolineaId: stopAirlineId,
-                    planEquipajeId: stopBaggagePlanId,
-                    orden: tramosVueloData.length + 1
-                  });
-                }
+            // Las cuatro secciones del formulario, en el orden en que se muestran. El tipo
+            // lo decide el servidor por la seccion de origen, no un dato que mande el navegador.
+            const seccionesTramo = [
+              { legs: item.legs, tipoTramo: 'ida' },
+              { legs: item.hasStops ? (item.outboundStops || []) : [], tipoTramo: 'escala_ida' },
+              { legs: item.returnLeg ? [item.returnLeg] : [], tipoTramo: 'regreso' },
+              { legs: item.returnHasStops ? (item.returnStops || []) : [], tipoTramo: 'escala_regreso' }
+            ];
+            for (const seccion of seccionesTramo) {
+              for (const leg of seccion.legs) {
+                const tramo = await construirTramoVuelo(tx, leg, item, seccion.tipoTramo, tramosVueloData.length + 1, memCache);
+                if (tramo) tramosVueloData.push(tramo);
               }
             }
 

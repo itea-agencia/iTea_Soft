@@ -234,6 +234,8 @@ export default function Config() {
         case 'airlines':
           if (!formData.name || formData.name.trim().length === 0) newErrors.name = 'El nombre es obligatorio.';
           if (!formData.type) newErrors.type = 'Debe seleccionar un tipo de cobertura.';
+          // Opcional, como dice el formulario. Si viene, que sea http(s): se dibuja como enlace.
+          if (formData.website?.trim() && !/^https?:\/\//i.test(formData.website.trim())) newErrors.website = 'El enlace debe iniciar con http:// o https://.';
           break;
         case 'suppliers':
           if (!formData.name || formData.name.trim().length === 0) newErrors.name = 'El nombre es obligatorio.';

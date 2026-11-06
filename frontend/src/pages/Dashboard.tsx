@@ -606,7 +606,7 @@ export default function Dashboard() {
       >
         <div className="space-y-6 py-2">
           {/* Tarjeta de Encabezado con Balance */}
-          <div className="relative p-6 bg-gradient-to-br from-orange-500 to-amber-600 rounded-3xl text-white shadow-xl shadow-orange-100 overflow-hidden">
+          <div className="relative p-6 bg-primary rounded-3xl text-white shadow-xl overflow-hidden">
             <div className="absolute -right-6 -bottom-6 opacity-10 transform rotate-12 pointer-events-none">
               <CreditCard size={140} />
             </div>

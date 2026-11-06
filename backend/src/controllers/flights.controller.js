@@ -75,9 +75,34 @@ exports.list = async (req, res, next) => {
       productTramos[pid].push(t);
     }
     const tramoType = {};
+    const tramoEsEscala = {};
+    const tramoCheckin = {};
     for (const ptramos of Object.values(productTramos)) {
       const modo = ptramos[0]?.prodTiqueteria?.modoVuelo;
       ptramos.sort((a, b) => a.orden - b.orden);
+
+      // Ventas creadas despues de la migracion de tipo_tramo (docs/designs/escalas-por-tramo-2026-11.md):
+      // el tipo ya lo guardo el servidor segun la seccion del formulario, no hace falta adivinar.
+      if (ptramos.every(t => t.tipoTramo)) {
+        for (const t of ptramos) {
+          tramoType[t.id] = t.tipoTramo === 'regreso' || t.tipoTramo === 'escala_regreso' ? 'regreso' : 'ida';
+          tramoEsEscala[t.id] = t.tipoTramo === 'escala_ida' || t.tipoTramo === 'escala_regreso';
+        }
+        // Una escala no tiene check-in propio (D3): hereda el de su tramo ida/regreso mas
+        // proximo. Se deriva aca, nunca se lee ni se escribe el checkinStatus de la escala.
+        for (const t of ptramos) {
+          if (!tramoEsEscala[t.id]) continue;
+          const tipoPrincipal = t.tipoTramo === 'escala_ida' ? 'ida' : 'regreso';
+          const principal = ptramos.filter(p => p.tipoTramo === tipoPrincipal && p.orden < t.orden).pop();
+          if (principal) {
+            tramoCheckin[t.id] = principal.checkinStatus || principal.prodTiqueteria?.checkinStatus || 'pendiente';
+          }
+        }
+        continue;
+      }
+
+      // Venta anterior a esa migracion (tipo_tramo NULL): misma regla de siempre, sin marca
+      // de escala porque no se puede saber cual lo fue (D1).
       if (modo === 'round_trip') {
         const dates = [...new Set(ptramos.map(t => formatLocalDate(t.salida)))];
         if (dates.length >= 2) {
@@ -112,7 +137,8 @@ exports.list = async (req, res, next) => {
       const date = formatLocalDate(t.salida);
       const time = formatLocalTime(t.salida);
       const type = tramoType[t.id] || 'ida';
-      const checkin = t.checkinStatus || t.prodTiqueteria?.checkinStatus || 'pendiente';
+      const esEscala = tramoEsEscala[t.id] || false;
+      const checkin = tramoCheckin[t.id] ?? (t.checkinStatus || t.prodTiqueteria?.checkinStatus || 'pendiente');
       const flightNumber = t.nroVueloTramo;
       const reservationNumber = t.prodTiqueteria?.nroReserva || '';
       const ticketNumber = t.nroTiquete || t.prodTiqueteria?.nroTiquete || null;
@@ -150,6 +176,7 @@ exports.list = async (req, res, next) => {
           date,
           time,
           type,
+          esEscala,
           checkin,
           flightNumber,
           seat: null,
@@ -430,6 +457,13 @@ exports.updateCheckin = async (req, res, next) => {
 
     if (req.permissionScope === 'own' && tramo.prodTiqueteria?.detalleVenta?.venta?.usuarioId !== req.user.id) {
       return error(res, 'No tiene permiso para modificar este check-in', 403);
+    }
+
+    // Una escala no tiene check-in propio (D3): se hace con el de su tramo ida/regreso. La
+    // interfaz no ofrece el boton, pero el servidor tampoco acepta la escritura por una llamada
+    // directa a este endpoint.
+    if (tramo.tipoTramo === 'escala_ida' || tramo.tipoTramo === 'escala_regreso') {
+      return error(res, 'Esta escala no tiene check-in propio: se hace con el de su tramo principal', 400, 'STOPOVER_HAS_NO_CHECKIN');
     }
 
     const updated = await prisma.tramosVuelo.update({

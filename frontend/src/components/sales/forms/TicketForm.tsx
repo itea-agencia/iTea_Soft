@@ -664,7 +664,7 @@ export function TicketForm({
         <div className="flex items-center justify-between">
           <span className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 ${c.title}`}>
             <MapPin size={11} />
-            Escalas {type === "outbound" ? "de Ida" : "de Vuelta"}
+            Escalas {type === "outbound" ? "de Ida" : "de Regreso"}
           </span>
           <button
             type="button"
@@ -957,6 +957,10 @@ export function TicketForm({
               <PlusCircle size={11} className="mr-1" /> Añadir Tramo
             </Button>
           </div>
+          <p className="text-[9px] text-gray-400 -mt-1">
+            Añadir Tramo es para un viaje con varios destinos propios (ej. Bogotá → Medellín → Cali).
+            Si es una conexión del mismo vuelo, usá "Con Escalas" arriba: ahí sí queda marcada como escala.
+          </p>
 
           {ticket.legs.map((leg, lIdx) => (
             <div key={lIdx} className="bg-gray-50 rounded-lg p-3 relative group border border-gray-100">
@@ -1056,11 +1060,11 @@ export function TicketForm({
 
         {/* ── Sección de Regreso (solo si Ida y Vuelta) ─────── */}
         {isRoundTrip && (
-          <div className="rounded-xl border-2 border-blue-100 bg-blue-50/20 p-4 space-y-4 animate-fade-in">
+          <div className="rounded-xl border-2 border-blue-100 dark:border-blue-900/40 bg-blue-50/20 dark:bg-blue-950/20 p-4 space-y-4 animate-fade-in">
             {/* Pills: Directo / Con Escalas — para la VUELTA */}
             <div>
-              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <ArrowLeft size={11} /> Tipo de Trayecto de Vuelta
+              <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <ArrowLeft size={11} /> Tipo de Trayecto de Regreso
               </p>
               <div className="flex gap-2">
                 {STOP_TYPE_PILLS.map((pill) => {
@@ -1087,8 +1091,11 @@ export function TicketForm({
             </div>
 
             {/* Campos del Trayecto de Regreso */}
-            <div className="bg-white rounded-lg border border-blue-100 p-3 space-y-3">
-              <h5 className="text-[10px] font-bold text-blue-700 uppercase tracking-widest flex items-center gap-2">
+            {/* bg-blue-50 en vez de bg-white: un override global en index.css convierte
+                bg-white a gris plano en modo oscuro, y esta tarjeta va dentro de una
+                sección azul -- en gris quedaba como una tarjeta gris metida en otra azul. */}
+            <div className="bg-blue-50/70 dark:bg-blue-950/30 rounded-lg border border-blue-100 dark:border-blue-900/40 p-3 space-y-3">
+              <h5 className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-widest flex items-center gap-2">
                 <Plane size={11} className="rotate-180" /> Trayecto de Regreso
               </h5>
               <div className="space-y-3">
@@ -1176,7 +1183,7 @@ export function TicketForm({
                 </div>
               </div>
 
-              {/* Escalas de Vuelta: solo visibles si returnHasStops = true */}
+              {/* Escalas de Regreso: solo visibles si returnHasStops = true */}
               {ticket.returnHasStops && (
                 <div className="pt-3 border-t border-dashed border-blue-100">
                   {renderStopList({ type: "return", color: "blue" })}
