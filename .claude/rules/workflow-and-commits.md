@@ -7,7 +7,8 @@
 2. Antes de implementar algo no trivial, el diseño va en `docs/designs/` (sale de la skill
    de brainstorming). Si el cambio toca un invariante, la spec de `docs/specs/` se
    actualiza **primero**, no después.
-3. Como no hay suite, la prueba que falla es una consulta SQL, un `curl` o un conteo que
+3. La prueba que falla va primero. Si la lógica es una función pura del frontend, es una
+   prueba en `frontend/tests/`; si no, una consulta SQL, un `curl` o un conteo que
    muestra el problema. Después va el código mínimo, y la misma verificación tiene que dar
    lo esperado. El `curl` contra la app local necesita permiso.
 4. Lo que queda pendiente o se decidió no arreglar va en "Lo que queda abierto" de la spec.

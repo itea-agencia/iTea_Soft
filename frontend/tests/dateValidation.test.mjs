@@ -1,11 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import ts from 'typescript';
+import { cargarTs } from './cargarTs.mjs';
 
-const source = readFileSync(new URL('../src/components/sales/forms/dateValidation.ts', import.meta.url), 'utf8');
-const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } });
-const { isValidCalendarDate } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+const { isValidCalendarDate } = await cargarTs('components/sales/forms/dateValidation.ts');
 
 test('accepts today, past dates and future dates without timezone conversion', () => {
   const now = new Date();
