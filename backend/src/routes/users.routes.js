@@ -10,6 +10,8 @@ const propio = require('../middleware/propio');
 router.use(auth);
 
 router.get('/', authorize('users', 'view'), paginate, usersController.list);
+// Antes de '/:id', que si no toma "asesores" como un id.
+router.get('/asesores', authorize('sales', 'create'), usersController.listAsesores);
 router.get('/:id', authorize('users', 'view'), propio('usuario'), usersController.getById);
 router.post('/', authorize('users', 'create'), usersController.create);
 router.put('/:id', authorize('users', 'edit'), propio('usuario'), usersController.update);
