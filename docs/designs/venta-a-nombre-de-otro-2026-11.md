@@ -29,14 +29,13 @@ con dos usuarios del mismo nombre elige al primero.
    asesor ligada a `usuario_id`: las comisiones son de comisionistas.
 3. **Queda registrado quién la cargó**, en una columna nueva `ventas.creado_por_id`. Solo en
    la base: no se muestra en ninguna pantalla.
+4. **Lo que cada uno ve lo deciden sus permisos, sin excepción por haberla cargado.** Dueño
+   = `usuario_id`. Con "Propios", quien carga una venta a nombre de otro deja de verla; con
+   "Todos", la sigue viendo. `creado_por_id` no entra en ningún filtro. Medido en producción
+   el 2026-11-08: hoy solo el rol freelancer tiene `sales.view = own`.
 
 ## Lo que se decidió sin respuesta explícita (decisión del agente)
 
-4. **Quien la carga a nombre de otro, con "Propios", deja de verla.** Se pregunta, no hubo
-   respuesta, y se mantiene la regla actual: dueño = `usuario_id`. Medido en producción el
-   2026-11-08, solo afecta al rol **freelancer** (`sales.view = own`); asesor tiene `all` y
-   admin `true`. Si el freelancer tiene que seguir viendo lo que cargó, el cambio es que el
-   filtro "Propios" de ventas mire `usuario_id = yo OR creado_por_id = yo`. No se hace ahora.
 5. **El asesor no se cambia después de creada la venta.** La ventana de edición no toca hoy
    ni ese ni ningún dato de producto. Queda fuera.
 
@@ -117,7 +116,6 @@ venta** (`usuario_id`), que puede no ser quien la cargó (`creado_por_id`).
 
 ## Lo que queda abierto
 
-- La decisión 4: un freelancer que carga a nombre de otro pierde la venta de vista.
 - La decisión 5: no se puede reasignar una venta ya creada.
 - Cualquiera que cree ventas puede atribuírselas a otro, y con eso mover a quién se le cuenta
   la venta. `creado_por_id` deja el rastro, pero no hay pantalla que lo muestre. Si hace falta
