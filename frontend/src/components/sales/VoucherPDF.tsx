@@ -813,6 +813,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
               <React.Fragment key={`tour-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
                 <div className="v-data-grid">
+                  <DataCell label="Fecha del tour" value={tour.preferredDate ? formatDate(tour.preferredDate) : undefined} />
                   <DataCell label="Adultos" value={tour.adultsCount?.toString()} />
                   <DataCell label="Niños" value={tour.childrenCount?.toString()} />
                   <DataCell label="Punto de Recogida" value={tour.pickupPoint} />
