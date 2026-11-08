@@ -158,6 +158,7 @@ model Usuarios {
   persona         Personas          @relation(fields: [personaId], references: [id])
   rol             Roles             @relation(fields: [rolId], references: [id])
   ventas          Ventas[]          @relation("ventas_asesor")
+  ventasCargadas  Ventas[]          @relation("venta_creado_por")
 
   @@map("usuarios")
 }
@@ -270,6 +271,11 @@ model Ventas {
   metodoPagoPrincipal         MetodosPago?        @relation("metodo_pago_principal", fields: [metodoPagoPrincipalId], references: [id])
   responsable                 Responsables?       @relation("venta_responsable", fields: [responsableId], references: [id])
   usuario                     Usuarios            @relation("ventas_asesor", fields: [usuarioId], references: [id])
+  // Quien la cargo, que puede no ser el asesor: el asistente deja vender a nombre de otro.
+  // Solo auditoria; "Propios" sigue mirando usuarioId. Las anteriores al 2026-11-08 se
+  // rellenaron con usuario_id, que hasta entonces siempre fue quien la cargo.
+  creadoPorId                 Int                 @map("creado_por_id")
+  creadoPor                   Usuarios            @relation("venta_creado_por", fields: [creadoPorId], references: [id])
 
   @@index([status])
   @@index([id])

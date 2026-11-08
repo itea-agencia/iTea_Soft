@@ -6,6 +6,7 @@ const { buildMeta } = require('../utils/paginationHelper');
 const emailService = require('../utils/emailService');
 const { formatName, escaparHtml } = require('../utils/stringUtils');
 const { normalizarEmail, correoDeEliminado } = require('../utils/emailUtils');
+const { ASESOR_ACTIVO } = require('../utils/asesores');
 const sesiones = require('../services/sesiones.service');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
 const { auditar } = require('../utils/auditoria');
@@ -116,6 +117,22 @@ exports.getById = async (req, res, next) => {
       lastLogin: usuario.ultimoLogin,
       createdAt: usuario.creadoAt,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Opciones del campo "Asesor" del asistente de venta. Solo id y nombre: la protege
+// sales.create y no users.view, que en produccion solo tiene admin y abre la ficha completa
+// de cada usuario. Sin esta ruta, un asesor que borraba su nombre no tenia a quien elegir.
+exports.listAsesores = async (req, res, next) => {
+  try {
+    const usuarios = await prisma.usuarios.findMany({
+      where: ASESOR_ACTIVO,
+      select: { id: true, persona: { select: { nombres: true, apellidos: true } } },
+      orderBy: [{ persona: { nombres: 'asc' } }, { persona: { apellidos: 'asc' } }],
+    });
+    return success(res, usuarios.map(u => ({ id: u.id, name: `${u.persona.nombres} ${u.persona.apellidos}` })));
   } catch (err) {
     next(err);
   }

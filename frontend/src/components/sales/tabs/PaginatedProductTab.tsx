@@ -697,6 +697,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               <Compass size={16} className="text-accent" /> Actividad o Tour #{idx + 1}
             </h4>
             {renderGrid([
+              { label: "Fecha del tour", value: item.preferredDate ? formatDate(item.preferredDate) : "-" },
               { label: "Nombre Pasajero", value: item.passengerName },
               { label: "Adultos", value: item.adultsCount },
               { label: "Menores", value: item.childrenCount },

@@ -68,6 +68,7 @@ import { Step2Products } from "./steps/Step2Products";
 import { Step3Payment } from "./steps/Step3Payment";
 import { todayStr } from "../../utils/formatters";
 import { getDaysUntilDue } from "../../utils/creditUtils";
+import { listAsesores } from "../../api";
 
 interface Props {
   onClose: () => void;
@@ -81,7 +82,7 @@ const STEPS = [
 ] as const;
 
 export default function NewSaleWizard({ onClose, onSuccess }: Props) {
-  const { data, addSale, fetchClients, fetchUsers, fetchCommissionAgentsForSale, fetchResponsables } = useData();
+  const { data, addSale, fetchClients, fetchCommissionAgentsForSale, fetchResponsables } = useData();
   const { user } = useAuth();
 
   const draftKey = `itea_new_sale_draft_v2_${user?.id || 'unknown'}`;
@@ -307,10 +308,17 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   // Fetch data needed for comboboxes to ensure freshness
   useEffect(() => {
     fetchClients();
-    fetchUsers();
     fetchCommissionAgentsForSale();
     fetchResponsables();
-  }, [fetchClients, fetchUsers, fetchCommissionAgentsForSale, fetchResponsables]);
+  }, [fetchClients, fetchCommissionAgentsForSale, fetchResponsables]);
+
+  // Los asesores salen de /users/asesores y no de data.users: ese viene de GET /users, que exige
+  // users.view, y para un asesor la lista quedaba vacia. Si falla, la lista queda vacia y el
+  // paso 1 pide elegir un asesor de la lista.
+  const [asesores, setAsesores] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    listAsesores().then(setAsesores).catch(() => setAsesores([]));
+  }, []);
 
   // Compute Totals Automatically
   useEffect(() => {
@@ -411,6 +419,10 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     const errs: Record<string, string> = {};
     if (s === 1) {
       if (!form.clientId) errs.clientId = "El cliente es obligatorio";
+      // Cubre el campo vacio, un texto que no es nadie y un borrador con alguien ya inactivo.
+      if (!asesores.some((a) => String(a.id) === String(form.asesorId))) {
+        errs.asesorId = "Elija un asesor de la lista";
+      }
       if (form.commissionAgentName && !form.commissionAgentId) {
         errs.commissionAgent = "El comisionista ingresado no está registrado";
       } else if (form.commissionAgentId) {
@@ -744,7 +756,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               now.setHours(0, 0, 0, 0);
               
               if (mig.birthDate && new Date(mig.birthDate) > now) errors.push("Fecha de Nacimiento no puede ser futura");
-              if (mig.passportExpiry && new Date(mig.passportExpiry) < now) errors.push("Vencimiento de Documento no puede ser pasado");
+              if (mig.passportExpiry && getDaysUntilDue(mig.passportExpiry) < 0) errors.push("Vencimiento de Documento no puede ser pasado");
             }
 
             if (errors.length > 0) {
@@ -1046,9 +1058,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (visa.docType === "Pasaporte" && !visa.passportExpiration) {
                 errors.push("Vencimiento de Documento (requerido)");
               } else if (visa.passportExpiration) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(visa.passportExpiration) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(visa.passportExpiration) < 0) {
                   errors.push("Vencimiento de Documento no puede ser pasado");
                 }
               }
@@ -1066,9 +1077,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               }
 
               if (visa.estimatedTravelDate) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(visa.estimatedTravelDate) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(visa.estimatedTravelDate) < 0) {
                   errors.push("Fecha Estimada de Viaje no puede ser pasada");
                 }
               }
@@ -1117,9 +1127,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               }
 
               if (passport.estimatedTravelDate) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(passport.estimatedTravelDate) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(passport.estimatedTravelDate) < 0) {
                   errors.push("Fecha Estimada de Viaje no puede ser pasada");
                 }
               }
@@ -1182,9 +1191,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (!pet.travelDate) {
                 errors.push("Fecha de Viaje (requerida)");
               } else {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(pet.travelDate) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(pet.travelDate) < 0) {
                   errors.push("Fecha de Viaje no puede ser pasada");
                 }
               }
@@ -1902,8 +1910,9 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     const saleData: any = {
       clientId: client.id,
       clientName: client.name,
-      asesorId: Number(form.asesorId) || user!.id,
-      asesorName: form.asesorName || user!.name,
+      // Sin respaldo a user.id: un asesor vacio se convertia en silencio en quien estaba
+      // logueado. El paso 1 ya exige uno de la lista.
+      asesorId: Number(form.asesorId),
       date: todayStr(),
       total: Number(form.total),
       paymentMethod: calculatedPaymentMethod,
@@ -2032,7 +2041,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-slate-900">
-            {step === 1 && <Step1Client form={form} set={set} data={data} errors={errors} />}
+            {step === 1 && <Step1Client form={form} set={set} data={data} errors={errors} asesores={asesores} />}
             {step === 2 && <Step2Products form={form} set={set} data={data} errors={errors} toggleProduct={toggleProduct} actions={actions} />}
             {step === 3 && <Step3Payment form={form} set={set} data={data} errors={errors} />}
           </div>

@@ -5,6 +5,7 @@ import { FormField, Input, Combobox, Textarea, Select } from "../../ui/Form";
 import { Button } from "../../ui/Button";
 import { TourData, GuestInfo } from "../../../types";
 import { ClientInfoSection, FinancialSection } from "./VoucherField";
+import { DatePicker } from "./TicketForm";
 
 interface TourFormProps {
   tour: TourData;
@@ -77,6 +78,17 @@ export function TourForm({ tour, mainClient, data, onChange, triggerError, showE
           <LuMap size={14} /> Tour Guiado
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Sin min ni max a proposito: la venta a veces se carga despues de que el tour paso,
+              y bloquear el pasado es lo que dejo inusable el vencimiento de credito con "hoy".
+              Opcional porque las ventas de tour anteriores no la tienen. */}
+          <FormField label="Fecha del tour">
+            <DatePicker
+              value={tour.preferredDate || ""}
+              onChange={(val) => onChange({ preferredDate: val })}
+              triggerError={triggerError}
+              fieldName="Fecha del tour"
+            />
+          </FormField>
           <FormField label="Número de Adultos">
             <Input 
               type="text" 
