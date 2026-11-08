@@ -4,9 +4,10 @@ Convenciones de este repo. Vale igual para una persona o un agente.
 
 ## Lo primero
 
-Este es un ERP de agencia de viajes en producción, con clientes y facturación real. **No
-hay pruebas automatizadas**: lo que no se verifica empíricamente, no está verificado. Lo
-visual no se puede verificar en este entorno.
+Este es un ERP de agencia de viajes en producción, con clientes y facturación real. Las
+pruebas automatizadas son pocas (`frontend/tests/`, solo funciones puras): lo que no se
+verifica empíricamente, no está verificado. Lo visual no se puede verificar en este
+entorno.
 
 Este archivo tiene lo que no puede faltar nunca. El resto está en `.claude/rules/`, que
 Claude Code carga solo:
@@ -108,10 +109,11 @@ error: empujó una rama que no había cambiado.
 
 ## Comandos
 
-No hay lint ni tests. Lo que se puede correr sin permiso:
+No hay lint. Lo que se puede correr sin permiso:
 
 ```bash
 cd frontend && npx tsc --noEmit                    # npm run build = tsc + vite build
+cd frontend && npm test                            # node --test tests/, sin dependencias nuevas
 node --check backend/src/controllers/sales.controller.js   # archivo por archivo
 docker exec -i itea_postgres psql -U postgres -d samtur-development   # solo lectura
 docker exec -i itea_postgres psql -U postgres -d samtur-development \

@@ -744,7 +744,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               now.setHours(0, 0, 0, 0);
               
               if (mig.birthDate && new Date(mig.birthDate) > now) errors.push("Fecha de Nacimiento no puede ser futura");
-              if (mig.passportExpiry && new Date(mig.passportExpiry) < now) errors.push("Vencimiento de Documento no puede ser pasado");
+              if (mig.passportExpiry && getDaysUntilDue(mig.passportExpiry) < 0) errors.push("Vencimiento de Documento no puede ser pasado");
             }
 
             if (errors.length > 0) {
@@ -1046,9 +1046,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (visa.docType === "Pasaporte" && !visa.passportExpiration) {
                 errors.push("Vencimiento de Documento (requerido)");
               } else if (visa.passportExpiration) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(visa.passportExpiration) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(visa.passportExpiration) < 0) {
                   errors.push("Vencimiento de Documento no puede ser pasado");
                 }
               }
@@ -1066,9 +1065,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               }
 
               if (visa.estimatedTravelDate) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(visa.estimatedTravelDate) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(visa.estimatedTravelDate) < 0) {
                   errors.push("Fecha Estimada de Viaje no puede ser pasada");
                 }
               }
@@ -1117,9 +1115,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               }
 
               if (passport.estimatedTravelDate) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(passport.estimatedTravelDate) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(passport.estimatedTravelDate) < 0) {
                   errors.push("Fecha Estimada de Viaje no puede ser pasada");
                 }
               }
@@ -1182,9 +1179,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
               if (!pet.travelDate) {
                 errors.push("Fecha de Viaje (requerida)");
               } else {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                if (new Date(pet.travelDate) < now) {
+                // Por dia de Colombia: new Date('YYYY-MM-DD') < medianoche local rechazaba elegir hoy.
+                if (getDaysUntilDue(pet.travelDate) < 0) {
                   errors.push("Fecha de Viaje no puede ser pasada");
                 }
               }
