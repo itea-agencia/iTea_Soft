@@ -29,7 +29,7 @@ pooler, puerto 5432; el del 6543 no sirve para `psql`). Una lectura va dentro de
 
 Para **escribir**, el patrón es un script en `backend/db-manual/`: transaccional, con
 conteo antes y después, y una guarda que aborta si algo no cuadra. Toda escritura en
-producción (Supabase, variables o deploys de Render, Vercel) se confirma con el usuario
+producción (Supabase, variables o deploys de Render, archivos en GoDaddy) se confirma con el usuario
 antes de correrla.
 
 Nunca imprimir `SIIGO_ACCESS_KEY`. Los volcados de base traen datos reales de clientes y no

@@ -34,5 +34,15 @@ venta se crea con el asistente `components/sales/NewSaleWizard.tsx` (pasos en `s
 formulario por categoría en `forms/`). El voucher es `VoucherPDF.tsx`, renderizado oculto
 y pasado a PDF con html2canvas + jsPDF.
 
-**Deploy**: merge a `main` → Render (backend, `npm run build` = `prisma generate` +
-`migrate deploy`) y Vercel (frontend). La base de producción es Supabase.
+**Deploy**: merge a `main` → Render despliega **solo el backend** (`npm run build` =
+`prisma generate` + `migrate deploy`). La base de producción es Supabase.
+
+El **frontend está en GoDaddy y se publica a mano**: `npm run build` en `frontend/`, se
+comprime el **contenido** de `frontend/dist/` y se sube con el administrador de archivos.
+Mientras no se suba, producción sigue con el frontend anterior aunque `main` ya tenga el
+cambio, así que un cambio de backend tiene que seguir funcionando con ese frontend viejo.
+
+- El build toma `VITE_API_URL` de `frontend/.env.production`, que no está en el repo: hay
+  que tenerlo en la máquina que compila.
+- `dist/` incluye `.htaccess` (sale de `public/`). Sin él, recargar una ruta como
+  `/sales` da 404 en Apache: tiene que ir en el zip aunque sea un archivo oculto.
