@@ -24,7 +24,9 @@ con dos usuarios del mismo nombre elige al primero.
 1. **Cualquier usuario que pueda crear ventas puede cargar una venta a nombre de otro.**
    Admin, asesor o freelancer, y a nombre de cualquier usuario activo, admins incluidos.
 2. **La venta es del asesor elegido.** Va en `ventas.usuario_id`, que ya decide quién la ve
-   con "Propios", la comisión del asesor, las estadísticas y los filtros por asesor.
+   con "Propios" (ventas, itinerarios en `flights.controller.js`, clientes con ventas en
+   `clients.controller.js`), las estadísticas y el filtro por asesor. No hay comisión de
+   asesor ligada a `usuario_id`: las comisiones son de comisionistas.
 3. **Queda registrado quién la cargó**, en una columna nueva `ventas.creado_por_id`. Solo en
    la base: no se muestra en ninguna pantalla.
 
@@ -86,8 +88,10 @@ Schema: `creadoPorId Int @map("creado_por_id")` en `Ventas`, con la relación
 - `Step1Client.tsx`: las opciones salen de `listAsesores()` y no de `data.users`. Se cargan
   al montar el paso y no van a la caché de `DataContext`, porque cambian poco y son pocas filas.
 - El Combobox elige **por id**. Si el texto escrito no coincide con ninguna opción, el
-  `asesorId` queda vacío y la validación del paso 1 pide elegir un asesor. Así ya no se manda
-  un id que no corresponde con el nombre que se ve.
+  `asesorId` queda vacío. Hoy el paso 1 no valida el asesor y el payload hace
+  `Number(form.asesorId) || user!.id`: un asesor vacío se convierte en silencio en el
+  logueado. Se quita ese respaldo y el paso 1 pide elegir un asesor. Así ya no se manda un id
+  que no corresponde con el nombre que se ve.
 - El valor por defecto sigue siendo el usuario logueado.
 
 ### Spec, primero
