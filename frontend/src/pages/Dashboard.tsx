@@ -685,7 +685,7 @@ export default function Dashboard() {
           <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-start gap-3 text-xs text-gray-500">
             <AlertCircle size={16} className="text-gray-400 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Las cuentas en <strong>Crédito</strong> y <strong>Abonado</strong> se sincronizan automáticamente con las finanzas del sistema. El balance se actualiza en tiempo real al registrar abonos de pago.
+              Incluye las ventas en <strong>Crédito</strong> y <strong>Abonado</strong> del periodo seleccionado. El saldo se actualiza al registrar abonos.
             </p>
           </div>
 
