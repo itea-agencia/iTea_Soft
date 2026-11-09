@@ -323,7 +323,7 @@ const untransformBody = async (section, body) => {
 };
 
 // Helper asíncrono para crear las relaciones de los paquetes turísticos en las tablas relacionales correspondientes
-const createPackageRelations = async (tx, paqueteId, body) => {
+const createPackageRelations = async (tx, paqueteId, body, userId) => {
   // 1. Relación de Vuelo
   if (body.flight) {
     let aerolineaId = null;
@@ -365,7 +365,8 @@ const createPackageRelations = async (tx, paqueteId, body) => {
     if (body.accommodation.supplier) {
       let proveedor = await tx.proveedores.findFirst({ where: { nombre: body.accommodation.supplier } });
       if (!proveedor) {
-        proveedor = await tx.proveedores.create({ data: { nombre: body.accommodation.supplier, tipo: 'Hotel' } });
+        // Tambien es un alta de proveedor: cuenta como "registrado" en el dashboard.
+        proveedor = await tx.proveedores.create({ data: { nombre: body.accommodation.supplier, tipo: 'Hotel', creadoPorId: userId, creadoAt: new Date() } });
       }
       await tx.paqueteProveedor.create({
         data: { paqueteId, proveedorId: proveedor.id }
@@ -428,6 +429,9 @@ exports.createItem = async (req, res, next) => {
 
       if (section === 'suppliers') {
         await verificarDocumentoProveedorLibre(tx, dbData.documento);
+        // Quien lo registra y cuando: "N registrados" del dashboard.
+        dbData.creadoPorId = req.user.id;
+        dbData.creadoAt = new Date();
       }
 
       // Crear registro base e incluir sus relaciones en una sola consulta de base de datos
@@ -438,7 +442,7 @@ exports.createItem = async (req, res, next) => {
 
       // Flujo de creación de relaciones hijas si es un Paquete Turístico
       if (section === 'packages') {
-        await createPackageRelations(tx, createdItem.id, req.body);
+        await createPackageRelations(tx, createdItem.id, req.body, req.user.id);
         // Volvemos a buscar el paquete para retornar todas las relaciones hijas recién creadas
         return await tx[config.model].findUnique({
           where: { [config.idField]: createdItem.id },
@@ -493,7 +497,7 @@ exports.updateItem = async (req, res, next) => {
         await tx.paqueteTarifas.deleteMany({ where: { paqueteId: itemId } });
         await tx.paqueteAsistenciaMedica.deleteMany({ where: { paqueteId: itemId } });
 
-        await createPackageRelations(tx, itemId, req.body);
+        await createPackageRelations(tx, itemId, req.body, req.user.id);
 
         // Volvemos a buscar el paquete para retornar todas las relaciones hijas actualizadas
         return await tx[config.model].findUnique({

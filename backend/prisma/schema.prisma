@@ -95,6 +95,11 @@ model Proveedores {
   detalleVentas    DetalleVenta[]     @relation("proveedor_detalle")
   pagosProveedor   PagosProveedor[]   @relation("proveedor_pago")
   paqueteProveedor PaqueteProveedor[]
+  // Quien lo registro y cuando, para "N registrados" del dashboard. Sin default: los
+  // proveedores anteriores a esta columna quedan en null, no con la fecha del deploy.
+  creadoPorId      Int?               @map("creado_por_id")
+  creadoAt         DateTime?          @map("creado_at")
+  creadoPor        Usuarios?          @relation("proveedor_creado_por", fields: [creadoPorId], references: [id])
 
   @@index([tipoDocumentoId])
   @@map("proveedores")
@@ -151,6 +156,7 @@ model Usuarios {
   usuariosCreados Usuarios[]        @relation("usuario_creado_por")
   responsablesCreados  Responsables[]  @relation("responsable_creado_por")
   comisionistasCreados Comisionistas[] @relation("comisionista_creado_por")
+  proveedoresCreados   Proveedores[]   @relation("proveedor_creado_por")
   clientesCreados Clientes[]        @relation("cliente_creado_por")
   logs            LogsUsuarios[]
   paquetesCreados Paquetes[]        @relation("paquete_creado_por")

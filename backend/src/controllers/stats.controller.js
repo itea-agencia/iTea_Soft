@@ -96,7 +96,14 @@ exports.dashboard = async (req, res, next) => {
           usuario: { select: { persona: { select: { nombres: true, apellidos: true } } } },
         }
       }),
-      req.permissionScope === 'own' ? Promise.resolve(0) : prisma.proveedores.count(),
+      // Proveedores registrados en el rango (de cualquiera para el admin, propios con "own").
+      // Los anteriores a la columna creado_at no tienen fecha y no cuentan en ningun rango.
+      prisma.proveedores.count({
+        where: {
+          creadoAt: { not: null, ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) },
+          ...(req.permissionScope === 'own' ? { creadoPorId: req.user.id } : {}),
+        },
+      }),
       prisma.pasajerosDetalle.count({ where: { detalleVenta: ventaTiquetes } }),
       prisma.detalleVenta.count({ where: { ...ventaTiquetes, pasajerosDetalle: { none: {} } } }),
     ]);

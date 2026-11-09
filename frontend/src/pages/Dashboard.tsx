@@ -257,7 +257,7 @@ export default function Dashboard() {
               label: "PROVEEDORES",
               value: formatCurrency(stats.totalProveedores),
               subtitle: "Costos Operativos",
-              detail: `${stats.supplierCount} activos`,
+              detail: `${stats.supplierCount} registrados`,
               icon: <Briefcase size={24} />,
               gradient: "from-rose-500 to-pink-400",
               lightBg: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300",
