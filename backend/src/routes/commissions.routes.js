@@ -18,7 +18,7 @@ router.get('/agents', listadoDeAgentes, paginate, commissionsController.listAgen
 router.post('/agents', authorize('commissions', 'create'), commissionsController.createAgent);
 router.get('/agents/:id', authorize('commissions', 'view'), propio('comisionista'), commissionsController.getAgent);
 router.put('/agents/:id', authorize('commissions', 'edit'), propio('comisionista'), commissionsController.updateAgent);
-router.delete('/agents/:id', authorize('commissions', 'delete'), propio('comisionista'), commissionsController.deleteAgent);
+router.patch('/agents/:id/toggle-status', authorize('commissions', 'toggle'), propio('comisionista'), commissionsController.toggleAgentStatus);
 
 // Liquidaciones
 router.get('/settlements', authorize('commissions', 'view'), paginate, commissionsController.listSettlements);

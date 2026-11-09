@@ -107,7 +107,7 @@ interface DataContextType {
   deleteConfigItem: (section: ConfigSection, id: number) => Promise<void>;
   addCommissionAgent: (agent: any) => Promise<any>;
   updateCommissionAgent: (id: number, agent: any) => Promise<void>;
-  deleteCommissionAgent: (id: number) => Promise<void>;
+  toggleCommissionAgentStatus: (id: number) => Promise<'Activo' | 'Inactivo'>;
   updateRolePermissions: (role: 'asesor' | 'freelancer', permissions: PermisosEfectivos) => Promise<void>;
 }
 
@@ -682,12 +682,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const deleteCommissionAgent = async (id: number) => {
-    await api.deleteCommissionAgent(id);
+  // Un comisionista no se borra, se desactiva. El estado se actualiza tambien en la lista del
+  // asistente de ventas, que solo ofrece a los activos.
+  const toggleCommissionAgentStatus = async (id: number) => {
+    const status = await api.toggleCommissionAgentStatus(id);
     setData(prev => ({
       ...prev,
-      commissionAgents: prev.commissionAgents.filter(a => a.id !== id)
+      commissionAgents: prev.commissionAgents.map(a => a.id === id ? { ...a, status } : a),
+      commissionAgentsForSale: (prev.commissionAgentsForSale || []).map((a: any) => a.id === id ? { ...a, status } : a),
     }));
+    return status;
   };
 
   const updateRolePermissions = async (role: 'asesor' | 'freelancer', permissions: PermisosEfectivos) => {
@@ -744,7 +748,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteConfigItem,
       addCommissionAgent,
       updateCommissionAgent,
-      deleteCommissionAgent,
+      toggleCommissionAgentStatus,
       updateRolePermissions,
     }}>
       {children}

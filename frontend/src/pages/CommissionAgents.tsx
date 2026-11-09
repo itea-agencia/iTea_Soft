@@ -13,7 +13,8 @@ import {
   BadgeDollarSign,
   Calendar,
   CreditCard,
-  Trash2,
+  UserCheck,
+  UserX,
   Pencil,
   Users,
   Loader2,
@@ -35,7 +36,7 @@ import { validateDocNumber } from "../utils/docNumber";
 import { comisionPendiente } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
-  const { data, addCommissionAgent, updateCommissionAgent, deleteCommissionAgent, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
+  const { data, addCommissionAgent, updateCommissionAgent, toggleCommissionAgentStatus, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
   const { puede } = usePermissions();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,8 +57,8 @@ export default function CommissionAgents() {
     notes: "",
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [toggleConfirm, setToggleConfirm] = useState<any | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -118,7 +119,6 @@ export default function CommissionAgents() {
   const filteredAgents = useMemo(() => {
     const agents = data.commissionAgents || [];
     const sales = data.sales || [];
-    console.log("Debug - CommissionAgents:", { agentsCount: agents.length, salesCount: sales.length });
     
     const mapped = agents.map((agent: any) => {
       const accumulated = sales
@@ -132,7 +132,6 @@ export default function CommissionAgents() {
         a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.docNumber?.includes(searchTerm)
     ).sort((a: any, b: any) => b.id - a.id);
-    console.log("Debug - FilteredAgents:", result);
     return result;
   }, [data.commissionAgents, data.sales, searchTerm]);
 
@@ -178,6 +177,8 @@ export default function CommissionAgents() {
     if (!formData.docType) errs.docType = "Seleccione un tipo de documento";
     const docErr = getDocNumberError(formData.docNumber || "", formData.docType || "");
     if (docErr) errs.docNumber = docErr;
+    // Opcional, pero si se escribe tiene que ser un numero completo.
+    if (formData.phone && formData.phone.length < 7) errs.phone = "El celular debe tener al menos 7 dígitos";
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
     setIsSaving(true);
@@ -204,19 +205,21 @@ export default function CommissionAgents() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteConfirm) return;
-    setIsDeleting(true);
+  // Con comision pendiente el servidor rechaza la desactivacion y dice cuanto falta liquidar.
+  const handleToggleStatus = async () => {
+    if (!toggleConfirm) return;
+    setIsToggling(true);
     try {
-      await deleteCommissionAgent(deleteConfirm.id);
-      notifySuccess("Comisionista eliminado correctamente");
-      setDeleteConfirm(null);
+      const status = await toggleCommissionAgentStatus(toggleConfirm.id);
+      notifySuccess(status === "Activo" ? "Comisionista activado correctamente" : "Comisionista desactivado correctamente");
+      setToggleConfirm(null);
     } catch (err: any) {
-      setErrorMessage(mensajeDeError(err, "Error al eliminar el comisionista"));
+      setErrorMessage(mensajeDeError(err, "Error al cambiar el estado del comisionista"));
       setShowError(true);
-      setTimeout(() => setShowError(false), 3000);
+      setTimeout(() => setShowError(false), 5000);
+      setToggleConfirm(null);
     } finally {
-      setIsDeleting(false);
+      setIsToggling(false);
     }
   };
 
@@ -403,9 +406,13 @@ export default function CommissionAgents() {
                                   <Pencil size={16} />
                                </button>
                              )}
-                             {puede('commissions', 'delete', agent.createdBy) && (
-                               <button onClick={() => setDeleteConfirm(agent)} className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
-                                  <Trash2 size={16} />
+                             {puede('commissions', 'toggle', agent.createdBy) && (
+                               <button
+                                 onClick={() => setToggleConfirm(agent)}
+                                 title={agent.status === "Activo" ? "Desactivar" : "Activar"}
+                                 className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                               >
+                                  {agent.status === "Activo" ? <UserX size={16} /> : <UserCheck size={16} className="text-green-500" />}
                                </button>
                              )}
                           </div>
@@ -647,7 +654,7 @@ export default function CommissionAgents() {
              </div>
           </div>
 
-          <FormField label="Nombre Completo / Razón Social" error={errors.name}>
+          <FormField label="Nombre Completo / Razón Social *" error={errors.name}>
             <Input
               className="h-12 rounded-xl"
               value={formData.name || ""}
@@ -668,25 +675,28 @@ export default function CommissionAgents() {
                   { value: "Comisionista", label: "Comisionista Independiente" },
                   { value: "Agencia Externa", label: "Agencia de Viajes Externa" },
                   { value: "Referido", label: "Referido / Amigo" },
+                  { value: "Asesor interno", label: "Asesor interno" },
                   { value: "Otro", label: "Otro Comisionista" },
                 ]}
               />
             </FormField>
-            <FormField label="Estado de la Cuenta">
-              <Select
+            <FormField label="Celular" error={errors.phone}>
+              <Input
                 className="h-12 rounded-xl"
-                value={formData.status || "Activo"}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                options={[
-                  { value: "Activo", label: "Activo - Recibe Comisiones" },
-                  { value: "Inactivo", label: "Inactivo - Suspendido" },
-                ]}
+                value={formData.phone || ""}
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") });
+                  if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
+                }}
+                placeholder="Ej: 3001234567"
+                maxLength={15}
+                error={errors.phone}
               />
             </FormField>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="Tipo de Documento" error={errors.docType}>
+            <FormField label="Tipo de Documento *" error={errors.docType}>
               <Select
                 className="h-12 rounded-xl"
                 value={formData.docType || ""}
@@ -702,7 +712,7 @@ export default function CommissionAgents() {
                 error={errors.docType}
               />
             </FormField>
-            <FormField label="Número de Identificación" error={errors.docNumber}>
+            <FormField label="Número de Identificación *" error={errors.docNumber}>
               <Input
                 className="h-12 rounded-xl"
                 value={formData.docNumber || ""}
@@ -737,7 +747,7 @@ export default function CommissionAgents() {
             </FormField>
           </div>
 
-          <FormField label="Observaciones (Opcional)" error={errors.observacion}>
+          <FormField label="Observaciones" error={errors.observacion}>
             <textarea
               className={`w-full rounded-xl border ${errors.observacion ? 'border-red-500' : 'border-gray-200'} bg-white px-4 py-3 text-sm transition-all focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary dark:border-slate-700 dark:bg-slate-900 dark:text-white resize-none`}
               rows={3}
@@ -844,37 +854,40 @@ export default function CommissionAgents() {
         </div>
       </Modal>
 
-      {/* ===== CONFIRMAR ELIMINACIÓN ===== */}
+      {/* ===== CONFIRMAR ACTIVAR / DESACTIVAR ===== */}
       <Modal
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        title="Eliminar Comisionista"
+        isOpen={!!toggleConfirm}
+        onClose={() => setToggleConfirm(null)}
+        title={toggleConfirm?.status === "Activo" ? "Desactivar Comisionista" : "Activar Comisionista"}
         size="md"
         footer={
           <>
             <Button
               variant="outline"
               className="border-none"
-              onClick={() => setDeleteConfirm(null)}
-              disabled={isDeleting}
+              onClick={() => setToggleConfirm(null)}
+              disabled={isToggling}
             >
               Cancelar
             </Button>
             <Button
               className="bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 font-bold"
-              onClick={handleDelete}
-              disabled={isDeleting}
+              onClick={handleToggleStatus}
+              disabled={isToggling}
             >
-              {isDeleting && <Loader2 size={16} className="animate-spin" />}
-              {isDeleting ? "Eliminando..." : "Eliminar Comisionista"}
+              {isToggling && <Loader2 size={16} className="animate-spin" />}
+              {isToggling ? "Procesando..." : toggleConfirm?.status === "Activo" ? "Sí, desactivar" : "Sí, activar"}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <p className="text-gray-600 text-sm">
-            ¿Estás seguro de que deseas eliminar al comisionista <strong>{deleteConfirm?.name}</strong>?
-            Esta acción removerá su perfil del sistema de comisiones.
+            {toggleConfirm?.status === "Activo" ? (
+              <>¿Desactivar a <strong>{toggleConfirm?.name}</strong>? No se le podrá asignar a ventas nuevas hasta que lo actives. Sus ventas y liquidaciones se conservan. Si tiene comisión sin liquidar, primero hay que liquidarla.</>
+            ) : (
+              <>¿Activar a <strong>{toggleConfirm?.name}</strong>? Se le podrá volver a asignar a ventas.</>
+            )}
           </p>
         </div>
       </Modal>
@@ -964,7 +977,7 @@ export default function CommissionAgents() {
               {/* TAB: Información */}
               {detailsTab === 'info' && (
                 <div>
-                  {/* Grid 2x2 */}
+                  {/* Tipo de documento, documento y celular */}
                   <div className="grid grid-cols-2 gap-x-10 gap-y-5 mb-6">
                     <div>
                       <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Tipo Doc:</p>
@@ -975,12 +988,8 @@ export default function CommissionAgents() {
                       <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{agentDetails.docNumber || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Teléfono:</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Celular:</p>
                       <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{agentDetails.phone || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Correo:</p>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-slate-200 truncate">{agentDetails.email || '—'}</p>
                     </div>
                   </div>
 

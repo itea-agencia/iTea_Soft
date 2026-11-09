@@ -19,7 +19,7 @@ export {
   listFlights, updateCheckin,
 } from './flights';
 export {
-  listCommissionAgents, getCommissionAgent, createCommissionAgent, updateCommissionAgent, deleteCommissionAgent,
+  listCommissionAgents, getCommissionAgent, createCommissionAgent, updateCommissionAgent, toggleCommissionAgentStatus,
   listSettlements, createSettlement,
 } from './commissions';
 export {
