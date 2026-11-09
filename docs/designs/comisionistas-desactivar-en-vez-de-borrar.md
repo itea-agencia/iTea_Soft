@@ -72,4 +72,21 @@ Además:
 
 ## Lo que queda abierto
 
+**Antes de mergear `feat-bayrol` a `main`** (el merge despliega), en producción:
+
+1. Correr `backend/db-manual/add_commissions_toggle_permission.sh`. Sin eso, ningún asesor ni freelancer tiene `commissions.toggle` y solo el admin puede activar o desactivar comisionistas. Es una escritura: se confirma antes de correrla y después se marca como aplicada en `backend/db-manual/README.md`.
+2. Contar los documentos que la validación nueva (6 a 15 caracteres, NIT sin dígito de verificación) dejaría sin poder editar. Es de solo lectura. Si da más de 0, se decide antes del merge si se corrigen con un script de `db-manual/`.
+
+```sql
+BEGIN READ ONLY;
+SELECT count(*) FROM personas p
+ WHERE p.deleted_at IS NULL
+   AND (length(p.documento) NOT BETWEEN 6 AND 15 OR p.documento LIKE '%-%')
+   AND (EXISTS (SELECT 1 FROM clientes c WHERE c.persona_id = p.id)
+     OR EXISTS (SELECT 1 FROM responsables r WHERE r.persona_id = p.id)
+     OR EXISTS (SELECT 1 FROM usuarios u WHERE u.persona_id = p.id)
+     OR EXISTS (SELECT 1 FROM comisionistas co WHERE co.persona_id = p.id));
+ROLLBACK;
+```
+
 - **Un asesor puede ser comisionista de sus propias ventas.** Se agregó la categoría "Asesor interno" porque la gerencia quiere que un asesor también pueda ser comisionista. No se bloquea que el asesor que registra la venta se elija a sí mismo como comisionista: es una decisión expresa de la gerencia (2026-11-09), tomada después de que se le planteó el riesgo de que cobre comisión sobre su propia venta además de lo que gana como asesor.
