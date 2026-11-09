@@ -72,6 +72,8 @@ Además:
 
 ## Lo que queda abierto
 
+El checklist completo del despliegue, con estos dos pasos y los demás, está en `despliegue-feat-bayrol-2026-11.md`.
+
 **Antes de mergear `feat-bayrol` a `main`** (el merge despliega), en producción:
 
 1. Correr `backend/db-manual/add_commissions_toggle_permission.sh`. Sin eso, ningún asesor ni freelancer tiene `commissions.toggle` y solo el admin puede activar o desactivar comisionistas. Es una escritura: se confirma antes de correrla y después se marca como aplicada en `backend/db-manual/README.md`.
