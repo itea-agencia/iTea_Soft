@@ -31,6 +31,7 @@ import { formatCurrency, capitalizeName, todayStr } from "../utils/formatters";
 import StatCard from "../components/ui/StatCard";
 import LoadingScreen from "../components/ui/LoadingScreen";
 import { mensajeDeError } from "../utils/errors";
+import { validateDocNumber } from "../utils/docNumber";
 import { comisionPendiente } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
@@ -157,21 +158,12 @@ export default function CommissionAgents() {
     setIsModalOpen(true);
   };
 
-  const validateDocNumber = (value: string, docType: string): string => {
+  // El formato es la regla compartida (utils/docNumber.ts); aca se suma lo propio de esta
+  // pantalla: obligatorio y no repetido entre comisionistas.
+  const getDocNumberError = (value: string, docType: string): string => {
     if (!value.trim()) return "El número de documento es obligatorio";
-    const typeUpper = docType ? docType.toUpperCase() : "";
-    if (typeUpper === "PASAPORTE" || typeUpper === "PP" || typeUpper === "PAS") {
-      if (value.length < 9 || value.length > 12) return "El pasaporte debe tener entre 9 y 12 caracteres";
-      if (!/^[a-zA-Z0-9]+$/.test(value)) return "El pasaporte solo debe contener caracteres alfanuméricos";
-    } else if (typeUpper === "NIT" || typeUpper === "RUT") {
-      if (value.length !== 11) return "El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)";
-      if (!/^\d{9}-\d{1}$/.test(value)) return "El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)";
-    } else if (typeUpper === "CC") {
-      if (value.length < 8 || value.length > 10) return "La cédula de ciudadanía debe tener entre 8 y 10 dígitos";
-      if (!/^\d+$/.test(value)) return "La cédula de ciudadanía solo debe contener números";
-    } else if (value.length > 15) {
-      return "El documento no puede exceder 15 caracteres";
-    }
+    const formatError = validateDocNumber(docType, value);
+    if (formatError) return formatError;
     // Duplicate check against existing agents
     const isDuplicate = (data.commissionAgents || []).some(
       (a: any) => a.docNumber === value && (!editingAgent || a.id !== editingAgent.id)
@@ -184,7 +176,7 @@ export default function CommissionAgents() {
     const errs: Record<string, string> = {};
     if (!formData.name) errs.name = "El nombre es obligatorio";
     if (!formData.docType) errs.docType = "Seleccione un tipo de documento";
-    const docErr = validateDocNumber(formData.docNumber || "", formData.docType || "");
+    const docErr = getDocNumberError(formData.docNumber || "", formData.docType || "");
     if (docErr) errs.docNumber = docErr;
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
 
@@ -730,16 +722,10 @@ export default function CommissionAgents() {
                   if (errors.docNumber) setErrors((p) => ({ ...p, docNumber: "" }));
                 }}
                 onBlur={(e) => {
-                  const err = validateDocNumber(e.target.value, formData.docType || "");
+                  const err = getDocNumberError(e.target.value, formData.docType || "");
                   if (err) setErrors((p) => ({ ...p, docNumber: err }));
                 }}
-                maxLength={
-                  formData.docType ? (
-                    formData.docType.toUpperCase() === "CC" ? 10 :
-                    ["PASAPORTE", "PP", "PAS"].includes(formData.docType.toUpperCase()) ? 12 :
-                    ["NIT", "RUT"].includes(formData.docType.toUpperCase()) ? 11 : 15
-                  ) : 15
-                }
+                maxLength={15}
                 placeholder={
                   formData.docType?.toUpperCase() === "CC" ? "Ej. 1234567890" :
                   ["NIT", "RUT"].includes(formData.docType?.toUpperCase() || "") ? "Ej. 123456789-0" :

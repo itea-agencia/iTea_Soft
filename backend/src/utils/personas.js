@@ -8,14 +8,30 @@
 //
 // No sirve para el reingreso de alguien al mismo rol (un cliente eliminado que vuelve): ahi
 // el formulario trae los datos actualizados de esa misma persona y si se aplican.
-function completarPersona(existente, nuevos) {
-  const datos = {};
-  for (const [campo, valor] of Object.entries(nuevos)) {
-    const actual = existente[campo];
-    const vacio = actual === null || actual === undefined || actual === '';
-    if (vacio && valor !== null && valor !== undefined && valor !== '') datos[campo] = valor;
+function completarPersona(existing, incoming) {
+  const fields = {};
+  for (const [field, value] of Object.entries(incoming)) {
+    const current = existing[field];
+    const isEmpty = current === null || current === undefined || current === '';
+    if (isEmpty && value !== null && value !== undefined && value !== '') fields[field] = value;
   }
-  return datos;
+  return fields;
 }
 
-module.exports = { completarPersona };
+// Rango de longitud del documento de una persona, igual para clientes y responsables. El
+// mismo rango se valida en los formularios (Clients.tsx, Responsables.tsx).
+function isDocNumberOutOfRange(docNumber) {
+  const length = String(docNumber).length;
+  return length < 6 || length > 15;
+}
+
+// El NIT se guarda sin digito de verificacion: el formulario acepta 900123456 y 900123456-7,
+// y sin normalizar quedaban como dos personas distintas (la busqueda de duplicados compara el
+// texto completo) aunque en Siigo son el mismo tercero. Se corta igual que
+// normalizarIdentificacion de siigo-catalog.js, para que iTea y Siigo usen el mismo numero.
+function normalizeDocNumber(docNumber, docType) {
+  if (!docNumber || !['NIT', 'RUT'].includes(String(docType || '').toUpperCase())) return docNumber;
+  return String(docNumber).trim().split('-')[0].trim();
+}
+
+module.exports = { completarPersona, isDocNumberOutOfRange, normalizeDocNumber };

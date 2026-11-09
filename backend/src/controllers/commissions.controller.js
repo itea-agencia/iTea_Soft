@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
-const { completarPersona } = require('../utils/personas');
+const { completarPersona, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/personas');
 const { auditar } = require('../utils/auditoria');
 
 const splitFullName = (fullName) => {
@@ -164,6 +164,10 @@ exports.listAgents = async (req, res, next) => {
 exports.createAgent = async (req, res, next) => {
   try {
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
 
     let tipoDocumentoId = null;
     if (data.docType) {
@@ -290,6 +294,10 @@ exports.updateAgent = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
     const agent = await prisma.comisionistas.findUnique({
       where: { id },
       include: { persona: { include: { tipoDocumento: true } } }

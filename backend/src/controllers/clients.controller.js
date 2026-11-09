@@ -5,7 +5,7 @@ const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
 const ciudadesDane = require('../config/ciudades-dane');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
-const { completarPersona } = require('../utils/personas');
+const { completarPersona, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/personas');
 const { auditar } = require('../utils/auditoria');
 
 // Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
@@ -184,7 +184,11 @@ exports.getById = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
     let tipoDocumentoId = null;
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
 
     if (data.docType) {
       const tipoDoc = await prisma.tiposDocumento.findUnique({
@@ -312,6 +316,7 @@ exports.update = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
 
     const cliente = await prisma.clientes.findUnique({ where: { id }, include: { persona: true } });
     if (!cliente) return error(res, 'Cliente no encontrado', 404);
@@ -328,6 +333,9 @@ exports.update = async (req, res, next) => {
     }
 
     if (data.docNumber) {
+      if (isDocNumberOutOfRange(data.docNumber)) {
+        return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+      }
       const existingDoc = await prisma.personas.findUnique({
         where: { documento: data.docNumber }
       });

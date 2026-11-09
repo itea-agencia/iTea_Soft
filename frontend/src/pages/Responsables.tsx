@@ -13,6 +13,7 @@ import ResponsableDetailModal from '../components/responsables/ResponsableDetail
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
+import { validateDocNumber } from '../utils/docNumber';
 import { formatDate, capitalizeName, formatId, todayStr } from '../utils/formatters';
 import { Responsable } from '../types';
 import LoadingScreen from '../components/ui/LoadingScreen';
@@ -70,28 +71,7 @@ export default function Responsables() {
         if (!value.trim()) {
           errorMsg = 'El número de documento es obligatorio';
         } else {
-          const typeUpper = formData.docType ? formData.docType.toUpperCase() : '';
-          if (typeUpper === 'PASAPORTE' || typeUpper === 'PP' || typeUpper === 'PAS') {
-            if (value.length < 9 || value.length > 12) {
-              errorMsg = 'El pasaporte debe tener entre 9 y 12 caracteres';
-            } else if (!/^[a-zA-Z0-9]+$/.test(value)) {
-              errorMsg = 'El pasaporte solo debe contener caracteres alfanuméricos';
-            }
-          } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-            if (value.length !== 11) {
-              errorMsg = 'El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)';
-            } else if (!/^\d{9}-\d{1}$/.test(value)) {
-              errorMsg = 'El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)';
-            }
-          } else if (typeUpper === 'CC') {
-            if (value.length < 8 || value.length > 10) {
-              errorMsg = 'La cédula de ciudadanía debe tener entre 8 y 10 dígitos';
-            } else if (!/^\d+$/.test(value)) {
-              errorMsg = 'La cédula de ciudadanía solo debe contener números';
-            }
-          } else if (value.length > 15) {
-            errorMsg = 'El documento no puede exceder 15 caracteres';
-          }
+          errorMsg = validateDocNumber(formData.docType, value);
         }
         
         if (!errorMsg) {
@@ -188,28 +168,8 @@ export default function Responsables() {
     if (!formData.docNumber.trim()) {
       newErrors.docNumber = 'El número de documento es obligatorio';
     } else {
-      const typeUpper = formData.docType ? formData.docType.toUpperCase() : '';
-      if (typeUpper === 'PASAPORTE' || typeUpper === 'PP' || typeUpper === 'PAS') {
-        if (formData.docNumber.length < 9 || formData.docNumber.length > 12) {
-          newErrors.docNumber = 'El pasaporte debe tener entre 9 y 12 caracteres';
-        } else if (!/^[a-zA-Z0-9]+$/.test(formData.docNumber)) {
-          newErrors.docNumber = 'El pasaporte solo debe contener caracteres alfanuméricos';
-        }
-      } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-        if (formData.docNumber.length !== 11) {
-          newErrors.docNumber = 'El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)';
-        } else if (!/^\d{9}-\d{1}$/.test(formData.docNumber)) {
-          newErrors.docNumber = 'El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)';
-        }
-      } else if (typeUpper === 'CC') {
-        if (formData.docNumber.length < 8 || formData.docNumber.length > 10) {
-          newErrors.docNumber = 'La cédula de ciudadanía debe tener entre 8 y 10 dígitos';
-        } else if (!/^\d+$/.test(formData.docNumber)) {
-          newErrors.docNumber = 'La cédula de ciudadanía solo debe contener números';
-        }
-      } else if (formData.docNumber.length > 15) {
-        newErrors.docNumber = 'El documento no puede exceder 15 caracteres';
-      }
+      const docError = validateDocNumber(formData.docType, formData.docNumber);
+      if (docError) newErrors.docNumber = docError;
     }
     
     if (!formData.phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
@@ -250,10 +210,10 @@ export default function Responsables() {
 
       if (editingResponsable) {
         await updateResponsable(editingResponsable.id, responsableData);
-        setSuccessMessage('Responsablee actualizado exitosamente');
+        setSuccessMessage('Responsable actualizado exitosamente');
       } else {
         await addResponsable(responsableData);
-        setSuccessMessage('Nuevo responsablee registrado correctamente');
+        setSuccessMessage('Nuevo responsable registrado correctamente');
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       }
@@ -261,7 +221,7 @@ export default function Responsables() {
       setIsModalOpen(false);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Error al guardar el responsablee';
+      const msg = err?.response?.data?.error?.message || err?.message || 'Error al guardar el responsable';
       setErrorMessage(msg);
       setShowError(true);
       setTimeout(() => setShowError(false), 5000);
@@ -407,7 +367,7 @@ export default function Responsables() {
             {toggleAction === 'activated' ? <UserCheck size={18} /> : toggleAction === 'deactivated' ? <UserX size={18} /> : <CheckCircle size={18} />}
           </div>
           <div>
-            <p className="font-bold text-sm">{toggleAction === 'activated' ? 'Responsablee Activado' : toggleAction === 'deactivated' ? 'Responsablee Desactivado' : 'Operación Exitosa'}</p>
+            <p className="font-bold text-sm">{toggleAction === 'activated' ? 'Responsable Activado' : toggleAction === 'deactivated' ? 'Responsable Desactivado' : 'Operación Exitosa'}</p>
             <p className="text-xs opacity-90">{successMessage}</p>
           </div>
         </div>,
@@ -431,7 +391,7 @@ export default function Responsables() {
       <Modal
         isOpen={!!confirmToggle}
         onClose={handleCancelToggle}
-        title={confirmToggle?.newStatus === 'inactive' ? 'Desactivar Responsablee' : 'Activar Responsablee'}
+        title={confirmToggle?.newStatus === 'inactive' ? 'Desactivar Responsable' : 'Activar Responsable'}
         size="sm"
         footer={
           <>
@@ -641,7 +601,7 @@ export default function Responsables() {
               <UserCheck size={16} className="text-accent" /> Información Personal
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Nombres" error={errors.firstName}>
+              <FormField label="Nombres *" error={errors.firstName}>
                 <Input
                   value={formData.firstName}
                   onChange={e => {
@@ -655,7 +615,7 @@ export default function Responsables() {
                   maxLength={40}
                 />
               </FormField>
-              <FormField label="Apellidos" error={errors.lastName}>
+              <FormField label="Apellidos *" error={errors.lastName}>
                 <Input
                   value={formData.lastName}
                   onChange={e => {
@@ -671,7 +631,7 @@ export default function Responsables() {
               </FormField>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Tipo de Documento" error={errors.docType}>
+              <FormField label="Tipo de Documento *" error={errors.docType}>
                 <Select
                   value={formData.docType}
                   onChange={e => {
@@ -683,7 +643,7 @@ export default function Responsables() {
                   error={errors.docType}
                 />
               </FormField>
-              <FormField label="Número de Documento" error={errors.docNumber}>
+              <FormField label="Número de Documento *" error={errors.docNumber}>
                 <Input
                   value={formData.docNumber}
                   onChange={e => {
@@ -704,18 +664,12 @@ export default function Responsables() {
                   onBlur={e => validateField('docNumber', e.target.value)}
                   placeholder="Número de documento"
                   error={errors.docNumber}
-                  maxLength={
-                    formData.docType ? (
-                      formData.docType.toUpperCase() === 'CC' ? 10 :
-                      ['PASAPORTE', 'PP', 'PAS'].includes(formData.docType.toUpperCase()) ? 12 :
-                      ['NIT', 'RUT'].includes(formData.docType.toUpperCase()) ? 11 : 15
-                    ) : 15
-                  }
+                  maxLength={15}
                 />
               </FormField>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Teléfono" error={errors.phone}>
+              <FormField label="Teléfono *" error={errors.phone}>
                 <Input
                   value={formData.phone}
                   onChange={e => {
@@ -737,7 +691,7 @@ export default function Responsables() {
               <Search size={16} className="text-accent" /> Información de Contacto y Estado
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField label="Correo Electrónico" error={errors.email}>
+              <FormField label="Correo Electrónico *" error={errors.email}>
                 <Input
                   type="email"
                   value={formData.email}
