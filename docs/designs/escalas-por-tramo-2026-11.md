@@ -129,7 +129,7 @@ primer vuelo emite las tarjetas de embarque de todo el trayecto. Diseño detalla
 (`TicketForm.tsx:957`): hoy "Añadir Tramo" solo existe en la sección de Ida, no hay equivalente en
 Regreso, así que lo que agregue queda marcado `ida` sin ambigüedad.
 
-### Decidido por el agente, para revisar
+### Decidido por el agente, confirmado por el usuario el 2026-11-05
 
 - **El nombre visible es "Escala de regreso"**, no "de vuelta": la spec de vocabulario dice
   "Regreso, nunca Vuelta". El formulario hoy dice "Trayecto de Vuelta" y "Escalas de Vuelta", y
@@ -189,6 +189,17 @@ los que hoy fallan.
 Script `backend/db-manual/rellenar_tipo_tramo.sql` y `.sh`, con el patrón de siempre: transaccional,
 conteo antes y después, y una guarda que aborta si algo no cuadra. **Escribe en producción: se
 confirma con el usuario antes de correrlo.**
+
+**Escrito y verificado en local el 2026-11-05** (132 filas actualizadas, 0 en `NULL` al final, y 0
+tramos cambiaron de pestaña en `flights.list` comparando los 144 tramos locales uno por uno antes
+y después del script).
+
+**Pendiente: correr `backend/db-manual/rellenar_tipo_tramo.sh` contra producción.** Escribe sobre
+datos reales de 20 ventas de clientes (18 activas y 2 anuladas/eliminadas, ver "Las ventas ya
+registradas" más arriba): el usuario lo confirma explícitamente antes de correrlo, no alcanza con
+una autorización general. Mientras no corra, producción sigue con esas 215 filas en `NULL` y
+`flights.list` las sigue mostrando con la regla vieja de respaldo (Fase 2) — no rompe nada, pero
+Fase 5 no puede arrancar hasta que esto se corra y se verifique ahí.
 
 - Solo toca filas con `tipo_tramo IS NULL`. Si no cambia nada, no falla al repetirlo.
 - Según **D1**: solo ida → `ida`. Ida y vuelta → el primer día es `ida` y el resto `regreso`; si

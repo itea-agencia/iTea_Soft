@@ -56,7 +56,8 @@ const CATALOGO = {
       view: { etiqueta: 'Ver', tipo: 'alcance' },
       create: { etiqueta: 'Crear', tipo: 'sino' },
       edit: { etiqueta: 'Editar', tipo: 'alcance' },
-      delete: { etiqueta: 'Eliminar', tipo: 'alcance' },
+      // Antes `delete`, un borrado fisico que fallaba con cualquier comisionista con ventas.
+      toggle: { etiqueta: 'Activar/Desactivar', tipo: 'alcance', heredaDe: 'commissions.delete' },
       settle: { etiqueta: 'Liquidar', tipo: 'alcance', heredaDe: 'commissions.create' },
     },
   },

@@ -914,22 +914,6 @@ export interface AppData {
   commissionAgentsForSale: Pick<CommissionAgent, 'id' | 'name' | 'status'>[];
   commissionSettlements: CommissionSettlement[];
   config: ConfigData;
-  salesHistory: MonthlySale[];
-}
-
-export interface MonthlySale {
-  id: number;
-  year: number;
-  month: number;
-  total: number;
-  count: number;
-  category: {
-    hotels: number;
-    flights: number;
-    packages: number;
-    insurance: number;
-    transfers: number;
-  };
 }
 
 export interface DashboardStats {

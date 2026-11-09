@@ -88,6 +88,10 @@ explícitamente. Cada subagente arranca en frío y vuelve a leer lo que ya está
 es el camino caro. Esto manda sobre las skills que los lanzan solas
 (`subagent-driven-development`, `dispatching-parallel-agents`).
 
+### 6. Nombres nuevos en inglés
+
+Funciones, variables, constantes y tipos que se creen de ahora en adelante van en inglés (`validateDocNumber`, no `validarDocumento`). El código viejo tiene muchos nombres en español: se traducen cuando se toca esa parte, no en una pasada aparte. Un nombre exportado o usado en otros archivos se renombra en todos sus usos en el mismo commit (`grep` antes). Los comentarios, los mensajes al usuario y los commits siguen en español. Los nombres de tablas y columnas de la base no se tocan: cambiarlos requiere una migración.
+
 ## Trampas del entorno
 
 **El código va horneado en la imagen de Docker.** `COPY . .`, y solo `uploads` está

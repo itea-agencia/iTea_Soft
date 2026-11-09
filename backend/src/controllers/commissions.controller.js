@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
-const { completarPersona } = require('../utils/personas');
+const { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
 const { diaColombia } = require('../utils/fechas');
 
 // Una liquidacion guarda la fecha que manda el formulario ('YYYY-MM-DD', queda a 00:00 UTC) o,
@@ -172,6 +172,10 @@ exports.listAgents = async (req, res, next) => {
 exports.createAgent = async (req, res, next) => {
   try {
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
 
     let tipoDocumentoId = null;
     if (data.docType) {
@@ -186,7 +190,7 @@ exports.createAgent = async (req, res, next) => {
         where: { persona: { documento: data.docNumber } }
       });
       if (existingAgent) {
-        if (existingAgent.status !== 'Inactivo' && existingAgent.status !== 'Eliminado' && !existingAgent.deletedAt) {
+        if (existingAgent.status !== 'Inactivo') {
           return error(res, 'Este número de documento ya está registrado y activo como comisionista', 400);
         }
       }
@@ -214,12 +218,12 @@ exports.createAgent = async (req, res, next) => {
         });
       } else if (existingPersona) {
         // La persona existe pero no era comisionista: solo se completa lo que no tiene. Antes
-        // se le sobrescribian nombre, correo y telefono (ver utils/personas.js).
+        // se le sobrescribian nombre, correo y telefono (ver utils/persons.js).
         const { firstName, lastName } = splitFullName(data.name || '');
         persona = await prisma.personas.update({
           where: { id: existingPersona.id },
           data: {
-            ...completarPersona(existingPersona, {
+            ...fillMissingPersonFields(existingPersona, {
               nombres: formatName(firstName),
               apellidos: formatName(lastName),
               tipoDocumentoId,
@@ -257,7 +261,7 @@ exports.createAgent = async (req, res, next) => {
           observacion: data.observacion || existingAgent.observacion,
           // Aca tambien se escribia `deletedAt: null`, pero `comisionistas` no tiene esa
           // columna: reactivar a un comisionista inactivo revento siempre.
-          status: data.status || 'Activo'
+          status: 'Activo'
         },
         include: { persona: { include: { tipoDocumento: true } } }
       });
@@ -269,7 +273,7 @@ exports.createAgent = async (req, res, next) => {
           umbralPago: parseFloat(data.paymentThreshold) || 0,
           acumulado: 0,
           observacion: data.observacion || null,
-          status: data.status || 'Activo',
+          status: 'Activo',
           creadoPorId: req.user.id
         },
         include: { persona: { include: { tipoDocumento: true } } }
@@ -298,6 +302,10 @@ exports.updateAgent = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
     const agent = await prisma.comisionistas.findUnique({
       where: { id },
       include: { persona: { include: { tipoDocumento: true } } }
@@ -340,7 +348,7 @@ exports.updateAgent = async (req, res, next) => {
     }
 
     if (data.type !== undefined) await prisma.comisionistas.update({ where: { id }, data: { tipo: data.type } });
-    if (data.status !== undefined) await prisma.comisionistas.update({ where: { id }, data: { status: data.status } });
+    // El estado no se cambia aca: tiene su propia ruta y su propio permiso (toggleAgentStatus).
     if (data.observacion !== undefined) await prisma.comisionistas.update({ where: { id }, data: { observacion: data.observacion } });
     if (data.paymentThreshold !== undefined) {
       await prisma.comisionistas.update({ where: { id }, data: { umbralPago: parseFloat(data.paymentThreshold) || 0 } });
@@ -352,11 +360,43 @@ exports.updateAgent = async (req, res, next) => {
   }
 };
 
-exports.deleteAgent = async (req, res, next) => {
+// Comision neta de las ventas del comisionista que todavia no se le pagaron. Mismo criterio que
+// createSettlement: ni anuladas ni eliminadas. Se deriva de las ventas y no de la columna
+// `acumulado` ni de lo que suma la pantalla (invariantes 2 y 3).
+async function getPendingCommission(tx, agentId) {
+  const [row] = await tx.$queryRaw`
+    SELECT COALESCE(SUM(monto_comision_neto), 0) AS pending
+    FROM ventas
+    WHERE comisionista_id = ${agentId} AND comision_liquidada = false
+      AND status::text <> 'anulado' AND deleted_at IS NULL`;
+  return Number(row.pending) || 0;
+}
+
+// Un comisionista no se borra: tiene ventas y liquidaciones que lo referencian, y el borrado
+// fisico que habia aca respondia 500 con cualquiera que tuviera ventas. Se desactiva, y solo
+// sin comision pendiente: primero se le liquida, como un responsable con deuda.
+exports.toggleAgentStatus = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    await prisma.comisionistas.delete({ where: { id } });
-    success(res, { message: 'Comisionista eliminado' });
+    const result = await prisma.$transaction(async (tx) => {
+      const agent = await tx.comisionistas.findUnique({ where: { id } });
+      if (!agent) return { notFound: true };
+      const newStatus = agent.status === 'Activo' ? 'Inactivo' : 'Activo';
+      if (newStatus === 'Inactivo') {
+        const pending = await getPendingCommission(tx, id);
+        if (pending > 0) return { pending };
+      }
+      await tx.comisionistas.update({ where: { id }, data: { status: newStatus } });
+      await auditar(tx, req.user.id, 'commissions', 'toggle',
+        `comisionista ${id}: ${newStatus === 'Inactivo' ? 'desactivado' : 'reactivado'}`);
+      return { status: newStatus };
+    });
+
+    if (result.notFound) return error(res, 'Comisionista no encontrado', 404);
+    if (result.pending) {
+      return error(res, `No se puede desactivar: el comisionista tiene $${result.pending.toLocaleString('es-CO')} de comisión sin liquidar. Liquídala primero.`, 400, 'COMISION_PENDIENTE');
+    }
+    success(res, { status: result.status });
   } catch (err) {
     next(err);
   }

@@ -1,35 +1,47 @@
 const prisma = require('../config/db');
-const { success } = require('../utils/apiResponse');
+const { Prisma } = require('@prisma/client');
+const { success, error } = require('../utils/apiResponse');
 const { diaColombia } = require('../utils/fechas');
 
 // creado_at es TIMESTAMP en UTC. Agrupar por anio o mes sin pasarlo a Colombia corta el dia a
-// las 19:00: una venta del 31 de octubre a las 20:00 contaba en noviembre.
-const CREADO_COL = `(creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`;
-const V_CREADO_COL = `(v.creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`;
+// las 19:00: una venta del 31 de octubre a las 20:00 contaba en noviembre. Constantes del
+// codigo, se insertan con Prisma.raw.
+const CREADO_COL = Prisma.raw(`(creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`);
+const V_CREADO_COL = Prisma.raw(`(v.creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`);
+
+// Rango de fechas de los query params. Antes cada endpoint hacia `new Date(x).toISOString()`
+// directo, y `?dateFrom=xyz` lo tumbaba con un 500. Devuelve { error } si no sirve.
+function readDateRange(query) {
+  const parse = (value) => {
+    if (value === undefined || value === '') return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? NaN : date;
+  };
+  const from = parse(query.dateFrom);
+  const to = parse(query.dateTo);
+  if (Number.isNaN(from) || Number.isNaN(to)) return { error: 'Fecha inválida' };
+  if (from && to && from > to) return { error: 'La fecha inicial es posterior a la final' };
+  return { from, to };
+}
+
+// Fechas e id de usuario como parametros, no pegados al texto: estas consultas usaban
+// $queryRawUnsafe con interpolacion, inyectable apenas alguien sumara un filtro de texto.
+// `column` es siempre un literal del codigo, nunca algo del request.
+const dateCond = (column, { from, to }) => Prisma.sql`${from ? Prisma.sql`AND ${Prisma.raw(column)} >= ${from}` : Prisma.empty} ${to ? Prisma.sql`AND ${Prisma.raw(column)} <= ${to}` : Prisma.empty}`;
+const userCond = (req, column) => (req.permissionScope === 'own' ? Prisma.sql`AND ${Prisma.raw(column)} = ${req.user.id}` : Prisma.empty);
 
 exports.dashboard = async (req, res, next) => {
   try {
-    const { dateFrom, dateTo } = req.query;
+    const range = readDateRange(req.query);
+    if (range.error) return error(res, range.error, 400, 'VALIDATION_ERROR');
+    const { from, to } = range;
     const currentYear = Number(diaColombia().slice(0, 4));
-    let dateCondition = '';
-    if (dateFrom && dateTo) {
-      dateCondition = `AND creado_at >= '${new Date(dateFrom).toISOString()}' AND creado_at <= '${new Date(dateTo).toISOString()}'`;
-    } else if (dateFrom) {
-      dateCondition = `AND creado_at >= '${new Date(dateFrom).toISOString()}'`;
-    } else if (dateTo) {
-      dateCondition = `AND creado_at <= '${new Date(dateTo).toISOString()}'`;
-    }
-
-    let userCondition = '';
-    if (req.permissionScope === 'own') {
-      userCondition = `AND usuario_id = '${req.user.id}'`;
-    }
 
     const where = { status: { not: 'anulado' } };
-    if (dateFrom || dateTo) {
+    if (from || to) {
       where.creadoAt = {};
-      if (dateFrom) where.creadoAt.gte = new Date(dateFrom);
-      if (dateTo) where.creadoAt.lte = new Date(dateTo);
+      if (from) where.creadoAt.gte = from;
+      if (to) where.creadoAt.lte = to;
     }
     if (req.permissionScope === 'own') {
       where.usuarioId = req.user.id;
@@ -39,7 +51,7 @@ exports.dashboard = async (req, res, next) => {
     // el TA CRE la T.A ingresada no coincidia con la ganancia por categoria (que ya lo
     // sumaba) y el desglose de la modal no cerraba con el pendiente (venta #169: faltaban
     // 135.000).
-    const aggregatesSql = `
+    const aggregatesSql = Prisma.sql`
       SELECT
         COUNT(*)::int as "totalOperations",
         COALESCE(SUM(CASE WHEN status = 'pagado' THEN ta_total + COALESCE(ta_cre_total, 0) WHEN status = 'abonado' AND monto_total > 0 THEN ((ta_total + COALESCE(ta_cre_total, 0)) * (COALESCE(monto_pagado_credito, 0) / monto_total)) ELSE 0 END), 0) as "totalRevenue",
@@ -54,17 +66,17 @@ exports.dashboard = async (req, res, next) => {
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (costo_proveedor_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditProveedores",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN ((ta_total + COALESCE(ta_cre_total, 0)) * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditTa"
       FROM ventas
-      WHERE deleted_at IS NULL AND status != 'anulado' ${dateCondition} ${userCondition}
+      WHERE deleted_at IS NULL AND status != 'anulado' ${dateCond('creado_at', range)} ${userCond(req, 'usuario_id')}
     `;
 
     let clientsWhere = { deletedAt: null };
     if (req.permissionScope === 'own') {
       clientsWhere.creadoPorId = req.user.id;
     }
-    if (dateFrom || dateTo) {
+    if (from || to) {
       clientsWhere.fechaRegistro = {};
-      if (dateFrom) clientsWhere.fechaRegistro.gte = new Date(dateFrom);
-      if (dateTo) clientsWhere.fechaRegistro.lte = new Date(dateTo);
+      if (from) clientsWhere.fechaRegistro.gte = from;
+      if (to) clientsWhere.fechaRegistro.lte = to;
     }
 
     // Run all DB queries in parallel
@@ -73,7 +85,7 @@ exports.dashboard = async (req, res, next) => {
     // daba uno. Un detalle sin pasajeros (ventas viejas) cuenta como un tiquete.
     const ventaTiquetes = { categoria: 'tiqueteria', venta: { ...where, deletedAt: null } };
     const [aggregatesRaw, categoryStats, totalClients, activeClients, recentSales, supplierCount, tiquetesPorPasajero, tiquetesSinPasajero] = await Promise.all([
-      prisma.$queryRawUnsafe(aggregatesSql),
+      prisma.$queryRaw(aggregatesSql),
       prisma.detalleVenta.groupBy({
         by: ['categoria'],
         _sum: { subtotal: true, ta: true, taCre: true },
@@ -91,41 +103,46 @@ exports.dashboard = async (req, res, next) => {
           usuario: { select: { persona: { select: { nombres: true, apellidos: true } } } },
         }
       }),
-      req.permissionScope === 'own' ? Promise.resolve(0) : prisma.proveedores.count(),
+      // Proveedores registrados en el rango (de cualquiera para el admin, propios con "own").
+      // Los anteriores a la columna creado_at no tienen fecha y no cuentan en ningun rango.
+      prisma.proveedores.count({
+        where: {
+          creadoAt: { not: null, ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) },
+          ...(req.permissionScope === 'own' ? { creadoPorId: req.user.id } : {}),
+        },
+      }),
       prisma.pasajerosDetalle.count({ where: { detalleVenta: ventaTiquetes } }),
       prisma.detalleVenta.count({ where: { ...ventaTiquetes, pasajerosDetalle: { none: {} } } }),
     ]);
 
     // Calcular monthly trend para el usuario actual o global
     let monthlyTrend = [];
-    const userConditionTrend = req.permissionScope === 'own' ? `AND usuario_id = ${req.user.id}` : '';
-    const trendSql = `
+    const trendSql = Prisma.sql`
       SELECT 
         EXTRACT(YEAR FROM ${CREADO_COL})::int as year,
         EXTRACT(MONTH FROM ${CREADO_COL})::int as month,
         COALESCE(SUM(monto_total), 0) as total
       FROM ventas
-      WHERE deleted_at IS NULL AND status != 'anulado' ${userConditionTrend}
+      WHERE deleted_at IS NULL AND status != 'anulado' ${userCond(req, 'usuario_id')}
         AND EXTRACT(YEAR FROM ${CREADO_COL}) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC
     `;
-    monthlyTrend = await prisma.$queryRawUnsafe(trendSql);
+    monthlyTrend = await prisma.$queryRaw(trendSql);
 
-    const userConditionIva = req.permissionScope === 'own' ? `AND v.usuario_id = ${req.user.id}` : '';
-    const ivaTrendSql = `
+    const ivaTrendSql = Prisma.sql`
       SELECT 
         EXTRACT(YEAR FROM ${V_CREADO_COL})::int as year,
         EXTRACT(MONTH FROM ${V_CREADO_COL})::int as month,
         COALESCE(SUM((dv.ta + dv.ta_cre) * 0.19), 0) as total
       FROM ventas v
       JOIN detalle_venta dv ON v.id = dv.venta_id
-      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${userConditionIva}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${userCond(req, 'v.usuario_id')}
         AND EXTRACT(YEAR FROM ${V_CREADO_COL}) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC
     `;
-    const ivaTrendRaw = await prisma.$queryRawUnsafe(ivaTrendSql);
+    const ivaTrendRaw = await prisma.$queryRaw(ivaTrendSql);
 
     // O(1) properties assignment
     const agg = aggregatesRaw[0];
@@ -211,52 +228,44 @@ exports.dashboard = async (req, res, next) => {
       };
     });
 
-    let vDateCondition = '';
-    if (dateFrom && dateTo) {
-      vDateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}' AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
-    } else if (dateFrom) {
-      vDateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}'`;
-    } else if (dateTo) {
-      vDateCondition = `AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
-    }
-
-    let vUserCondition = '';
-    if (req.permissionScope === 'own') {
-      vUserCondition = `AND v.usuario_id = '${req.user.id}'`;
-    }
-
-    const sqlResponsables = `
-      SELECT 
+    // Los rankings parten de las ventas y no de la lista de responsables/comisionistas: con
+    // el LEFT JOIN de antes, un usuario con alcance "propios" veia los nombres de todos (con
+    // $0), y las ventas anuladas sumaban porque esa condicion faltaba solo aca.
+    const sqlResponsables = Prisma.sql`
+      SELECT
         p.nombres || ' ' || p.apellidos as "name",
         COUNT(v.id)::int as "cantidad",
         COALESCE(SUM(v.monto_total), 0) as "ventas"
-      FROM responsables r
+      FROM ventas v
+      JOIN responsables r ON r.id = v.responsable_id
       JOIN personas p ON r.persona_id = p.id
-      LEFT JOIN ventas v ON v.responsable_id = r.id AND v.deleted_at IS NULL ${vDateCondition} ${vUserCondition}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
       GROUP BY r.id, p.nombres, p.apellidos
       ORDER BY "ventas" DESC
       LIMIT 10
     `;
-    const responsablesRaw = await prisma.$queryRawUnsafe(sqlResponsables);
+    const responsablesRaw = await prisma.$queryRaw(sqlResponsables);
     const topResponsables = responsablesRaw.map(a => ({
       name: a.name,
       ventas: Math.round(Number(a.ventas)),
       cantidad: a.cantidad
     }));
 
-    const sqlComisionistas = `
-      SELECT 
+    // Comision total del periodo, liquidada o no: es lo que dice el titulo del grafico.
+    const sqlComisionistas = Prisma.sql`
+      SELECT
         p.nombres || ' ' || p.apellidos as "name",
         COUNT(v.id)::int as "cantidad",
         COALESCE(SUM(v.monto_comision_neto), 0) as "comision"
-      FROM comisionistas c
+      FROM ventas v
+      JOIN comisionistas c ON c.id = v.comisionista_id
       JOIN personas p ON c.persona_id = p.id
-      LEFT JOIN ventas v ON v.comisionista_id = c.id AND v.deleted_at IS NULL ${vDateCondition} ${vUserCondition}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
       GROUP BY c.id, p.nombres, p.apellidos
       ORDER BY "comision" DESC
       LIMIT 10
     `;
-    const comisionistasRaw = await prisma.$queryRawUnsafe(sqlComisionistas);
+    const comisionistasRaw = await prisma.$queryRaw(sqlComisionistas);
     const topComisionistas = comisionistasRaw.map(a => ({
       name: a.name,
       comision: Math.round(Number(a.comision)),
@@ -265,6 +274,9 @@ exports.dashboard = async (req, res, next) => {
 
     success(res, {
       totalRevenue: Math.round(totalRevenue),
+      // Monto total de las ventas no anuladas del rango: la base sobre la que se calculan los
+      // porcentajes de cartera, que es lo que va en el centro de ese grafico.
+      totalSales: Math.round(paids + credits + partPaids),
       previousYearRevenue: Math.round(prevYearSales),
       revenueGrowth: prevYearSales > 0 ? Math.round(((currentYearSales - prevYearSales) / prevYearSales) * 100) : 0,
       totalOperations,
@@ -300,66 +312,12 @@ exports.dashboard = async (req, res, next) => {
   }
 };
 
-exports.salesHistory = async (req, res, next) => {
-  try {
-    const year = parseInt(req.query.year) || Number(diaColombia().slice(0, 4));
-    let data = [];
-    const userConditionSql = req.permissionScope === 'own' ? `AND v.usuario_id = ${req.user.id}` : '';
-    const sql = `
-      SELECT 
-        EXTRACT(MONTH FROM ${V_CREADO_COL})::int as month,
-        COUNT(v.id)::int as count,
-        COALESCE(SUM(v.monto_total), 0) as total,
-        COALESCE(SUM(CASE WHEN d.categoria = 'hoteleria' THEN d.subtotal ELSE 0 END), 0) as hoteles,
-        COALESCE(SUM(CASE WHEN d.categoria = 'tiqueteria' THEN d.subtotal ELSE 0 END), 0) as vuelos,
-        COALESCE(SUM(CASE WHEN d.categoria = 'planes' THEN d.subtotal ELSE 0 END), 0) as paquetes,
-        COALESCE(SUM(CASE WHEN d.categoria = 'seguros_viaje' THEN d.subtotal ELSE 0 END), 0) as seguros,
-        COALESCE(SUM(CASE WHEN d.categoria = 'renta_vehiculos' THEN d.subtotal ELSE 0 END), 0) as transferencias
-      FROM ventas v
-      LEFT JOIN detalle_venta d ON v.id = d.venta_id
-      WHERE v.deleted_at IS NULL ${userConditionSql} AND EXTRACT(YEAR FROM ${V_CREADO_COL}) = ${year}
-      GROUP BY 1
-      ORDER BY 1 ASC
-    `;
-    const result = await prisma.$queryRawUnsafe(sql);
-    data = result.map(d => ({ ...d, year }));
-    success(res, data.map(d => ({
-      id: d.id,
-      year: d.year,
-      month: d.month,
-      total: Math.round(d.total),
-      count: d.count,
-      category: {
-        hotels: Math.round(d.hoteles || 0),
-        flights: Math.round(d.vuelos || 0),
-        packages: Math.round(d.paquetes || 0),
-        insurance: Math.round(d.seguros || 0),
-        transfers: Math.round(d.transferencias || 0),
-      }
-    })));
-  } catch (err) {
-    next(err);
-  }
-};
-
 exports.asesorPerformance = async (req, res, next) => {
   try {
-    const { dateFrom, dateTo } = req.query;
-    let dateCondition = '';
-    if (dateFrom && dateTo) {
-      dateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}' AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
-    } else if (dateFrom) {
-      dateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}'`;
-    } else if (dateTo) {
-      dateCondition = `AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
-    }
+    const range = readDateRange(req.query);
+    if (range.error) return error(res, range.error, 400, 'VALIDATION_ERROR');
 
-    let userCondition = '';
-    if (req.permissionScope === 'own') {
-      userCondition = `AND v.usuario_id = '${req.user.id}'`;
-    }
-
-    const sql = `
+    const sql = Prisma.sql`
       SELECT 
         v.usuario_id as "asesorId",
         p.nombres || ' ' || p.apellidos as "asesorName",
@@ -369,11 +327,11 @@ exports.asesorPerformance = async (req, res, next) => {
       FROM ventas v
       JOIN usuarios u ON v.usuario_id = u.id
       JOIN personas p ON u.persona_id = p.id
-      WHERE v.deleted_at IS NULL ${dateCondition} ${userCondition}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
       GROUP BY v.usuario_id, p.nombres, p.apellidos
     `;
 
-    const result = await prisma.$queryRawUnsafe(sql);
+    const result = await prisma.$queryRaw(sql);
 
     success(res, result.map(g => ({
       ...g,
@@ -388,22 +346,10 @@ exports.asesorPerformance = async (req, res, next) => {
 exports.topClients = async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const { dateFrom, dateTo } = req.query;
-    let dateCondition = '';
-    if (dateFrom && dateTo) {
-      dateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}' AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
-    } else if (dateFrom) {
-      dateCondition = `AND v.creado_at >= '${new Date(dateFrom).toISOString()}'`;
-    } else if (dateTo) {
-      dateCondition = `AND v.creado_at <= '${new Date(dateTo).toISOString()}'`;
-    }
+    const range = readDateRange(req.query);
+    if (range.error) return error(res, range.error, 400, 'VALIDATION_ERROR');
 
-    let userCondition = '';
-    if (req.permissionScope === 'own') {
-      userCondition = `AND v.usuario_id = '${req.user.id}'`;
-    }
-
-    const sql = `
+    const sql = Prisma.sql`
       SELECT 
         c.id as "clienteId",
         p.nombres || ' ' || p.apellidos as "clientName",
@@ -412,13 +358,13 @@ exports.topClients = async (req, res, next) => {
       FROM ventas v
       JOIN clientes c ON v.cliente_id = c.id
       JOIN personas p ON c.persona_id = p.id
-      WHERE v.deleted_at IS NULL ${dateCondition} ${userCondition}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
       GROUP BY c.id, p.nombres, p.apellidos
       ORDER BY "totalPagado" DESC
       LIMIT ${limit}
     `;
 
-    const result = await prisma.$queryRawUnsafe(sql);
+    const result = await prisma.$queryRaw(sql);
 
     success(res, result.map(g => ({
       ...g,
@@ -431,15 +377,17 @@ exports.topClients = async (req, res, next) => {
 
 exports.categoryDistribution = async (req, res, next) => {
   try {
-    const { dateFrom, dateTo } = req.query;
+    const range = readDateRange(req.query);
+    if (range.error) return error(res, range.error, 400, 'VALIDATION_ERROR');
     // `where.venta` existe siempre. Antes solo se creaba si venian fechas, y el alcance 'own'
     // escribia sobre un `undefined`: un asesor sin filtro de fechas recibia un 500. Estaba
     // oculto porque la ruta no pasaba por `authorize`, asi que 'own' nunca llegaba.
-    const where = { venta: { deletedAt: null } };
-    if (dateFrom || dateTo) {
+    // Sin anuladas, igual que el dashboard: una venta anulada no es ganancia de ninguna categoria.
+    const where = { venta: { deletedAt: null, status: { not: 'anulado' } } };
+    if (range.from || range.to) {
       where.venta.creadoAt = {};
-      if (dateFrom) where.venta.creadoAt.gte = new Date(dateFrom);
-      if (dateTo) where.venta.creadoAt.lte = new Date(dateTo);
+      if (range.from) where.venta.creadoAt.gte = range.from;
+      if (range.to) where.venta.creadoAt.lte = range.to;
     }
 
     if (req.permissionScope === 'own') {

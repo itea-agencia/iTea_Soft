@@ -10,6 +10,7 @@ const { ASESOR_ACTIVO } = require('../utils/asesores');
 const sesiones = require('../services/sesiones.service');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
 const { auditar } = require('../utils/auditoria');
+const { isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
 
 exports.list = async (req, res, next) => {
   try {
@@ -167,6 +168,10 @@ const esAdmin = (req) => req.user?.role === 'admin';
 exports.create = async (req, res, next) => {
   try {
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
 
     if (typeof data.password !== 'string' || !data.password) {
       return error(res, 'La contraseña es requerida', 400, 'VALIDATION_ERROR');
@@ -311,6 +316,10 @@ exports.update = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
+    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
+      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
+    }
 
     const usuario = await prisma.usuarios.findUnique({ where: { id }, include: { persona: true, rol: true } });
     // Un eliminado no existe para la interfaz: no se edita. Volver es reingresar por `create`.

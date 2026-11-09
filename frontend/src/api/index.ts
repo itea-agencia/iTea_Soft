@@ -19,13 +19,13 @@ export {
   listFlights, updateCheckin,
 } from './flights';
 export {
-  listCommissionAgents, getCommissionAgent, createCommissionAgent, updateCommissionAgent, deleteCommissionAgent,
+  listCommissionAgents, getCommissionAgent, createCommissionAgent, updateCommissionAgent, toggleCommissionAgentStatus,
   listSettlements, createSettlement,
 } from './commissions';
 export {
   getAllConfig, getConfigSection, createConfigItem, updateConfigItem, deleteConfigItem,
 } from './config';
 export {
-  getDashboard, getSalesHistory, getAsesorPerformance,
+  getDashboard, getAsesorPerformance,
   getTopClients, getCategoryDistribution,
 } from './stats';

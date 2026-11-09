@@ -106,6 +106,7 @@ export default function Dashboard() {
     ];
     return {
       totalIngresos: d?.totalRevenue ?? 0,
+      totalVentas: d?.totalSales ?? 0,
       monthIngresos: d?.monthlyRevenue ?? 0,
       totalOperations: d?.totalOperations ?? 0,
       totalPendiente: d?.pendingBalance ?? 0,
@@ -145,7 +146,7 @@ export default function Dashboard() {
       carteraData: d?.carteraStatus ?? [
         { name: "Pagado", value: 0, color: "#10b981" },
         { name: "Abonado", value: 0, color: "#3b82f6" },
-        { name: "Pendiente", value: 0, color: "#f59e0b" },
+        { name: "Crédito", value: 0, color: "#f59e0b" },
       ],
       topResponsables: d?.topResponsables ?? [],
       topComisionistas: d?.topComisionistas ?? [],
@@ -256,7 +257,7 @@ export default function Dashboard() {
               label: "PROVEEDORES",
               value: formatCurrency(stats.totalProveedores),
               subtitle: "Costos Operativos",
-              detail: `${stats.supplierCount} activos`,
+              detail: `${stats.supplierCount} registrados`,
               icon: <Briefcase size={24} />,
               gradient: "from-rose-500 to-pink-400",
               lightBg: "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300",
@@ -273,7 +274,7 @@ export default function Dashboard() {
             {
               label: "TIQUETES AÉREOS",
               value: stats.totalFlights,
-              subtitle: "Tramos Emitidos",
+              subtitle: "Tiquetes emitidos",
               icon: <Plane size={24} />,
               gradient: "from-cyan-500 to-blue-400",
               lightBg: "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-300",
@@ -290,7 +291,7 @@ export default function Dashboard() {
             {
               label: "SEGUROS",
               value: stats.segurosCount,
-              subtitle: "Pólizas Activas",
+              subtitle: "Pólizas vendidas",
               detail: formatCurrency(stats.segurosIngresos),
               icon: <ShieldCheck size={24} />,
               gradient: "from-fuchsia-500 to-pink-500",
@@ -346,7 +347,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm p-4 sm:p-6 relative overflow-hidden">
           <div className="absolute -right-20 -top-20 w-40 h-40 bg-blue-50 dark:bg-blue-950/20 rounded-full blur-3xl"></div>
-          <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Comparativa de Ingresos</h2>
+          <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Comparativa de ventas</h2>
           <div className="h-72 w-full">
             {dashboardLoading && !dashboardData ? (
               <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
@@ -415,8 +416,8 @@ export default function Dashboard() {
               )}
               {(!dashboardLoading || dashboardData) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none drop-shadow-sm">
-                  <span className="text-[10px] uppercase font-extrabold text-gray-400 tracking-[0.2em] mb-1">Total</span>
-                  <span className="text-xl font-black text-gray-800 bg-clip-text text-transparent bg-gradient-to-br from-gray-800 to-gray-500">{formatCurrency(stats.totalIngresos)}</span>
+                  <span className="text-[10px] uppercase font-extrabold text-gray-400 tracking-[0.2em] mb-1">Total ventas</span>
+                  <span className="text-xl font-black text-gray-800 bg-clip-text text-transparent bg-gradient-to-br from-gray-800 to-gray-500">{formatCurrency(stats.totalVentas)}</span>
                 </div>
               )}
             </div>
@@ -442,7 +443,7 @@ export default function Dashboard() {
       {/* Modern Table */}
       <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 dark:border-slate-700/60 bg-gray-50/50 dark:bg-slate-800/50">
-          <h2 className="text-lg font-black text-gray-800 dark:text-white">Últimas Ventas Aprobadas</h2>
+          <h2 className="text-lg font-black text-gray-800 dark:text-white">Últimas ventas</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -684,7 +685,7 @@ export default function Dashboard() {
           <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-start gap-3 text-xs text-gray-500">
             <AlertCircle size={16} className="text-gray-400 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Las cuentas en <strong>Crédito</strong> y <strong>Abonado</strong> se sincronizan automáticamente con las finanzas del sistema. El balance se actualiza en tiempo real al registrar abonos de pago.
+              Incluye las ventas en <strong>Crédito</strong> y <strong>Abonado</strong> del periodo seleccionado. El saldo se actualiza al registrar abonos.
             </p>
           </div>
 

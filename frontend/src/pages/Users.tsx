@@ -40,6 +40,7 @@ import LoadingScreen from "../components/ui/LoadingScreen";
 
 
 import { capitalizeName, formatId, todayStr } from "../utils/formatters";
+import { validateDocNumber } from "../utils/docNumber";
 import { mensajeDeError } from "../utils/errors";
 import { usePermissions } from "../context/PermissionsContext";
 import { DatePicker } from "../components/sales/forms/TicketForm";
@@ -137,28 +138,7 @@ export default function Users() {
         if (!value.trim()) {
           errorMsg = "El número de documento es obligatorio";
         } else {
-          const typeUpper = formData.docType ? formData.docType.toUpperCase() : "";
-          if (typeUpper === "PASAPORTE" || typeUpper === "PP" || typeUpper === "PAS") {
-            if (value.length < 9 || value.length > 12) {
-              errorMsg = "El pasaporte debe tener entre 9 y 12 caracteres";
-            } else if (!/^[a-zA-Z0-9]+$/.test(value)) {
-              errorMsg = "El pasaporte solo debe contener caracteres alfanuméricos";
-            }
-          } else if (typeUpper === "NIT" || typeUpper === "RUT") {
-            if (value.length !== 11) {
-              errorMsg = "El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)";
-            } else if (!/^\d{9}-\d{1}$/.test(value)) {
-              errorMsg = "El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)";
-            }
-          } else if (typeUpper === "CC") {
-            if (value.length < 8 || value.length > 10) {
-              errorMsg = "La cédula de ciudadanía debe tener entre 8 y 10 dígitos";
-            } else if (!/^\d+$/.test(value)) {
-              errorMsg = "La cédula de ciudadanía solo debe contener números";
-            }
-          } else if (value.length > 15) {
-            errorMsg = "El documento no puede exceder 15 caracteres";
-          }
+          errorMsg = validateDocNumber(formData.docType, value);
         }
 
         if (!errorMsg) {
@@ -359,28 +339,8 @@ export default function Users() {
     if (!formData.docNumber.trim()) {
       newErrors.docNumber = "El número de documento es obligatorio";
     } else {
-      const typeUpper = formData.docType ? formData.docType.toUpperCase() : "";
-      if (typeUpper === "PASAPORTE" || typeUpper === "PP" || typeUpper === "PAS") {
-        if (formData.docNumber.length < 9 || formData.docNumber.length > 12) {
-          newErrors.docNumber = "El pasaporte debe tener entre 9 y 12 caracteres";
-        } else if (!/^[a-zA-Z0-9]+$/.test(formData.docNumber)) {
-          newErrors.docNumber = "El pasaporte solo debe contener caracteres alfanuméricos";
-        }
-      } else if (typeUpper === "NIT" || typeUpper === "RUT") {
-        if (formData.docNumber.length !== 11) {
-          newErrors.docNumber = "El NIT/RUT debe tener exactamente 11 caracteres (9 dígitos + guion + 1 dígito)";
-        } else if (!/^\d{9}-\d{1}$/.test(formData.docNumber)) {
-          newErrors.docNumber = "El NIT/RUT debe tener formato 9 dígitos - guion - 1 dígito de verificación (ej: 123456789-0)";
-        }
-      } else if (typeUpper === "CC") {
-        if (formData.docNumber.length < 8 || formData.docNumber.length > 10) {
-          newErrors.docNumber = "La cédula de ciudadanía debe tener entre 8 y 10 dígitos";
-        } else if (!/^\d+$/.test(formData.docNumber)) {
-          newErrors.docNumber = "La cédula de ciudadanía solo debe contener números";
-        }
-      } else if (formData.docNumber.length > 15) {
-        newErrors.docNumber = "El documento no puede exceder 15 caracteres";
-      }
+      const docError = validateDocNumber(formData.docType, formData.docNumber);
+      if (docError) newErrors.docNumber = docError;
     }
 
     if (!formData.phone.trim()) newErrors.phone = "El telefono es obligatorio";
@@ -912,7 +872,7 @@ export default function Users() {
         }
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Nombres" error={errors.firstName}>
+          <FormField label="Nombres *" error={errors.firstName}>
             <Input
               maxLength={40}
               value={formData.firstName}
@@ -923,9 +883,10 @@ export default function Users() {
                   setErrors((p) => ({ ...p, firstName: "" }));
               }}
               onBlur={(e) => validateField("firstName", e.target.value)}
+              placeholder="Ej: Juan"
             />
           </FormField>
-          <FormField label="Apellidos" error={errors.lastName}>
+          <FormField label="Apellidos *" error={errors.lastName}>
             <Input
               maxLength={40}
               value={formData.lastName}
@@ -935,9 +896,10 @@ export default function Users() {
                 if (errors.lastName) setErrors((p) => ({ ...p, lastName: "" }));
               }}
               onBlur={(e) => validateField("lastName", e.target.value)}
+              placeholder="Ej: Pérez Gómez"
             />
           </FormField>
-          <FormField label="Correo" error={errors.email}>
+          <FormField label="Correo *" error={errors.email}>
             <Input
               maxLength={40}
               type="email"
@@ -948,9 +910,10 @@ export default function Users() {
                 if (errors.email) setErrors((p) => ({ ...p, email: "" }));
               }}
               onBlur={(e) => validateField("email", e.target.value)}
+              placeholder="correo@ejemplo.com"
             />
           </FormField>
-          <FormField label="Contraseña" error={errors.password}>
+          <FormField label={editingUser ? "Contraseña" : "Contraseña *"} error={errors.password}>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -961,6 +924,7 @@ export default function Users() {
                     setErrors((p) => ({ ...p, password: "" }));
                 }}
                 onBlur={(e) => validateField("password", e.target.value)}
+                placeholder={editingUser ? "Vacía para no cambiarla" : "Contraseña de acceso"}
               />
               <button
                 onClick={() => setShowPassword(!showPassword)}
@@ -970,7 +934,7 @@ export default function Users() {
               </button>
             </div>
           </FormField>
-          <FormField label="Rol">
+          <FormField label="Rol *">
             <Select
               value={formData.role}
               onChange={(e) =>
@@ -993,7 +957,7 @@ export default function Users() {
               </p>
             )}
           </FormField>
-          <FormField label="Tipo Doc" error={errors.docType}>
+          <FormField label="Tipo Doc *" error={errors.docType}>
             <Select
               value={formData.docType}
               onChange={(e) => {
@@ -1011,7 +975,7 @@ export default function Users() {
               error={errors.docType}
             />
           </FormField>
-          <FormField label="Documento" error={errors.docNumber}>
+          <FormField label="Documento *" error={errors.docNumber}>
             <Input
               value={formData.docNumber}
               onChange={(e) => {
@@ -1031,17 +995,12 @@ export default function Users() {
                   setErrors((p) => ({ ...p, docNumber: "" }));
               }}
               onBlur={(e) => validateField("docNumber", e.target.value)}
-              maxLength={
-                formData.docType ? (
-                  formData.docType.toUpperCase() === "CC" ? 10 :
-                  ["PASAPORTE", "PP", "PAS"].includes(formData.docType.toUpperCase()) ? 12 :
-                  ["NIT", "RUT"].includes(formData.docType.toUpperCase()) ? 11 : 15
-                ) : 15
-              }
+              placeholder={["NIT", "RUT"].includes(formData.docType.toUpperCase()) ? "Ej: 900123456-7 (6 a 15 caracteres)" : "Entre 6 y 15 caracteres"}
+              maxLength={15}
               error={errors.docNumber}
             />
           </FormField>
-          <FormField label="Teléfono" error={errors.phone}>
+          <FormField label="Teléfono *" error={errors.phone}>
             <Input
               maxLength={15}
               value={formData.phone}
@@ -1051,9 +1010,10 @@ export default function Users() {
                 if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
               }}
               onBlur={(e) => validateField("phone", e.target.value)}
+              placeholder="Ej: 3001234567"
             />
           </FormField>
-          <FormField label="Fecha Nacimiento" error={errors.birthDate}>
+          <FormField label="Fecha Nacimiento *" error={errors.birthDate}>
             <DatePicker
               value={formData.birthDate}
               onChange={(val) => {

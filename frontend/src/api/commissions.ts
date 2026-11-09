@@ -20,8 +20,9 @@ export async function updateCommissionAgent(id: number, data: Record<string, unk
   return res.data.data;
 }
 
-export async function deleteCommissionAgent(id: number) {
-  await api.delete(`/commissions/agents/${id}`);
+export async function toggleCommissionAgentStatus(id: number): Promise<'Activo' | 'Inactivo'> {
+  const res = await api.patch(`/commissions/agents/${id}/toggle-status`);
+  return res.data.data.status;
 }
 
 export async function listSettlements(params: Record<string, unknown>) {

@@ -13,6 +13,7 @@ import ClientDetailModal from '../components/clients/ClientDetailModal';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
+import { validateDocNumber } from '../utils/docNumber';
 import { formatDate, capitalizeName, formatId, todayStr } from '../utils/formatters';
 import { Client } from '../types';
 
@@ -71,24 +72,7 @@ export default function Clients() {
         if (!value.trim()) {
           errorMsg = 'El número de documento es obligatorio';
         } else {
-          const typeUpper = formData.docType ? formData.docType.toUpperCase() : '';
-          if (typeUpper === 'PASAPORTE' || typeUpper === 'PP' || typeUpper === 'PAS') {
-            if (value.length < 9 || value.length > 12) {
-              errorMsg = 'El pasaporte debe tener entre 9 y 12 caracteres';
-            } else if (!/^[a-zA-Z0-9]+$/.test(value)) {
-              errorMsg = 'El pasaporte solo debe contener caracteres alfanuméricos';
-            }
-          } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-            if (!/^\d+$/.test(value)) errorMsg = 'El NIT/RUT solo debe contener números';
-          } else if (typeUpper === 'CC') {
-            if (value.length < 8 || value.length > 10) {
-              errorMsg = 'La cédula de ciudadanía debe tener entre 8 y 10 dígitos';
-            } else if (!/^\d+$/.test(value)) {
-              errorMsg = 'La cédula de ciudadanía solo debe contener números';
-            }
-          } else if (value.length > 15) {
-            errorMsg = 'El documento no puede exceder 15 caracteres';
-          }
+          errorMsg = validateDocNumber(formData.docType, value);
         }
         
         if (!errorMsg) {
@@ -211,24 +195,8 @@ export default function Clients() {
     if (!formData.docNumber.trim()) {
       newErrors.docNumber = 'El número de documento es obligatorio';
     } else {
-      const typeUpper = formData.docType ? formData.docType.toUpperCase() : '';
-      if (typeUpper === 'PASAPORTE' || typeUpper === 'PP' || typeUpper === 'PAS') {
-        if (formData.docNumber.length < 9 || formData.docNumber.length > 12) {
-          newErrors.docNumber = 'El pasaporte debe tener entre 9 y 12 caracteres';
-        } else if (!/^[a-zA-Z0-9]+$/.test(formData.docNumber)) {
-          newErrors.docNumber = 'El pasaporte solo debe contener caracteres alfanuméricos';
-        }
-      } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
-        if (!/^\d+$/.test(formData.docNumber)) newErrors.docNumber = 'El NIT/RUT solo debe contener números';
-      } else if (typeUpper === 'CC') {
-        if (formData.docNumber.length < 8 || formData.docNumber.length > 10) {
-          newErrors.docNumber = 'La cédula de ciudadanía debe tener entre 8 y 10 dígitos';
-        } else if (!/^\d+$/.test(formData.docNumber)) {
-          newErrors.docNumber = 'La cédula de ciudadanía solo debe contener números';
-        }
-      } else if (formData.docNumber.length > 15) {
-        newErrors.docNumber = 'El documento no puede exceder 15 caracteres';
-      }
+      const docError = validateDocNumber(formData.docType, formData.docNumber);
+      if (docError) newErrors.docNumber = docError;
     }
     
     if (!formData.phone.trim()) newErrors.phone = 'El teléfono es obligatorio';
@@ -655,7 +623,7 @@ export default function Clients() {
               <UserCheck size={16} className="text-accent" /> Información Personal
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Nombres" error={errors.firstName}>
+              <FormField label="Nombres *" error={errors.firstName}>
                 <Input
                   value={formData.firstName}
                   onChange={e => {
@@ -669,7 +637,7 @@ export default function Clients() {
                   maxLength={40}
                 />
               </FormField>
-              <FormField label="Apellidos" error={errors.lastName}>
+              <FormField label="Apellidos *" error={errors.lastName}>
                 <Input
                   value={formData.lastName}
                   onChange={e => {
@@ -685,7 +653,7 @@ export default function Clients() {
               </FormField>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Tipo de Documento" error={errors.docType}>
+              <FormField label="Tipo de Documento *" error={errors.docType}>
                 <Select
                   value={formData.docType}
                   onChange={e => {
@@ -697,14 +665,16 @@ export default function Clients() {
                   error={errors.docType}
                 />
               </FormField>
-              <FormField label="Número de Documento" error={errors.docNumber}>
+              <FormField label="Número de Documento *" error={errors.docNumber}>
                 <Input
                   value={formData.docNumber}
                   onChange={e => {
                     let val = e.target.value;
                     const typeUpper = formData.docType ? formData.docType.toUpperCase() : '';
-                    if (typeUpper === 'CC' || typeUpper === 'NIT' || typeUpper === 'RUT') {
+                    if (typeUpper === 'CC') {
                       val = val.replace(/\D/g, '');
+                    } else if (typeUpper === 'NIT' || typeUpper === 'RUT') {
+                      val = val.replace(/[^0-9-]/g, '');
                     } else if (typeUpper === 'PASAPORTE' || typeUpper === 'PP' || typeUpper === 'PAS') {
                       val = val.replace(/[^a-zA-Z0-9]/g, '');
                     } else {
@@ -716,17 +686,12 @@ export default function Clients() {
                   onBlur={e => validateField('docNumber', e.target.value)}
                   placeholder="Número de documento"
                   error={errors.docNumber}
-                  maxLength={
-                    formData.docType ? (
-                      formData.docType.toUpperCase() === 'CC' ? 10 :
-                      ['PASAPORTE', 'PP', 'PAS'].includes(formData.docType.toUpperCase()) ? 12 : 15
-                    ) : 15
-                  }
+                  maxLength={15}
                 />
               </FormField>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Teléfono" error={errors.phone}>
+              <FormField label="Teléfono *" error={errors.phone}>
                 <Input
                   value={formData.phone}
                   onChange={e => {
@@ -740,7 +705,7 @@ export default function Clients() {
                   maxLength={15}
                 />
               </FormField>
-              <FormField label="Fecha de Nacimiento" error={errors.birthDate}>
+              <FormField label="Fecha de Nacimiento *" error={errors.birthDate}>
                 <DatePicker
                   value={formData.birthDate}
                   onChange={(val) => {
@@ -762,7 +727,7 @@ export default function Clients() {
               <Search size={16} className="text-accent" /> Información de Contacto y Estado
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Correo Electrónico" error={errors.email}>
+              <FormField label="Correo Electrónico *" error={errors.email}>
                 <Input
                   type="email"
                   value={formData.email}
