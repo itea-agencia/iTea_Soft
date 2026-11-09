@@ -260,6 +260,9 @@ exports.dashboard = async (req, res, next) => {
 
     success(res, {
       totalRevenue: Math.round(totalRevenue),
+      // Monto total de las ventas no anuladas del rango: la base sobre la que se calculan los
+      // porcentajes de cartera, que es lo que va en el centro de ese grafico.
+      totalSales: Math.round(paids + credits + partPaids),
       previousYearRevenue: Math.round(prevYearSales),
       revenueGrowth: prevYearSales > 0 ? Math.round(((currentYearSales - prevYearSales) / prevYearSales) * 100) : 0,
       totalOperations,
@@ -310,7 +313,7 @@ exports.asesorPerformance = async (req, res, next) => {
       FROM ventas v
       JOIN usuarios u ON v.usuario_id = u.id
       JOIN personas p ON u.persona_id = p.id
-      WHERE v.deleted_at IS NULL ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
       GROUP BY v.usuario_id, p.nombres, p.apellidos
     `;
 
@@ -341,7 +344,7 @@ exports.topClients = async (req, res, next) => {
       FROM ventas v
       JOIN clientes c ON v.cliente_id = c.id
       JOIN personas p ON c.persona_id = p.id
-      WHERE v.deleted_at IS NULL ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
+      WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${dateCond('v.creado_at', range)} ${userCond(req, 'v.usuario_id')}
       GROUP BY c.id, p.nombres, p.apellidos
       ORDER BY "totalPagado" DESC
       LIMIT ${limit}
@@ -365,7 +368,8 @@ exports.categoryDistribution = async (req, res, next) => {
     // `where.venta` existe siempre. Antes solo se creaba si venian fechas, y el alcance 'own'
     // escribia sobre un `undefined`: un asesor sin filtro de fechas recibia un 500. Estaba
     // oculto porque la ruta no pasaba por `authorize`, asi que 'own' nunca llegaba.
-    const where = { venta: { deletedAt: null } };
+    // Sin anuladas, igual que el dashboard: una venta anulada no es ganancia de ninguna categoria.
+    const where = { venta: { deletedAt: null, status: { not: 'anulado' } } };
     if (range.from || range.to) {
       where.venta.creadoAt = {};
       if (range.from) where.venta.creadoAt.gte = range.from;

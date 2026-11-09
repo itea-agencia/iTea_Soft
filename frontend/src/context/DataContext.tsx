@@ -42,6 +42,7 @@ interface RecentSale {
 
 interface DashboardData {
   totalRevenue: number;
+  totalSales: number;
   monthlyRevenue: number;
   totalOperations?: number;
   pendingBalance: number;
