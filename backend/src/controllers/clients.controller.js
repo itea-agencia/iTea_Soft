@@ -5,7 +5,7 @@ const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
 const ciudadesDane = require('../config/ciudades-dane');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
-const { completarPersona, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/personas');
+const { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
 const { auditar } = require('../utils/auditoria');
 
 // Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
@@ -236,11 +236,11 @@ exports.create = async (req, res, next) => {
         });
       } else if (existingPersona) {
         // La persona existe pero no es cliente (un pasajero, un comisionista, un usuario): solo
-        // se completa lo que no tiene. Ver utils/personas.js.
+        // se completa lo que no tiene. Ver utils/persons.js.
         persona = await prisma.personas.update({
           where: { id: existingPersona.id },
           data: {
-            ...completarPersona(existingPersona, {
+            ...fillMissingPersonFields(existingPersona, {
               nombres: data.firstName,
               apellidos: data.lastName,
               tipoDocumentoId,

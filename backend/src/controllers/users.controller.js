@@ -9,7 +9,7 @@ const { normalizarEmail, correoDeEliminado } = require('../utils/emailUtils');
 const sesiones = require('../services/sesiones.service');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
 const { auditar } = require('../utils/auditoria');
-const { isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/personas');
+const { isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
 
 exports.list = async (req, res, next) => {
   try {

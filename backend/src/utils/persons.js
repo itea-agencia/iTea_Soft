@@ -8,7 +8,7 @@
 //
 // No sirve para el reingreso de alguien al mismo rol (un cliente eliminado que vuelve): ahi
 // el formulario trae los datos actualizados de esa misma persona y si se aplican.
-function completarPersona(existing, incoming) {
+function fillMissingPersonFields(existing, incoming) {
   const fields = {};
   for (const [field, value] of Object.entries(incoming)) {
     const current = existing[field];
@@ -34,4 +34,4 @@ function normalizeDocNumber(docNumber, docType) {
   return String(docNumber).trim().split('-')[0].trim();
 }
 
-module.exports = { completarPersona, isDocNumberOutOfRange, normalizeDocNumber };
+module.exports = { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber };

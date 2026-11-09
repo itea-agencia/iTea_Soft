@@ -2,7 +2,7 @@ const prisma = require('../config/db');
 const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
-const { completarPersona, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/personas');
+const { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
 const { auditar } = require('../utils/auditoria');
 
 exports.list = async (req, res, next) => {
@@ -210,10 +210,10 @@ exports.create = async (req, res, next) => {
           }
         }
         // La persona existe pero no era responsable: solo se completa lo que no tiene. Antes
-        // se le sobrescribian nombre, correo y telefono (ver utils/personas.js).
+        // se le sobrescribian nombre, correo y telefono (ver utils/persons.js).
         await tx.personas.update({
           where: { id: persona.id },
-          data: completarPersona(persona, {
+          data: fillMissingPersonFields(persona, {
             nombres: firstName,
             apellidos: lastName,
             tipoDocumentoId: docTypeId,

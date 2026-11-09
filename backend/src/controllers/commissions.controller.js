@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
-const { completarPersona, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/personas');
+const { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
 const { auditar } = require('../utils/auditoria');
 
 const splitFullName = (fullName) => {
@@ -210,12 +210,12 @@ exports.createAgent = async (req, res, next) => {
         });
       } else if (existingPersona) {
         // La persona existe pero no era comisionista: solo se completa lo que no tiene. Antes
-        // se le sobrescribian nombre, correo y telefono (ver utils/personas.js).
+        // se le sobrescribian nombre, correo y telefono (ver utils/persons.js).
         const { firstName, lastName } = splitFullName(data.name || '');
         persona = await prisma.personas.update({
           where: { id: existingPersona.id },
           data: {
-            ...completarPersona(existingPersona, {
+            ...fillMissingPersonFields(existingPersona, {
               nombres: formatName(firstName),
               apellidos: formatName(lastName),
               tipoDocumentoId,

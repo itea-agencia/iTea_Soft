@@ -135,6 +135,8 @@ Están desarrollados en [`docs/specs/`](docs/specs/README.md). En corto:
 
 ## Al escribir código
 
+**Nombres nuevos en inglés.** Funciones, variables, constantes y tipos que se creen de ahora en adelante van en inglés (`validateDocNumber`, no `validarDocumento`). El código viejo tiene muchos nombres en español: se traducen cuando se toca esa parte, no en una pasada aparte. Un nombre exportado o usado en otros archivos se renombra en todos sus usos en el mismo commit (`grep` antes). Los comentarios, los mensajes al usuario y los commits siguen en español. Los nombres de tablas y columnas de la base no se tocan: cambiarlos requiere una migración.
+
 **Comentá el porqué, no el qué.** El código dice lo que hace. El comentario dice por qué se
 eligió eso, qué se rompió antes, qué alternativa se descartó. Los comentarios de este repo
 citan ventas concretas y errores reales; mantenelo así.
