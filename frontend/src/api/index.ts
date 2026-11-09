@@ -26,6 +26,6 @@ export {
   getAllConfig, getConfigSection, createConfigItem, updateConfigItem, deleteConfigItem,
 } from './config';
 export {
-  getDashboard, getSalesHistory, getAsesorPerformance,
+  getDashboard, getAsesorPerformance,
   getTopClients, getCategoryDistribution,
 } from './stats';

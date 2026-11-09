@@ -120,7 +120,6 @@ const emptyData: AppData = {
     baggage: [], packages: [], cities: [],
     rolePermissions: {},
   },
-  salesHistory: [],
 };
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
