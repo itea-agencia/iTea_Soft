@@ -2,6 +2,7 @@ const axios = require('axios');
 const env = require('../config/env');
 const catalogo = require('../config/siigo-catalog');
 const ciudadesDane = require('../config/ciudades-dane');
+const { diaColombia } = require('../utils/fechas');
 
 const cfg = env.siigo;
 
@@ -383,7 +384,9 @@ class SiigoService {
       document: { id: cfg.documentId },
       // Sin `number`: el documento configurado usa numeracion automatica y la consecutiva
       // de factura electronica la controla la DIAN.
-      date: new Date().toISOString().split('T')[0],
+      // El dia de Colombia, no el de UTC: con toISOString, una factura emitida despues de las
+      // 19:00 salia con la fecha de manana (25 de 42 en produccion al 2026-11-05).
+      date: diaColombia(),
       customer: {
         identification: catalogo.normalizarIdentificacion(customerSiigo.identification),
         branch_office: 0,

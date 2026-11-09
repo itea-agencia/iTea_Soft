@@ -2,7 +2,7 @@ import { Users } from "lucide-react";
 import { FormField, Input, Combobox, Select } from "../../ui/Form";
 import { WizardFormData } from "../wizardData";
 
-export function Step1Client({ form, set, data, errors }: any) {
+export function Step1Client({ form, set, data, errors, asesores }: any) {
   return (
     <div className="animate-fade-in space-y-1">
         <div className="flex items-center gap-2 mb-4">
@@ -35,25 +35,18 @@ export function Step1Client({ form, set, data, errors }: any) {
             />
           </FormField>
 
-          <FormField label="Asesor *">
+          <FormField label="Asesor *" error={errors.asesorId}>
+            {/* Por id, como el cliente: por nombre, un texto que no era nadie dejaba el id
+                anterior y dos usuarios con el mismo nombre se confundian. */}
             <Combobox
-              value={form.asesorName}
-              onChange={(val) => {
-                const selected = data.users.find((u: any) => u.name === val);
-                if (selected) {
-                  set("asesorId", String(selected.id));
-                  set("asesorName", selected.name);
-                } else {
-                  set("asesorName", val);
-                }
-              }}
-              options={data.users
-                .filter((u: any) => u.status === "active")
-                .map((u: any) => ({
-                  value: u.name,
-                  label: u.name,
-                }))}
+              value={form.asesorId}
+              onChange={(val) => set("asesorId", val)}
+              options={asesores.map((a: { id: number; name: string }) => ({
+                value: String(a.id),
+                label: a.name,
+              }))}
               placeholder="¿Quién realiza la venta?"
+              error={errors.asesorId}
             />
           </FormField>
 

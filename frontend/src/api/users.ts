@@ -6,6 +6,12 @@ export async function listUsers(params: Record<string, unknown>) {
   return res.data;
 }
 
+// Opciones del campo "Asesor" de la venta. Solo id y nombre, y no exige users.view.
+export async function listAsesores(): Promise<{ id: number; name: string }[]> {
+  const res = await api.get('/users/asesores');
+  return res.data.data;
+}
+
 export async function getUser(id: number) {
   const res = await api.get(`/users/${id}`);
   return res.data.data;

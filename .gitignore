@@ -117,9 +117,11 @@ frontend/pdf_formatobackend/test*.js
 backend_logs.txt
 *.ps1
 
-# Skills y config locales de agentes: cada uno las instala en su maquina
+# Skills y config locales de agentes: cada uno las instala en su maquina.
+# .claude/rules/ si se versiona: son las reglas del repo, no config personal.
 .agents/
-.claude/
+**/.claude/*
+!/.claude/rules/
 
 # Sesiones de brainstorming del agente: son de quien las corre, no del proyecto
 .superpowers/

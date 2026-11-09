@@ -164,6 +164,7 @@ model Usuarios {
   persona         Personas          @relation(fields: [personaId], references: [id])
   rol             Roles             @relation(fields: [rolId], references: [id])
   ventas          Ventas[]          @relation("ventas_asesor")
+  ventasCargadas  Ventas[]          @relation("venta_creado_por")
 
   @@map("usuarios")
 }
@@ -276,6 +277,11 @@ model Ventas {
   metodoPagoPrincipal         MetodosPago?        @relation("metodo_pago_principal", fields: [metodoPagoPrincipalId], references: [id])
   responsable                 Responsables?       @relation("venta_responsable", fields: [responsableId], references: [id])
   usuario                     Usuarios            @relation("ventas_asesor", fields: [usuarioId], references: [id])
+  // Quien la cargo, que puede no ser el asesor: el asistente deja vender a nombre de otro.
+  // Solo auditoria; "Propios" sigue mirando usuarioId. Las anteriores al 2026-11-08 se
+  // rellenaron con usuario_id, que hasta entonces siempre fue quien la cargo.
+  creadoPorId                 Int                 @map("creado_por_id")
+  creadoPor                   Usuarios            @relation("venta_creado_por", fields: [creadoPorId], references: [id])
 
   @@index([status])
   @@index([id])
@@ -573,7 +579,7 @@ model TramosVuelo {
   salida              DateTime
   llegada             DateTime
   nroVueloTramo       String?            @map("nro_vuelo_tramo")
-  tipoTramo           TipoTramo?         @map("tipo_tramo")
+  tipoTramo           TipoTramo          @map("tipo_tramo")
   orden               Int                @default(1)
   asiento             String?
   checkinStatus       CheckinStatus?     @default(pendiente) @map("checkin_status")
@@ -941,8 +947,8 @@ enum CheckinStatus {
   omitido
 }
 
-// Que seccion del formulario cargo el asesor. Nullable durante la transicion: las ventas
-// anteriores a esta columna no tienen como saberlo (ver docs/designs/escalas-por-tramo-2026-11.md).
+// Que seccion del formulario cargo el asesor. Las ventas anteriores a esta columna se
+// rellenaron solo con el sentido, sin escalas (D1 de docs/designs/escalas-por-tramo-2026-11.md).
 enum TipoTramo {
   ida
   escala_ida

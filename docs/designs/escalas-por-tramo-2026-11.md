@@ -1,5 +1,8 @@
 # Escalas de ida y de regreso en cada tramo
 
+> **Estado (2026-11-05):** fases 0 a 4 en producción (merge a `main` `8b74ba0`; relleno de la Fase 4
+> aplicado, ver `backend/db-manual/README.md`). Fase 5 en la rama `feat/escalas-fase-5`.
+>
 > Plan escrito el 2026-11-05. Sale de dos arreglos previos: `1a03057` (cada tramo muestra su
 > aerolínea) y `5355e58` (un solo ida no tiene regreso). Las decisiones **D1…D4** las toma el
 > usuario antes de la fase que las necesita; cada una trae una recomendación, no una decisión.
@@ -113,6 +116,14 @@ primer vuelo emite las tarjetas de embarque de todo el trayecto. Diseño detalla
 - **Servidor.** `PUT /flights/:id/checkin` rechaza (400) un intento directo sobre una escala: aunque
   la interfaz no ofrezca el boton, el servidor no acepta una escritura en un dato que ya se decidio
   que no significa nada.
+- **Dos límites conocidos** (revisión del 2026-11-05):
+  - El tramo principal se busca entre los tramos de **la misma respuesta**. Si `flights.list`
+    llega a paginar de verdad o a filtrar por fecha (ver el #10 de lo abierto), una escala cuyo
+    principal quede afuera mostraría su propio `pendiente`, que nunca se escribe. Quien arregle
+    la paginación tiene que traer el producto completo o resolver el principal aparte.
+  - Una escala sin tramo principal quedaría en `pendiente` para siempre, sin poder hacerle
+    check-in. Por la interfaz no se puede crear: el asistente exige el tramo de ida completo
+    (`NewSaleWizard.tsx:448`). Solo pasaría con una llamada directa a `POST /sales`.
 
 **D4. ¿"Añadir Tramo" sigue en el formulario?** → **A**, se conserva. Verificado contra el código
 (`TicketForm.tsx:957`): hoy "Añadir Tramo" solo existe en la sección de Ida, no hay equivalente en
@@ -193,8 +204,24 @@ Fase 5 no puede arrancar hasta que esto se corra y se verifique ahí.
 - Solo toca filas con `tipo_tramo IS NULL`. Si no cambia nada, no falla al repetirlo.
 - Según **D1**: solo ida → `ida`. Ida y vuelta → el primer día es `ida` y el resto `regreso`; si
   todo es un mismo día, el tramo 1 es `ida` y el resto `regreso`.
+- **Tiene que copiar la regla de `flights.controller.js` al pie de la letra**, o algún tramo
+  cambia de pestaña:
+  - "Día" es el día **en Bogotá**. `salida` es `TIMESTAMP` en UTC: con `salida::date`, un vuelo
+    de las 19:00 o más tarde cae al día siguiente y una ida pasa a regreso. Se usa
+    `(salida AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')::date`.
+  - "El primer día" es el del tramo de menor `orden`, no la fecha mínima: con las fechas mal
+    digitadas de las ventas 18 y 190, no es lo mismo.
+  - "El tramo 1" es `orden = 1` literal, como en el código.
+  - `modo_vuelo` NULL se trata como solo ida, igual que el `else` del controller.
+  - Entran también las ventas anuladas y eliminadas: `flights.list` no las muestra, pero la
+    Fase 5 necesita que ninguna fila quede en `NULL`.
 - Guarda: al final, 0 filas en `NULL`, y el total de tramos igual al del principio.
 - Comprobación: `flights.list` da la misma pestaña que antes del script para todos los tramos.
+- **El detalle de venta sí cambia, y se aceptó (2026-11-05).** Cuando un producto viejo tiene
+  `tipo_tramo`, `PaginatedProductTab.tsx` deja de deducir por ruta y marca escala solo con
+  `escala_ida`/`escala_regreso`. En los ~20 productos viejos de varios tramos, las conexiones
+  dejan de verse como escala y algunos ida y vuelta se reagrupan. Es coherente con D1 (no afirmar
+  una escala que no se puede saber). El script lista esos productos para revisarlos.
 - Queda anotado en `backend/db-manual/README.md`.
 
 ### Fase 5. Quitar lo viejo
@@ -203,6 +230,9 @@ Solo con la Fase 4 aplicada en producción y verificada:
 
 - Segunda migración: `tipo_tramo` pasa a `NOT NULL`.
 - Se elimina de `flights.controller.js` la regla que adivina el sentido por fecha y por orden.
+- Se elimina también la de `PaginatedProductTab.tsx` (la deducción por ruta), que es la otra copia.
+- `backend/prisma/seed.js:627` crea tramos sin `tipoTramo`: con `NOT NULL`, `db:seed` se rompe.
+  Hay que pasarle el tipo antes de la migración.
 
 ## Riesgos
 
@@ -220,17 +250,19 @@ con este plan. El orden es por lo que conviene mirar primero, y es propuesta del
 
 ### Pueden causar un daño real
 
-1. **El sitio web de una aerolínea no se valida.** Se guarda lo que llegue (`config.controller.js:236`)
-   y la grilla lo dibuja como enlace: un `javascript:...` guardado se ejecutaría al hacer clic. En
-   proveedores ya se corrigió (`6d79b6a`). Tampoco se valida en el formulario (`Config.tsx`).
-2. **`POST /sales` acepta un cliente inactivo.** El bloqueo está solo en los selectores de la
-   pantalla; el servidor solo comprueba que el cliente exista (`sales.controller.js:1716`).
+1. ~~El sitio web de una aerolínea no se valida.~~ Resuelto en `ed98d99`.
+2. ~~`POST /sales` acepta un cliente inactivo.~~ Resuelto en `d24f0d6`, junto con el comisionista
+   y el responsable inactivos.
 3. **Un tiquete acepta una llegada anterior a la salida.** `NewSaleWizard.tsx:450` solo exige que
    las fechas estén; los paquetes sí las comparan (línea 630). Ya hay datos así en producción (ventas
    18 y 190), y esas fechas salen en el voucher.
 4. **El token sigue en `localStorage` (C7).** Falta decidir entre una CSP en el frontend, que es la
    opción recomendada, y un proxy en Vercel. Se descartó el subdominio propio. Ver
    [`cierre-pendientes-2026-10.md`](cierre-pendientes-2026-10.md).
+4b. **El día que calcula el servidor está en UTC, no en Colombia.** 25 de 42 facturas emitidas
+   llegaron a Siigo con la fecha del día siguiente. Los créditos que vencen hoy salen vencidos, y
+   las estadísticas por mes cortan a las 19:00. Se trata aparte, en la rama `fix/hora-colombia`
+   ([`hora-colombia-2026-11.md`](hora-colombia-2026-11.md)).
 
 ### Sin probar
 

@@ -11,6 +11,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 const { escaparHtml } = require('../utils/stringUtils');
 const { auditar } = require('../utils/auditoria');
 const { tipoHotelDe } = require('../utils/tipoHotel');
+const { ASESOR_ACTIVO } = require('../utils/asesores');
 const siigoService = require('../services/siigo.service');
 
 exports.list = async (req, res, next) => {
@@ -1733,6 +1734,21 @@ exports.create = async (req, res, next) => {
       throw err;
     }
 
+    // El asistente deja elegir el asesor, pero aca se guardaba siempre req.user.id: un admin
+    // que cargaba una venta para un asesor la dejaba a su propio nombre. Sin asesorId (otros
+    // clientes de la API) sigue siendo quien la carga. Quien la cargo queda en creadoPorId.
+    let asesorId = req.user.id;
+    if (data.asesorId !== undefined && data.asesorId !== null && data.asesorId !== '') {
+      const n = Number(data.asesorId);
+      const asesor = Number.isInteger(n) && n > 0
+        ? await prisma.usuarios.findFirst({ where: { id: n, ...ASESOR_ACTIVO }, select: { id: true } })
+        : null;
+      if (!asesor) {
+        return error(res, 'El asesor elegido no existe o no está activo', 400, 'ASESOR_INVALIDO');
+      }
+      asesorId = asesor.id;
+    }
+
     const metodoPagoId = await resolvePaymentMethodId(prisma, data.paymentMethod);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -1904,7 +1920,8 @@ exports.create = async (req, res, next) => {
 
       const ventaCreateData = {
         clienteId: data.clientId,
-        usuarioId: req.user.id,
+        usuarioId: asesorId,
+        creadoPorId: req.user.id,
         montoTotal: totales.total,
         costoProveedorTotal: totales.costoProveedor,
         taTotal: totales.ta,
@@ -2416,8 +2433,9 @@ exports.sendVoucher = async (req, res, next) => {
       ? serviciosIncluidos.map(s => `<li style="margin-bottom:6px;">✅ ${s}</li>`).join('')
       : '<li>Servicio de viaje contratado</li>';
 
+    // timeZone explicito: el servidor corre en UTC y despues de las 19:00 ponia la fecha de manana.
     const fechaEmision = new Date().toLocaleDateString('es-CO', {
-      day: '2-digit', month: 'long', year: 'numeric'
+      day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Bogota'
     });
 
     // URL pública del logo para el correo (la imagen debe estar accesible via internet)

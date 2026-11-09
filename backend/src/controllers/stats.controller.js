@@ -1,6 +1,13 @@
 const prisma = require('../config/db');
 const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
+const { diaColombia } = require('../utils/fechas');
+
+// creado_at es TIMESTAMP en UTC. Agrupar por anio o mes sin pasarlo a Colombia corta el dia a
+// las 19:00: una venta del 31 de octubre a las 20:00 contaba en noviembre. Constantes del
+// codigo, se insertan con Prisma.raw.
+const CREADO_COL = Prisma.raw(`(creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`);
+const V_CREADO_COL = Prisma.raw(`(v.creado_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')`);
 
 // Rango de fechas de los query params. Antes cada endpoint hacia `new Date(x).toISOString()`
 // directo, y `?dateFrom=xyz` lo tumbaba con un 500. Devuelve { error } si no sirve.
@@ -28,7 +35,7 @@ exports.dashboard = async (req, res, next) => {
     const range = readDateRange(req.query);
     if (range.error) return error(res, range.error, 400, 'VALIDATION_ERROR');
     const { from, to } = range;
-    const currentYear = new Date().getFullYear();
+    const currentYear = Number(diaColombia().slice(0, 4));
 
     const where = { status: { not: 'anulado' } };
     if (from || to) {
@@ -54,8 +61,8 @@ exports.dashboard = async (req, res, next) => {
         COALESCE(SUM(CASE WHEN status = 'pagado' THEN monto_total ELSE 0 END), 0) as "paids",
         COALESCE(SUM(CASE WHEN status = 'credito' THEN monto_total ELSE 0 END), 0) as "credits",
         COALESCE(SUM(CASE WHEN status = 'abonado' THEN monto_total ELSE 0 END), 0) as "partPaids",
-        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM creado_at) = ${currentYear} THEN monto_total ELSE 0 END), 0) as "currentYearSales",
-        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM creado_at) = ${currentYear - 1} THEN monto_total ELSE 0 END), 0) as "prevYearSales",
+        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM ${CREADO_COL}) = ${currentYear} THEN monto_total ELSE 0 END), 0) as "currentYearSales",
+        COALESCE(SUM(CASE WHEN EXTRACT(YEAR FROM ${CREADO_COL}) = ${currentYear - 1} THEN monto_total ELSE 0 END), 0) as "prevYearSales",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN (costo_proveedor_total * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditProveedores",
         COALESCE(SUM(CASE WHEN status IN ('credito', 'abonado') AND monto_total > 0 THEN ((ta_total + COALESCE(ta_cre_total, 0)) * ((monto_total - COALESCE(monto_pagado_credito, 0)) / monto_total)) ELSE 0 END), 0) as "creditTa"
       FROM ventas
@@ -112,12 +119,12 @@ exports.dashboard = async (req, res, next) => {
     let monthlyTrend = [];
     const trendSql = Prisma.sql`
       SELECT 
-        EXTRACT(YEAR FROM creado_at)::int as year,
-        EXTRACT(MONTH FROM creado_at)::int as month,
+        EXTRACT(YEAR FROM ${CREADO_COL})::int as year,
+        EXTRACT(MONTH FROM ${CREADO_COL})::int as month,
         COALESCE(SUM(monto_total), 0) as total
       FROM ventas
       WHERE deleted_at IS NULL AND status != 'anulado' ${userCond(req, 'usuario_id')}
-        AND EXTRACT(YEAR FROM creado_at) IN (${currentYear}, ${currentYear - 1})
+        AND EXTRACT(YEAR FROM ${CREADO_COL}) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC
     `;
@@ -125,13 +132,13 @@ exports.dashboard = async (req, res, next) => {
 
     const ivaTrendSql = Prisma.sql`
       SELECT 
-        EXTRACT(YEAR FROM v.creado_at)::int as year,
-        EXTRACT(MONTH FROM v.creado_at)::int as month,
+        EXTRACT(YEAR FROM ${V_CREADO_COL})::int as year,
+        EXTRACT(MONTH FROM ${V_CREADO_COL})::int as month,
         COALESCE(SUM((dv.ta + dv.ta_cre) * 0.19), 0) as total
       FROM ventas v
       JOIN detalle_venta dv ON v.id = dv.venta_id
       WHERE v.deleted_at IS NULL AND v.status != 'anulado' ${userCond(req, 'v.usuario_id')}
-        AND EXTRACT(YEAR FROM v.creado_at) IN (${currentYear}, ${currentYear - 1})
+        AND EXTRACT(YEAR FROM ${V_CREADO_COL}) IN (${currentYear}, ${currentYear - 1})
       GROUP BY 1, 2
       ORDER BY 1 ASC, 2 ASC
     `;

@@ -1,108 +1,113 @@
--- Rellena `tipo_tramo` en los tramos de vuelo que quedaron en NULL al agregar la columna
--- (migracion 20261105124614_tipo_tramo, docs/designs/escalas-por-tramo-2026-11.md).
+-- Rellena `tramos_vuelo.tipo_tramo` en los tramos de ventas anteriores a esa columna.
 --
--- Son ventas creadas antes de esa migracion: el servidor no les guardo que seccion del
--- formulario armo cada tramo, asi que no se puede saber cual fue escala (invariante 4).
--- Por eso esta migracion, segun la decision D1 del plan, solo les pone el sentido con la
--- MISMA regla que ya usaba `flights.controller.js` para adivinarlo en pantalla: ninguna
--- queda marcada como escala.
+-- Fase 4 de docs/designs/escalas-por-tramo-2026-11.md. Las ventas nuevas ya lo guardan segun la
+-- seccion del formulario; las viejas no tienen como saberlo. Por D1, a las viejas solo se les
+-- pone el sentido (ida o regreso) con la MISMA regla que hoy aplica `flights.controller.js`
+-- cuando el tipo es NULL, y ninguna queda marcada como escala.
 --
--- La regla (ver flights.controller.js, bloque "Venta anterior a esa migracion"):
---   - Si el producto no es round_trip: todos sus tramos son 'ida'.
---   - Si es round_trip y tiene mas de una fecha local (America/Bogota) entre sus tramos:
---     los del primer dia son 'ida', el resto 'regreso'.
---   - Si es round_trip y todos sus tramos caen el mismo dia: el tramo de menor `orden` es
---     'ida', el resto 'regreso'.
+-- La regla se copia al pie de la letra, o algun tramo cambia de pestana en Itinerarios:
+--   - "Dia" es el dia en Bogota (Intl con timeZone America/Bogota en el controller). `salida`
+--     es TIMESTAMP en UTC: con `salida::date` un vuelo de las 19:00 o mas tarde cae al dia
+--     siguiente y una ida pasaria a regreso.
+--   - "El primer dia" es el del tramo de menor `orden` (el controller ordena por `orden` y toma
+--     la primera fecha que aparece), no la fecha minima: con las fechas mal digitadas de las
+--     ventas 18 y 190 no es lo mismo.
+--   - "El tramo 1" es `orden = 1` literal, como en el controller.
+--   - `modo_vuelo` NULL o `one_way` es todo ida (el `else` del controller).
+--   - Entran tambien las ventas anuladas y eliminadas: Itinerarios no las muestra, pero la
+--     Fase 5 (NOT NULL) necesita que ninguna fila quede en NULL.
 --
--- `salida` es `timestamp without time zone`: se guardo sin zona horaria, tratando el valor
--- como UTC (asi lo escribe el driver). Para agrupar por el mismo dia que ve el asesor en
--- pantalla hay que reproducir la misma conversion que hace el codigo: tratarla como UTC y
--- pasarla a America/Bogota antes de truncar a fecha. Si esta cuenta no coincidiera con la
--- que ya ve `flights.list`, la comprobacion del paso 4 lo muestra antes del COMMIT.
+-- Se acepto (2026-11-05) que el detalle de venta de los productos viejos de varios tramos se
+-- vea distinto: con tipo, `PaginatedProductTab.tsx` deja de deducir escalas por ruta. La
+-- consulta 2 los lista para revisarlos.
 --
--- Solo toca filas con tipo_tramo IS NULL: no vuelve a tocar nada si se corre dos veces.
+-- Idempotente: solo toca filas en NULL. Va DESPUES del deploy de la migracion
+-- `20261105124614_tipo_tramo` y del codigo que la lee.
 
 BEGIN;
 
--- 0. Snapshot del total para la guarda del final (esta transaccion no inserta ni borra
--- filas, solo actualiza; esto lo prueba en vez de suponerlo).
-CREATE TEMP TABLE _snapshot_total AS SELECT count(*) AS total FROM tramos_vuelo;
-
--- 1. Antes
-SELECT 'antes' AS momento, count(*) AS total, count(*) FILTER (WHERE tipo_tramo IS NULL) AS nulos
+-- 1. Conteo antes
+SELECT count(*) AS tramos_total,
+       count(*) FILTER (WHERE tipo_tramo IS NULL) AS tramos_sin_tipo
 FROM tramos_vuelo;
 
-WITH tramos_fecha AS (
-  SELECT
-    tv.id,
-    tv.prod_tiqueteria_id,
-    tv.orden,
-    pt.modo_vuelo,
-    (tv.salida AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')::date AS fecha_local
-  FROM tramos_vuelo tv
-  JOIN prod_tiqueteria pt ON pt.id = tv.prod_tiqueteria_id
-  WHERE tv.tipo_tramo IS NULL
-),
-primer_tramo AS (
-  -- El tramo de menor `orden` de cada producto: equivale a `ptramos[0]` despues de
-  -- ordenar por orden, que es lo que usa `flights.controller.js` para decidir el "primer
-  -- dia" y, si todos caen el mismo dia, cual es la ida.
-  SELECT DISTINCT ON (prod_tiqueteria_id) prod_tiqueteria_id, orden AS orden_min, fecha_local AS fecha_ida
-  FROM tramos_fecha
-  ORDER BY prod_tiqueteria_id, orden ASC
-),
-resumen AS (
-  SELECT prod_tiqueteria_id, count(DISTINCT fecha_local) AS fechas_distintas
-  FROM tramos_fecha
-  GROUP BY prod_tiqueteria_id
-)
-UPDATE tramos_vuelo tv
-SET tipo_tramo = (CASE
-  WHEN tf.modo_vuelo IS DISTINCT FROM 'round_trip' THEN 'ida'
-  WHEN r.fechas_distintas >= 2 THEN (CASE WHEN tf.fecha_local = p.fecha_ida THEN 'ida' ELSE 'regreso' END)
-  ELSE (CASE WHEN tf.orden = p.orden_min THEN 'ida' ELSE 'regreso' END)
-END)::"TipoTramo"
-FROM tramos_fecha tf
-JOIN resumen r USING (prod_tiqueteria_id)
-JOIN primer_tramo p USING (prod_tiqueteria_id)
-WHERE tv.id = tf.id;
+CREATE TEMP TABLE conteo_antes ON COMMIT DROP AS SELECT count(*) AS total FROM tramos_vuelo;
 
--- 2. Despues: por tipo, y 0 esperado en escala_ida/escala_regreso
-SELECT 'despues' AS momento, tipo_tramo, count(*)
-FROM tramos_vuelo
-GROUP BY tipo_tramo
-ORDER BY tipo_tramo;
-
--- 3. Guarda: 0 en NULL, y el total de tramos no cambio (solo se actualizo, no se movio nada)
+-- Guarda: un producto con unos tramos con tipo y otros sin tipo no deberia existir (solo
+-- `create` escribe tramos, y escribe todos a la vez). Si existe, la regla de abajo lo
+-- clasificaria distinto que el controller, que en ese caso tambien usa la regla vieja.
 DO $$
-DECLARE
-  nulos int;
-  total_antes int;
-  total_despues int;
+DECLARE mezclados int;
 BEGIN
-  SELECT count(*) INTO nulos FROM tramos_vuelo WHERE tipo_tramo IS NULL;
-  IF nulos > 0 THEN
-    RAISE EXCEPTION 'Quedaron % tramo(s) en NULL; no deberia pasar', nulos;
-  END IF;
-
-  SELECT total INTO total_antes FROM _snapshot_total;
-  SELECT count(*) INTO total_despues FROM tramos_vuelo;
-  IF total_antes <> total_despues THEN
-    RAISE EXCEPTION 'El total de tramos cambio (% -> %); este script no deberia crear ni borrar filas', total_antes, total_despues;
+  SELECT count(*) INTO mezclados FROM (
+    SELECT prod_tiqueteria_id FROM tramos_vuelo
+    GROUP BY 1
+    HAVING count(*) FILTER (WHERE tipo_tramo IS NULL) > 0
+       AND count(*) FILTER (WHERE tipo_tramo IS NOT NULL) > 0
+  ) x;
+  IF mezclados > 0 THEN
+    RAISE EXCEPTION 'Hay % producto(s) con tramos con y sin tipo; no se aplica nada', mezclados;
   END IF;
 END $$;
 
--- 4. Comprobacion manual antes de confiar en el COMMIT: comparar el tipo asignado contra
--- lo que ya mostraba `flights.list` (ver flights.controller.js) para una muestra de
--- productos con mas de un tramo. Los dos deben coincidir fila por fila.
-SELECT dv.venta_id, pt.id AS prod_tiqueteria_id, pt.modo_vuelo, tv.orden, tv.tipo_tramo,
-       (tv.salida AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')::date AS fecha_local_tramo
-FROM tramos_vuelo tv
+CREATE TEMP TABLE calculo ON COMMIT DROP AS
+WITH t AS (
+  SELECT tv.id, tv.prod_tiqueteria_id, tv.orden, pt.modo_vuelo,
+         (tv.salida AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')::date AS dia,
+         first_value((tv.salida AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota')::date)
+           OVER (PARTITION BY tv.prod_tiqueteria_id ORDER BY tv.orden, tv.salida) AS primer_dia
+  FROM tramos_vuelo tv
+  JOIN prod_tiqueteria pt ON pt.id = tv.prod_tiqueteria_id
+  WHERE tv.tipo_tramo IS NULL
+), dias AS (
+  SELECT prod_tiqueteria_id, count(DISTINCT dia) AS n FROM t GROUP BY 1
+)
+SELECT t.id, t.prod_tiqueteria_id,
+  CASE
+    WHEN t.modo_vuelo IS DISTINCT FROM 'round_trip' THEN 'ida'
+    WHEN d.n >= 2 THEN CASE WHEN t.dia = t.primer_dia THEN 'ida' ELSE 'regreso' END
+    ELSE CASE WHEN t.orden = 1 THEN 'ida' ELSE 'regreso' END
+  END AS tipo
+FROM t JOIN dias d USING (prod_tiqueteria_id);
+
+-- 2. Productos de varios tramos: los que pueden verse distinto en el detalle de venta
+SELECT dv.venta_id, pt.modo_vuelo, count(*) AS tramos,
+       string_agg(tv.orden || ':' || c.tipo, ' ' ORDER BY tv.orden) AS tipos
+FROM calculo c
+JOIN tramos_vuelo tv ON tv.id = c.id
 JOIN prod_tiqueteria pt ON pt.id = tv.prod_tiqueteria_id
 JOIN detalle_venta dv ON dv.id = pt.detalle_venta_id
-WHERE pt.id IN (
-  SELECT prod_tiqueteria_id FROM tramos_vuelo GROUP BY prod_tiqueteria_id HAVING count(*) > 1
-)
-ORDER BY dv.venta_id, tv.orden;
+GROUP BY dv.venta_id, pt.id, pt.modo_vuelo
+HAVING count(*) > 1
+ORDER BY dv.venta_id;
+
+-- 3. Rellenar
+UPDATE tramos_vuelo tv
+SET tipo_tramo = c.tipo::"TipoTramo"
+FROM calculo c
+WHERE tv.id = c.id AND tv.tipo_tramo IS NULL;
+
+-- 4. Guarda: nada en NULL, el mismo total de tramos, y ningun solo ida con regreso
+DO $$
+DECLARE nulos int; total_ahora int; total_antes int; regreso_en_solo_ida int;
+BEGIN
+  SELECT count(*) FILTER (WHERE tipo_tramo IS NULL), count(*) INTO nulos, total_ahora FROM tramos_vuelo;
+  SELECT total INTO total_antes FROM conteo_antes;
+  SELECT count(*) INTO regreso_en_solo_ida
+  FROM tramos_vuelo tv JOIN prod_tiqueteria pt ON pt.id = tv.prod_tiqueteria_id
+  WHERE pt.modo_vuelo IS DISTINCT FROM 'round_trip' AND tv.tipo_tramo IN ('regreso', 'escala_regreso');
+  IF nulos > 0 THEN
+    RAISE EXCEPTION 'Quedaron % tramo(s) sin tipo; no se aplica nada', nulos;
+  END IF;
+  IF total_ahora <> total_antes THEN
+    RAISE EXCEPTION 'El total de tramos cambio (% -> %); no se aplica nada', total_antes, total_ahora;
+  END IF;
+  IF regreso_en_solo_ida > 0 THEN
+    RAISE EXCEPTION 'Hay % tramo(s) de regreso en vuelos solo ida; no se aplica nada', regreso_en_solo_ida;
+  END IF;
+END $$;
+
+-- 5. Conteo despues
+SELECT coalesce(tipo_tramo::text, 'NULL') AS tipo_tramo, count(*) FROM tramos_vuelo GROUP BY 1 ORDER BY 1;
 
 COMMIT;

@@ -632,6 +632,7 @@ async function main() {
               salida: new Date('2026-05-15T10:00:00'),
               llegada: new Date('2026-05-15T11:00:00'),
               nroVueloTramo: `AV${100 + venta.id}`,
+              tipoTramo: 'ida',
               orden: 1
             }
           });

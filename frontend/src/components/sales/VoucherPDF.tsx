@@ -417,7 +417,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
             <strong>Samtur Travel Agency</strong>
             <br />
             Nit 902062715-5<br />
-            Dirección: calle 18 # 18 143 mall estación de servicios medrano<br />
+            RNT 295049<br />
             Teléfono: 3126339919<br />
             <strong>Fecha de Impresión:</strong> {currentDate}<br />
             <strong>Fecha de Venta:</strong> {formatDate(sale.date)}
@@ -813,6 +813,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
               <React.Fragment key={`tour-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
                 <div className="v-data-grid">
+                  <DataCell label="Fecha del tour" value={tour.preferredDate ? formatDate(tour.preferredDate) : undefined} />
                   <DataCell label="Adultos" value={tour.adultsCount?.toString()} />
                   <DataCell label="Niños" value={tour.childrenCount?.toString()} />
                   <DataCell label="Punto de Recogida" value={tour.pickupPoint} />

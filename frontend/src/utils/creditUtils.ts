@@ -19,13 +19,14 @@ export interface CreditSaleInfo {
 }
 
 
+// El vencimiento es una fecha (se guarda a 00:00 UTC) y "hoy" es el dia en Colombia: se
+// comparan dias, no instantes. Con new Date() en hora del navegador, el 00:00 UTC del
+// vencimiento caia a las 19:00 del dia anterior y un credito que vence hoy salia vencido.
 export function getDaysUntilDue(dueDate: string): number {
-  const date = new Date(dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  date.setHours(0, 0, 0, 0);
-  const diff = date.getTime() - today.getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  const hoy = new Intl.DateTimeFormat('fr-CA', {
+    timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  return Math.round((Date.parse(dueDate.slice(0, 10)) - Date.parse(hoy)) / 86400000);
 }
 
 export function getCreditSaleStatus(sale: Sale): 'pending' | 'partial' | 'paid' | 'overdue' {

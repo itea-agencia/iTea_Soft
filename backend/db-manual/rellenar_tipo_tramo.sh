@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Rellena tipo_tramo en los tramos de vuelo anteriores a la migracion (NULL), con la misma
-# regla que ya usaba flights.controller.js para adivinar el sentido en pantalla.
+# Rellena tramos_vuelo.tipo_tramo en las ventas anteriores a esa columna (Fase 4 de
+# docs/designs/escalas-por-tramo-2026-11.md). Idempotente: solo toca filas en NULL.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
