@@ -1101,8 +1101,9 @@ export function TicketForm({
                     <span className="text-xs font-bold text-gray-700 dark:text-slate-300">{idx + 1}. Seleccionar Cliente</span>
                     <Combobox
                       value=""
-                      onChange={(val) => {
-                        if (!val) return;
+                      onChange={(val, picked) => {
+                        // Solo lo elegido de la lista: escribir "12" al buscar por documento no elige al cliente 12.
+                        if (!val || !picked) return;
                         const client = clients.find(c => String(c.id) === val);
                         if (client) {
                           const currentPax = pasajeros;

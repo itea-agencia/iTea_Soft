@@ -75,6 +75,5 @@ En producción (2026-11-09) no hay homónimos entre 126 clientes y 2 comisionist
 
 ## Lo que queda abierto
 
-- **Escribir un número en un selector por id puede elegir a ese id.** El `Combobox` ahora avisa si el valor se eligió de la lista (`picked`), y el cliente, el comisionista y los integrantes lo usan. El asesor (`Step1Client`) y los pasajeros de `TicketForm` y `LandTravelForm`, que ya iban por id, todavía no: escribir "12" y salir del campo puede dejar seleccionado al 12.
 - **El comisionista se elige por id, pero la lista muestra solo el nombre:** `listAgents?para=venta` no trae el documento. Hoy no hay homónimos entre los 2 comisionistas.
 - **Hallazgo 3, Siigo, sin corregir.** `createSiigoInvoice` devuelve `res.data` en vez de `res.data.data`, así que un dry run se mostraría como factura emitida y una factura real sale sin número ni enlace. Rompe el invariante 4. En producción hay 42 facturas emitidas y ninguna en dry run. **Si se vuelve a usar Siigo, esto se corrige antes.**

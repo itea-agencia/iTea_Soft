@@ -40,7 +40,7 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
                 anterior y dos usuarios con el mismo nombre se confundian. */}
             <Combobox
               value={form.asesorId}
-              onChange={(val) => set("asesorId", val)}
+              onChange={(val, picked) => set("asesorId", picked ? val : "")}
               options={asesores.map((a: { id: number; name: string }) => ({
                 value: String(a.id),
                 label: a.name,

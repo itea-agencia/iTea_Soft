@@ -190,8 +190,9 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
                       <span className="text-xs font-bold text-gray-700 dark:text-slate-300">Seleccionar Cliente Registrado</span>
                       <Combobox
                         value=""
-                        onChange={(val) => {
-                          if (!val) return;
+                        onChange={(val, picked) => {
+                          // Solo lo elegido de la lista: escribir "12" al buscar por documento no elige al cliente 12.
+                          if (!val || !picked) return;
                           const foundClient = clients.find(c => String(c.id) === val);
                           if (foundClient) {
                             const next = [...passengers];
