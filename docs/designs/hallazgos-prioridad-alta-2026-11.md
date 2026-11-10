@@ -2,7 +2,7 @@
 
 Diseño para corregir los hallazgos 1, 2, 4 y 5 de `docs/auditoria-frontend-2026-11-08.md`. El estado de los 16 hallazgos está en la sección "Estado" de ese documento.
 
-**Estado de este diseño: acordado. Implementados el 2 y el 5; faltan el 1 y el 4.**
+**Estado de este diseño: acordado. Implementados el 2, el 5 y el 1; falta el 4.**
 
 ## Por qué
 

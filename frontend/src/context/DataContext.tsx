@@ -172,6 +172,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return null;
   };
 
+  // Una carga que sale con una sesion y resuelve con otra se descarta: escribia ventas y
+  // clientes del usuario anterior en el estado y en la cache del nuevo (hallazgo 1 de la
+  // auditoria del frontend). La identidad es el token con el que salio la peticion: cambia en el
+  // mismo tick del logout, sin esperar un render. Solo el login lo escribe.
+  const currentToken = () => localStorage.getItem('itea_token');
+
   const backgroundLoadingRef = useRef(false);
   const fetchingDashboardRef = useRef(false);
 
@@ -182,8 +188,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!isBackgroundRefresh) {
       setDashboardLoading(true);
     }
+    const token = currentToken();
     try {
       const result = await api.getDashboard(params);
+      if (currentToken() !== token) return;
       setDashboardData(result as DashboardData);
       
       // Guardar en caché el dashboard consultado
@@ -201,10 +209,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
     try {
+      const token = currentToken();
       const res = await api.listSales({ perPage: 5000 }).catch(falloAlCargar('las ventas'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       const freshSales = res.data || [];
       setData(prev => {
+        // El updater puede correr despues; la cache tambien se escribe con la sesion de ahora.
+        if (currentToken() !== token) return prev;
         saveSalesAndClientsCache(freshSales, prev.clients);
         return { ...prev, sales: freshSales };
       });
@@ -216,10 +227,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchClients = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listClients({ perPage: 5000 }).catch(falloAlCargar('los clientes'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       const freshClients = res.data || [];
       setData(prev => {
+        if (currentToken() !== token) return prev;
         saveSalesAndClientsCache(prev.sales, freshClients);
         return { ...prev, clients: freshClients };
       });
@@ -228,8 +241,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchResponsables = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listResponsables({ perPage: 5000 }).catch(falloAlCargar('los responsables'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       const freshResponsables = res.data || [];
       setData(prev => ({ ...prev, responsables: freshResponsables }));
     } catch {}
@@ -237,8 +251,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchUsers = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listUsers({ perPage: 5000 }).catch(falloAlCargar('los usuarios'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       const freshUsers = res.data || [];
       saveUsersCache(freshUsers);
       setData(prev => ({ ...prev, users: freshUsers }));
@@ -247,7 +262,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchConfig = useCallback(async () => {
     try {
+      const token = currentToken();
       const configAll = await api.getAllConfig().catch(() => ({}));
+      if (currentToken() !== token) return;
       if (configAll && Object.keys(configAll).length > 0) {
         saveConfigCache({
           cards: configAll.cards || [],
@@ -284,11 +301,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchRolePermissions = useCallback(async () => {
     // Leer los permisos de un rol es solo del admin (requireAdmin en el backend).
     if (user?.role !== 'admin') return;
+    const token = currentToken();
     try {
       const [asesorPerms, freelancerPerms] = await Promise.all([
         api.getRolePermissions('asesor'),
         api.getRolePermissions('freelancer'),
       ]);
+      if (currentToken() !== token) return;
       setData(prev => ({
         ...prev,
         config: {
@@ -306,8 +325,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchFlights = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listFlights({ perPage: 5000 }).catch(falloAlCargar('los itinerarios'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, flights: res.data || [] }));
     } catch (err) {
       console.warn('[DataContext] Error fetching flights:', err);
@@ -316,8 +336,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchCommissionAgents = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listCommissionAgents({ perPage: 5000 }).catch(falloAlCargar('los comisionistas'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionAgents: res.data || [] }));
     } catch {}
   }, []);
@@ -326,16 +347,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // muestre solo los propios (decision 16 del diseno de permisos).
   const fetchCommissionAgentsForSale = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listCommissionAgents({ para: 'venta' }).catch(falloAlCargar('los comisionistas'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionAgentsForSale: res.data || [] }));
     } catch {}
   }, []);
 
   const fetchSettlements = useCallback(async () => {
     try {
+      const token = currentToken();
       const res = await api.listSettlements({ perPage: 5000 }).catch(falloAlCargar('las liquidaciones'));
-      if (!res) return;
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
     } catch {}
   }, []);
@@ -568,8 +591,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshSettlements = async () => {
+    const token = currentToken();
     const res = await api.listSettlements({ perPage: 100 }).catch(falloAlCargar('las liquidaciones'));
-    if (!res) return;
+    if (!res || currentToken() !== token) return;
     setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
   };
 
