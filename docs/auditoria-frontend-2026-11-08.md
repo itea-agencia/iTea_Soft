@@ -196,7 +196,7 @@ Prioridad alta:
 - [x] 1. Datos de otra sesión. Corregido: cada carga de `DataContext` descarta su respuesta, y no escribe la caché, si el token cambió mientras estaba en curso. Las mutaciones (crear, editar, abonar) no se cubren: las inicia el usuario en su propia sesión.
 - [x] 2. Logout sin revocar. Corregido en `e93fda5`. Falta la verificación de punta a punta, que necesita la app levantada: login, logout, la fila de `sesiones` queda revocada y `/auth/me` con el token viejo da 401.
 - [ ] 3. Siigo: dry run mostrado como emitida. **Fuera de alcance por ahora**: hoy no se usa Siigo (decisión del usuario, 2026-11-09). Se corrige antes de volver a usarlo.
-- [ ] 4. Clientes y comisionistas por nombre. Diseñado, sin implementar.
+- [x] 4. Clientes y comisionistas por nombre. Corregido: el cliente, el comisionista y el autocompletado de integrantes (seguros, hoteles, tours y planes) se eligen por id; la etiqueta del cliente lleva el documento.
 - [x] 5. Comisiones dependen de visitar Ventas. Corregido: el servidor deriva el acumulado y las ventas a liquidar, y el umbral es uno solo (`settlementThreshold`).
 
 Prioridad media:

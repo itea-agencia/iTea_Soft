@@ -112,7 +112,9 @@ export function CurrencyInput({ className = '', error, value, onChange, placehol
 
 interface ComboboxProps {
   value: string;
-  onChange: (value: string) => void;
+  // `picked` distingue elegir de la lista de escribir: con ids como valor, escribir "12" al
+  // buscar por documento no puede seleccionar al registro 12 (hallazgo 4 de la auditoria).
+  onChange: (value: string, picked?: boolean) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
   error?: string;
@@ -195,12 +197,10 @@ export function Combobox({ value, onChange, options, placeholder, error, classNa
                   value === opt.value ? 'bg-accent/10 text-accent font-bold' : 'text-gray-700'
                 }`}
                 onClick={() => {
-                  let val = opt.value;
-                  if (preventNumbers) {
-                    val = val.replace(/[0-9]/g, "");
-                  }
-                  onChange(val);
-                  setSearchTerm(opt.label.replace(/[0-9]/g, ""));
+                  // preventNumbers es para lo que se escribe: a un valor elegido de la lista no
+                  // se le quitan digitos (romperia un id y cambiaba "Hotel 123" por "Hotel ").
+                  onChange(opt.value, true);
+                  setSearchTerm(opt.label);
                   setIsOpen(false);
                 }}
               >

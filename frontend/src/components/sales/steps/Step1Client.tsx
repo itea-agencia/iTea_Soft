@@ -1,6 +1,7 @@
 import { Users } from "lucide-react";
 import { FormField, Input, Combobox, Select } from "../../ui/Form";
 import { WizardFormData } from "../wizardData";
+import { clientOption, findClientById } from "../../../utils/clientOptions";
 
 export function Step1Client({ form, set, data, errors, asesores }: any) {
   return (
@@ -23,13 +24,12 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
           <FormField label="Cliente *" error={errors.clientId}>
             <Combobox
               value={form.clientId}
-              onChange={(val) => set("clientId", val)}
+              // Solo cuenta un cliente elegido de la lista: lo escrito sin elegir deja el campo
+              // vacio, y al salir se borra (decision del usuario, 2026-11-10).
+              onChange={(val, picked) => set("clientId", picked ? val : "")}
               options={data.clients
                 .filter((c: any) => c.status === "active")
-                .map((c: any) => ({
-                  value: c.name,
-                  label: c.name,
-                }))}
+                .map(clientOption)}
               placeholder="Seleccionar o escribir nombre..."
               error={errors.clientId}
             />
@@ -52,8 +52,8 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
 
           <FormField label="Comisionista / Referido" error={errors.commissionAgent}>
             <Combobox
-              value={form.commissionAgentName || ""}
-              onChange={(val) => {
+              value={form.commissionAgentId || form.commissionAgentName || ""}
+              onChange={(val, picked) => {
                 if (!val) {
                   set("commissionAgentId", "");
                   set("commissionAgentName", "");
@@ -61,7 +61,9 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
                   set("commissionAgentRetentionPercentage", "0");
                   set("commissionAgentNetPayment", "0");
                 } else {
-                  const agent = (data.commissionAgentsForSale || []).filter((a: any) => a.status === "Activo").find((a: any) => a.name === val);
+                  // Por id: dos comisionistas con el mismo nombre se confundian. Lo escrito sin
+                  // elegir queda como nombre y la validacion del paso 1 lo rechaza.
+                  const agent = picked && (data.commissionAgentsForSale || []).find((a: any) => String(a.id) === val);
                   if (agent) {
                     set("commissionAgentId", String(agent.id));
                     set("commissionAgentName", agent.name);
@@ -72,7 +74,7 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
                 }
               }}
               options={(data.commissionAgentsForSale || []).filter((a: any) => a.status === "Activo").map((a: any) => ({
-                value: a.name,
+                value: String(a.id),
                 label: a.name,
               }))}
               placeholder="Venta Directa (Sin Comisionista)"
@@ -83,9 +85,7 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
 
         {/* Client preview card */}
         {form.clientId && (() => {
-          const client = data.clients.find(
-            (c: any) => c.name === form.clientId,
-          );
+          const client = findClientById(data.clients, form.clientId);
           if (!client) return null;
           return (
             <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4 shadow-sm">

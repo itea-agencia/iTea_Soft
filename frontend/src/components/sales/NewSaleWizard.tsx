@@ -68,6 +68,7 @@ import { Step2Products } from "./steps/Step2Products";
 import { Step3Payment } from "./steps/Step3Payment";
 import { todayStr } from "../../utils/formatters";
 import { getDaysUntilDue } from "../../utils/creditUtils";
+import { findClientById } from "../../utils/clientOptions";
 import { listAsesores } from "../../api";
 
 interface Props {
@@ -85,7 +86,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   const { data, addSale, fetchClients, fetchCommissionAgentsForSale, fetchResponsables } = useData();
   const { user } = useAuth();
 
-  const draftKey = `itea_new_sale_draft_v2_${user?.id || 'unknown'}`;
+  // v3: desde el hallazgo 4, clientId guarda el id; un borrador v2 guarda el nombre y se descarta.
+  const draftKey = `itea_new_sale_draft_v3_${user?.id || 'unknown'}`;
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardFormData>(() => {
@@ -185,7 +187,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const hasTa = hotel.ta > 0;
       
       // Ignore initial prefilled passenger in guests list for empty check
-      const client = data.clients.find((c: any) => c.name === form.clientId);
+      const client = findClientById(data.clients, form.clientId);
       const initialGuestName = client?.name || "";
       const initialGuestDoc = client?.docNumber || "";
       
@@ -211,7 +213,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const hasCost = ins.supplierCost > 0;
       const hasTa = ins.ta > 0;
       
-      const client = data.clients.find((c: any) => c.name === form.clientId);
+      const client = findClientById(data.clients, form.clientId);
       const initialMemberName = client?.name || "";
       const initialMemberDoc = client?.docNumber || "";
       
@@ -419,6 +421,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     const errs: Record<string, string> = {};
     if (s === 1) {
       if (!form.clientId) errs.clientId = "El cliente es obligatorio";
+      else if (!findClientById(data.clients, form.clientId)) errs.clientId = "Elija un cliente de la lista";
       // Cubre el campo vacio, un texto que no es nadie y un borrador con alguien ya inactivo.
       if (!asesores.some((a) => String(a.id) === String(form.asesorId))) {
         errs.asesorId = "Elija un asesor de la lista";
@@ -1309,7 +1312,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     if (!activeForm || activeIdx === null) return null;
 
     const product = SALE_PRODUCTS.find((p) => p.id === activeForm);
-    const client = data.clients.find((c: any) => c.name === form.clientId);
+    const client = findClientById(data.clients, form.clientId);
 
     return (
       <form 
@@ -1501,7 +1504,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   case "servicio_mascotas": targetKey = "petServices"; initialFn = INITIAL_PET_SERVICE; break;
                 }
                 if (targetKey && initialFn) {
-                  const client = data.clients.find((c: any) => c.name === form.clientId);
+                  const client = findClientById(data.clients, form.clientId);
                   const currentItems = (form as any)[targetKey] || [];
                   const newItem = initialFn(client);
                   const nextItems = [...currentItems, newItem];
@@ -1877,7 +1880,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    const client = data.clients.find((c: any) => c.name === form.clientId);
+    const client = findClientById(data.clients, form.clientId);
     if (!client) {
       console.warn("⚠️ Cliente no encontrado:", form.clientId);
       triggerError("El cliente seleccionado no es válido.");

@@ -2,7 +2,7 @@
 
 Diseño para corregir los hallazgos 1, 2, 4 y 5 de `docs/auditoria-frontend-2026-11-08.md`. El estado de los 16 hallazgos está en la sección "Estado" de ese documento.
 
-**Estado de este diseño: acordado. Implementados el 2, el 5 y el 1; falta el 4.**
+**Estado de este diseño: implementado (2, 5, 1 y 4).**
 
 ## Por qué
 
@@ -60,7 +60,8 @@ Se sigue el patrón que ya usa el asesor en `Step1Client.tsx`: `value` es el id 
 - `form.clientId` guarda el id. La etiqueta del cliente es el nombre con su documento, para distinguir homónimos.
 - Cada `.find(c => c.name === form.clientId)` pasa a comparar por id: `Step1Client.tsx` y las cinco apariciones de `NewSaleWizard.tsx`. Antes de cambiarlo hay que revisar los demás usos con `grep`, incluidos `Step2Products.tsx` y `wizardData.ts`.
 - El comisionista también se elige por id. `commissionAgentName` se conserva porque el payload lo manda.
-- Un texto que no corresponde a nadie se sigue rechazando con el error que existe hoy.
+- ~~Un texto que no corresponde a nadie se sigue rechazando con el error que existe hoy.~~ Cambió al implementar (decisión del usuario, 2026-11-10): en el campo Cliente solo cuenta lo elegido de la lista; lo escrito sin elegir deja el campo vacío y el paso 1 pide "El cliente es obligatorio". El comisionista mantiene el error de hoy.
+- Entraron también los autocompletados de integrantes de seguros, hoteles, tours y planes (opción B del usuario): copian nombre y documento solo si se elige un cliente de la lista, por id.
 - La clave del borrador pasa de `itea_new_sale_draft_v2_` a `v3`: los borradores viejos guardan el nombre y se descartan una vez. El logout ya los borra por prefijo.
 
 En producción (2026-11-09) no hay homónimos entre 126 clientes y 2 comisionistas: es prevención.
@@ -74,4 +75,6 @@ En producción (2026-11-09) no hay homónimos entre 126 clientes y 2 comisionist
 
 ## Lo que queda abierto
 
+- **Escribir un número en un selector por id puede elegir a ese id.** El `Combobox` ahora avisa si el valor se eligió de la lista (`picked`), y el cliente, el comisionista y los integrantes lo usan. El asesor (`Step1Client`) y los pasajeros de `TicketForm` y `LandTravelForm`, que ya iban por id, todavía no: escribir "12" y salir del campo puede dejar seleccionado al 12.
+- **El comisionista se elige por id, pero la lista muestra solo el nombre:** `listAgents?para=venta` no trae el documento. Hoy no hay homónimos entre los 2 comisionistas.
 - **Hallazgo 3, Siigo, sin corregir.** `createSiigoInvoice` devuelve `res.data` en vez de `res.data.data`, así que un dry run se mostraría como factura emitida y una factura real sale sin número ni enlace. Rompe el invariante 4. En producción hay 42 facturas emitidas y ninguna en dry run. **Si se vuelve a usar Siigo, esto se corrige antes.**
