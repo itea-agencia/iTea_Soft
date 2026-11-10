@@ -189,13 +189,13 @@ Las seis pruebas actuales no cubren estos flujos. Agregar regresiones específic
 
 ## Estado
 
-Comprobado el 2026-11-09 buscando en el código de `feat-bayrol`, sin ejecutar la app ni repetir las reproducciones. Marcar cada casilla en el commit que lo corrija. El diseño de los hallazgos 1, 2, 4 y 5 está en `docs/designs/hallazgos-prioridad-alta-2026-11.md`.
+Comprobado el 2026-11-09 buscando en el código de `feat-bayrol`, sin ejecutar la app ni repetir las reproducciones, y actualizado el 2026-11-10 con lo corregido. Marcar cada casilla en el commit que lo corrija. Diseños: los hallazgos 1, 2, 4 y 5 en `docs/designs/hallazgos-prioridad-alta-2026-11.md`; el 6, el 12 y el 14 en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`. Lo corregido está en `origin/feat-bayrol` y todavía no en producción: el orden de despliegue está en `docs/designs/despliegue-hallazgos-auditoria-2026-11.md`.
 
 Prioridad alta:
 
 - [x] 1. Datos de otra sesión. Corregido: cada carga de `DataContext` descarta su respuesta, y no escribe la caché, si el token cambió mientras estaba en curso. Las mutaciones (crear, editar, abonar) no se cubren: las inicia el usuario en su propia sesión.
-- [x] 2. Logout sin revocar. Corregido en `e93fda5`. Falta la verificación de punta a punta, que necesita la app levantada: login, logout, la fila de `sesiones` queda revocada y `/auth/me` con el token viejo da 401.
-- [ ] 3. Siigo: dry run mostrado como emitida. **Fuera de alcance por ahora**: hoy no se usa Siigo (decisión del usuario, 2026-11-09). Se corrige antes de volver a usarlo.
+- [x] 2. Logout sin revocar. Corregido en `e93fda5` y probado en pantalla por el usuario contra la app local (2026-11-10).
+- [ ] 3. Siigo: dry run mostrado como emitida. **Fuera de alcance**: hoy no se usa Siigo y se va a dejar de usar (decisión del usuario, 2026-11-09 y 2026-11-10). Si se volviera a usar, se corrige antes.
 - [x] 4. Clientes y comisionistas por nombre. Corregido: el cliente, el comisionista y el autocompletado de integrantes (seguros, hoteles, tours y planes) se eligen por id; la etiqueta del cliente lleva el documento.
 - [x] 5. Comisiones dependen de visitar Ventas. Corregido: el servidor deriva el acumulado y las ventas a liquidar, y el umbral es uno solo (`settlementThreshold`).
 
@@ -207,8 +207,10 @@ Prioridad media:
 - [ ] 9. Errores de red presentados como ceros o listas vacías.
 - [ ] 10. Vouchers anunciados sin confirmación de envío.
 - [ ] 11. `/config` se abre sin `config.view`.
-- [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF), y una carga en curso al salir puede volver a escribir la caché (hallazgo 1).
+- [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
 - [ ] 13. Adjuntos sin validar el límite anunciado.
 - [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
 - [ ] 15. Modales y campos sin accesibilidad básica.
 - [ ] 16. Carga inicial y mantenimiento.
+
+Orden propuesto para lo que falta (2026-11-10): primero el 9, porque la pantalla puede mostrar $0 cuando en realidad falló la carga (invariante 4); después el resto del 7 y el 10; luego el 11 y el 13, que son chicos; el 8; y al final el 15 y el 16. El tope de 5.000 del 14 espera a que el volumen se acerque.

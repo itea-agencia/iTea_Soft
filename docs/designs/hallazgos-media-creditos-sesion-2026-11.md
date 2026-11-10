@@ -1,6 +1,6 @@
 # Hallazgos 6, 12 y 14 de la auditoría del frontend
 
-Diseño para los hallazgos 6, 12 y 14 de `docs/auditoria-frontend-2026-11-08.md`. Acordado con el usuario el 2026-11-10.
+Diseño para los hallazgos 6, 12 y 14 de `docs/auditoria-frontend-2026-11-08.md`. Acordado con el usuario el 2026-11-10. **Estado: implementado** (`b656711`, `0c810b3`, `814d2f6`) y probado en pantalla por el usuario contra la app local. El tope de 5.000 filas del 14 sigue abierto.
 
 ## Problema
 
