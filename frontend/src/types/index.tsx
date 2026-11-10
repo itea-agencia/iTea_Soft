@@ -911,7 +911,7 @@ export interface AppData {
   flights: Flight[];
   commissionAgents: CommissionAgent[];
   /** Para elegir comisionista en el asistente: todos, solo id/nombre/estado (?para=venta). */
-  commissionAgentsForSale: Pick<CommissionAgent, 'id' | 'name' | 'status'>[];
+  commissionAgentsForSale: (Pick<CommissionAgent, 'id' | 'name' | 'status'> & { docLast4?: string | null })[];
   commissionSettlements: CommissionSettlement[];
   config: ConfigData;
 }

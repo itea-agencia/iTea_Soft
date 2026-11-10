@@ -75,5 +75,4 @@ En producción (2026-11-09) no hay homónimos entre 126 clientes y 2 comisionist
 
 ## Lo que queda abierto
 
-- **El comisionista se elige por id, pero la lista muestra solo el nombre:** `listAgents?para=venta` no trae el documento. Hoy no hay homónimos entre los 2 comisionistas.
 - **Hallazgo 3, Siigo, sin corregir.** `createSiigoInvoice` devuelve `res.data` en vez de `res.data.data`, así que un dry run se mostraría como factura emitida y una factura real sale sin número ni enlace. Rompe el invariante 4. En producción hay 42 facturas emitidas y ninguna en dry run. **Si se vuelve a usar Siigo, esto se corrige antes.**

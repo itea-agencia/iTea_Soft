@@ -75,7 +75,7 @@ export function Step1Client({ form, set, data, errors, asesores }: any) {
               }}
               options={(data.commissionAgentsForSale || []).filter((a: any) => a.status === "Activo").map((a: any) => ({
                 value: String(a.id),
-                label: a.name,
+                label: a.docLast4 ? `${a.name} · …${a.docLast4}` : a.name,
               }))}
               placeholder="Venta Directa (Sin Comisionista)"
               error={errors.commissionAgent}

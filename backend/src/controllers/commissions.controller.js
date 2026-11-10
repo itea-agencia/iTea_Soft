@@ -92,14 +92,17 @@ exports.listAgents = async (req, res, next) => {
   try {
     // Para elegir comisionista en el asistente de ventas: todos, pero solo lo necesario para
     // elegir. Los datos de contacto y el acumulado son del modulo de comisiones, con su alcance.
+    // Del documento van solo los ultimos 4 digitos, para distinguir homonimos sin exponerlo a
+    // quien vende sin permiso de comisiones (decision del usuario, 2026-11-10).
     if (req.query.para === 'venta') {
       const agentes = await prisma.comisionistas.findMany({
-        select: { id: true, status: true, persona: { select: { nombres: true, apellidos: true } } },
+        select: { id: true, status: true, persona: { select: { nombres: true, apellidos: true, documento: true } } },
         orderBy: { id: 'desc' }
       });
       return success(res, agentes.map(a => ({
         id: a.id,
         name: `${a.persona.nombres} ${a.persona.apellidos}`.trim(),
+        docLast4: a.persona.documento ? a.persona.documento.slice(-4) : null,
         status: a.status
       })));
     }
