@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { login as apiLogin, logout as apiLogout, getMe } from '../api';
 import type { LoginResponse } from '../api/auth';
+import { clearSessionCaches } from '../api/client';
 
 interface AuthContextType {
   user: LoginResponse['user'] | null;
@@ -45,9 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await apiLogin(email, password, remember);
 
-      // Limpiar caché vieja antes de guardar el nuevo token
-      localStorage.removeItem('itea_dashboard_cache');
-
       setUser(data.user);
 
       localStorage.setItem('itea_token', data.token);
@@ -69,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('itea_user');
     localStorage.removeItem('itea_session_expiry');
     localStorage.removeItem('itea_remember');
+    clearSessionCaches();
     // El borrador del asistente de ventas no se queda para quien use el equipo despues.
     Object.keys(localStorage)
       .filter((k) => k.startsWith('itea_new_sale_draft_'))

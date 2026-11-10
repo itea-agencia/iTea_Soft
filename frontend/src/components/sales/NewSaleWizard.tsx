@@ -1857,7 +1857,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
-    console.log("👉 Intentando finalizar venta. Paso actual:", step, "Form state:", form);
     if (!validateStep(1)) {
       console.warn("⚠️ Validación falló en Paso 1");
       triggerError("Por favor revisa los datos del cliente en el Paso 1.");
