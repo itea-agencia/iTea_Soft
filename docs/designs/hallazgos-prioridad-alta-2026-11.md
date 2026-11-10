@@ -51,7 +51,7 @@ Hoy la pantalla calcula el acumulado y elige las ventas a liquidar desde `data.s
 - `settleCommissions` manda las `pendingSaleIds` del comisionista que se está liquidando, de modo que se paga lo que se vio. Una venta que entre en ese momento queda para la siguiente liquidación. Una que se anule entre tanto da el 409 que ya existe.
 - Después de liquidar se recarga la lista de comisionistas.
 
-**Umbral para "listo para liquidar".** Hoy el directorio usa 50.000 fijos y el detalle usa `paymentThreshold`. Recomendación, **pendiente de confirmar por el usuario**: el umbral del comisionista si es mayor que 0, y 50.000 si no, en una sola función. En producción (2026-11-09) ningún comisionista tiene umbral propio, así que usar solo `paymentThreshold` dejaría el umbral en 0 para todos.
+**Umbral para "listo para liquidar".** Hoy el directorio usa 50.000 fijos y el detalle usa `paymentThreshold`. Regla anotada a pedido del usuario (2026-11-10), **sin implementar**: el umbral del comisionista si es mayor que 0, y 50.000 si no, en una sola función. En producción (2026-11-09) ningún comisionista tiene umbral propio, así que usar solo `paymentThreshold` dejaría el umbral en 0 para todos.
 
 ## Hallazgo 4: clientes y comisionistas por nombre
 
@@ -75,4 +75,4 @@ En producción (2026-11-09) no hay homónimos entre 126 clientes y 2 comisionist
 ## Lo que queda abierto
 
 - **Hallazgo 3, Siigo, sin corregir.** `createSiigoInvoice` devuelve `res.data` en vez de `res.data.data`, así que un dry run se mostraría como factura emitida y una factura real sale sin número ni enlace. Rompe el invariante 4. En producción hay 42 facturas emitidas y ninguna en dry run. **Si se vuelve a usar Siigo, esto se corrige antes.**
-- El umbral para "listo para liquidar" espera confirmación del usuario.
+- El umbral para "listo para liquidar" queda anotado en este diseño. Falta implementarlo con el hallazgo 5.
