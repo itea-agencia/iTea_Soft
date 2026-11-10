@@ -2,7 +2,7 @@
 
 Checklist para llevar a producción lo que se corrigió de `docs/auditoria-frontend-2026-11-08.md` en `feat-bayrol` después del despliegue del 2026-11-09 (`despliegue-feat-bayrol-2026-11.md`). Todo está en `origin/feat-bayrol` desde `0f42907` hasta `4fe8403`.
 
-**Estado: sin desplegar.** El usuario probó en pantalla, contra la app local, todo hasta `a2662d2` (hallazgo 4). Faltan por probar `2cffae7` (asesor y pasajeros solo desde la lista) y `4fe8403` (últimos 4 dígitos del comisionista).
+**Estado: probado, sin desplegar.** El usuario probó en pantalla, contra la app local, todos los commits hasta `4fe8403` (2026-11-10). Falta el merge a `main` y la publicación del frontend, que hace el usuario.
 
 ## Qué trae el merge a `main`
 
