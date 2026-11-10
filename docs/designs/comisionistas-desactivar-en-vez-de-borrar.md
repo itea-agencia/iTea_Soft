@@ -72,7 +72,7 @@ Además:
 
 ## Lo que queda abierto
 
-El checklist completo del despliegue, con estos dos pasos y los demás, está en `despliegue-feat-bayrol-2026-11.md`.
+El checklist completo del despliegue, con estos dos pasos y los demás, está en `despliegue-feat-bayrol-2026-11.md`. **Los dos pasos se ejecutaron el 2026-11-09**: el permiso quedó aplicado y el conteo dio 0.
 
 **Antes de mergear `feat-bayrol` a `main`** (el merge despliega), en producción:
 

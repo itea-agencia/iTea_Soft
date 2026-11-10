@@ -186,3 +186,29 @@ El backend revisado exige Bearer y autorización en estadísticas; el contexto d
 5. División de carga y reducción gradual de duplicación.
 
 Las seis pruebas actuales no cubren estos flujos. Agregar regresiones específicas junto con cada corrección; no usar la compilación exitosa como prueba de comportamiento de pagos, permisos o facturación.
+
+## Estado
+
+Comprobado el 2026-11-09 buscando en el código de `feat-bayrol`, sin ejecutar la app ni repetir las reproducciones. Marcar cada casilla en el commit que lo corrija. El diseño de los hallazgos 1, 2, 4 y 5 está en `docs/designs/hallazgos-prioridad-alta-2026-11.md`.
+
+Prioridad alta:
+
+- [ ] 1. Datos de otra sesión. Diseñado, sin implementar.
+- [ ] 2. Logout sin revocar. Diseñado, sin implementar.
+- [ ] 3. Siigo: dry run mostrado como emitida. **Fuera de alcance por ahora**: hoy no se usa Siigo (decisión del usuario, 2026-11-09). Se corrige antes de volver a usarlo.
+- [ ] 4. Clientes y comisionistas por nombre. Diseñado, sin implementar.
+- [ ] 5. Comisiones dependen de visitar Ventas. Diseñado, sin implementar.
+
+Prioridad media:
+
+- [ ] 6. Créditos con abonos no se clasifican como vencidos.
+- [ ] 7. Cambios confirmados reaparecen desde caché.
+- [ ] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta.
+- [ ] 9. Errores de red presentados como ceros o listas vacías.
+- [ ] 10. Vouchers anunciados sin confirmación de envío.
+- [ ] 11. `/config` se abre sin `config.view`.
+- [ ] 12. Datos en el navegador. Parcial: ya no se imprimen los comisionistas; sigue el `console.log` del formulario de venta y el logout no purga las cachés.
+- [ ] 13. Adjuntos sin validar el límite anunciado.
+- [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`.
+- [ ] 15. Modales y campos sin accesibilidad básica.
+- [ ] 16. Carga inicial y mantenimiento.
