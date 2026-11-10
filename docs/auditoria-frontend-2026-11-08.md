@@ -201,7 +201,7 @@ Prioridad alta:
 
 Prioridad media:
 
-- [ ] 6. Créditos con abonos no se clasifican como vencidos.
+- [x] 6. Créditos con abonos no se clasifican como vencidos. Corregido; diseño en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`.
 - [ ] 7. Cambios confirmados reaparecen desde caché.
 - [ ] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta.
 - [ ] 9. Errores de red presentados como ceros o listas vacías.

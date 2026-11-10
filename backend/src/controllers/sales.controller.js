@@ -59,7 +59,6 @@ exports.list = async (req, res, next) => {
           v.monto_total as "montoTotal",
           v.status,
           v.observaciones,
-          v.es_credito as "esCredito",
           v.fecha_vence_credito as "fechaVenceCredito",
           v.monto_pagado_credito as "montoPagadoCredito",
           v.is_reviewed as "isReviewed",
@@ -110,7 +109,7 @@ exports.list = async (req, res, next) => {
         total: v.montoTotal,
         status: v.status,
         observations: v.observaciones,
-        isCredit: v.esCredito,
+        isCredit: isOnCredit(v.status),
         creditDueDate: v.fechaVenceCredito,
         creditPaidAmount: v.montoPagadoCredito,
         isReviewed: v.isReviewed,
@@ -1039,7 +1038,7 @@ exports.getById = async (req, res, next) => {
         return { tipo, label, detail };
       }),
       observations: venta.observaciones,
-      isCredit: venta.esCredito,
+      isCredit: isOnCredit(venta.status),
       creditDueDate: venta.fechaVenceCredito,
       creditPaidAmount: venta.montoPagadoCredito,
       isReviewed: venta.isReviewed,
@@ -2051,7 +2050,7 @@ exports.create = async (req, res, next) => {
       paymentMethod: created.metodoPagoPrincipal?.nombre || null,
       status: created.status,
       observations: created.observaciones,
-      isCredit: created.esCredito,
+      isCredit: isOnCredit(created.status),
       creditDueDate: created.fechaVenceCredito,
       creditPaidAmount: created.montoPagadoCredito,
       commissionAgentId: created.comisionistaId,
@@ -2152,6 +2151,13 @@ const TOLERANCIA_PAGO = 1;
 function estadoDeVenta(montoTotal, pagado) {
   if (montoTotal - pagado <= TOLERANCIA_PAGO) return 'pagado';
   return pagado > 0 ? 'abonado' : 'credito';
+}
+
+// `isCredit` es "todavia esta en credito" y sale del estado. La columna es_credito solo se
+// escribe al crear: saldar con abonos la dejaba en true y el panel de creditos contaba
+// ventas ya pagadas (10 en produccion al 2026-11-10). Ver docs/specs/2026-09-17-dinero-y-totales.md.
+function isOnCredit(status) {
+  return status === 'credito' || status === 'abonado';
 }
 
 // El neto de la comision sale del bruto y la retencion, con la misma formula del paso de
