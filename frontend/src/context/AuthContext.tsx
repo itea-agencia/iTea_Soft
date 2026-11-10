@@ -61,7 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
-    apiLogout().catch(() => {});
+    // Se lee antes de limpiar; la limpieza local no espera a la revocacion ni depende de ella.
+    const token = localStorage.getItem('itea_token');
+    if (token) apiLogout(token).catch(() => {});
     setUser(null);
     localStorage.removeItem('itea_token');
     localStorage.removeItem('itea_user');
