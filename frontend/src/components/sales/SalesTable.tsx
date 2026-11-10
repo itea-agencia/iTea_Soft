@@ -5,6 +5,7 @@ import { Table, TableRow, TableCell, Pagination } from "../ui/Table";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
+import { getDaysUntilDue } from "../../utils/creditUtils";
 import { Sale, Client, User } from "../../types";
 import { usePermissions } from "../../context/PermissionsContext";
 
@@ -204,10 +205,18 @@ export default function SalesTable({
                     </div>
                   )}
                 </div>
-                {sale.status === "credito" && sale.creditDueDate && (
-                  <span className="text-[10px] text-rose-500 font-medium whitespace-nowrap">
-                    Vence: {formatDate(sale.creditDueDate)}
-                  </span>
+                {/* Vencida es una condicion de la fecha, no un estado de la venta: se muestra
+                    aca y no en el badge. Una abonada tambien vence; antes no mostraba la fecha. */}
+                {(sale.status === "credito" || sale.status === "abonado") && sale.creditDueDate && (
+                  getDaysUntilDue(sale.creditDueDate) < 0 ? (
+                    <span className="text-[10px] text-red-600 dark:text-red-400 font-semibold whitespace-nowrap">
+                      Vencida: {formatDate(sale.creditDueDate)}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-gray-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                      Vence: {formatDate(sale.creditDueDate)}
+                    </span>
+                  )
                 )}
               </div>
             </TableCell>
