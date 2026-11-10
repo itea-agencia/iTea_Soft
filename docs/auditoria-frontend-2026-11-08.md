@@ -197,12 +197,12 @@ Prioridad alta:
 - [x] 2. Logout sin revocar. Corregido en `e93fda5`. Falta la verificación de punta a punta, que necesita la app levantada: login, logout, la fila de `sesiones` queda revocada y `/auth/me` con el token viejo da 401.
 - [ ] 3. Siigo: dry run mostrado como emitida. **Fuera de alcance por ahora**: hoy no se usa Siigo (decisión del usuario, 2026-11-09). Se corrige antes de volver a usarlo.
 - [ ] 4. Clientes y comisionistas por nombre. Diseñado, sin implementar.
-- [ ] 5. Comisiones dependen de visitar Ventas. Diseñado, sin implementar.
+- [x] 5. Comisiones dependen de visitar Ventas. Corregido: el servidor deriva el acumulado y las ventas a liquidar, y el umbral es uno solo (`settlementThreshold`).
 
 Prioridad media:
 
 - [x] 6. Créditos con abonos no se clasifican como vencidos. Corregido; diseño en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`.
-- [ ] 7. Cambios confirmados reaparecen desde caché.
+- [ ] 7. Cambios confirmados reaparecen desde caché. Parcial: liquidar comisiones ya invalida la caché de ventas (con el 5). Siguen los clientes, los abonos y los timestamps cruzados de `saveSalesAndClientsCache`.
 - [ ] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta.
 - [ ] 9. Errores de red presentados como ceros o listas vacías.
 - [ ] 10. Vouchers anunciados sin confirmación de envío.

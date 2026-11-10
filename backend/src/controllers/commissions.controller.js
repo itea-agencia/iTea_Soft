@@ -14,6 +14,12 @@ const diaDeLiquidacion = (d) =>
   d.toISOString().endsWith('T00:00:00.000Z') ? d.toISOString().slice(0, 10) : diaColombia(d);
 const { auditar } = require('../utils/auditoria');
 
+// Venta cuya comision todavia no se le pago al comisionista. Mismo criterio que rechaza
+// createSettlement: ni liquidada, ni anulada, ni eliminada. Va sin alias para que sirva dentro
+// de cualquier subconsulta sobre `ventas`.
+const PENDING_COMMISSION_SALE = Prisma.sql`comision_liquidada = false
+  AND status::text <> 'anulado' AND deleted_at IS NULL`;
+
 const splitFullName = (fullName) => {
   const parts = fullName ? fullName.trim().split(/\s+/) : [];
   let firstName = fullName || '';
@@ -63,7 +69,7 @@ exports.getAgent = async (req, res, next) => {
       phone: agent.persona.telefono,
       email: agent.persona.email,
       status: agent.status,
-      accumulated: agent.acumulado,
+      accumulated: await getPendingCommission(prisma, agent.id),
       paymentThreshold: agent.umbralPago,
       observacion: agent.observacion,
       ventas: agent.ventas.map(v => ({
@@ -129,7 +135,8 @@ exports.listAgents = async (req, res, next) => {
           c.id,
           c.tipo as "type",
           c.status,
-          c.acumulado as "accumulated",
+          pend.accumulated,
+          pend."pendingSaleIds",
           c.umbral_pago as "paymentThreshold",
           p.nombres as "firstName",
           p.apellidos as "lastName",
@@ -142,6 +149,15 @@ exports.listAgents = async (req, res, next) => {
         FROM comisionistas c
         JOIN personas p ON c.persona_id = p.id
         LEFT JOIN tipos_documento td ON p.tipo_documento_id = td.id
+        -- El acumulado sale de las ventas, no de la columna c.acumulado, que nadie actualiza
+        -- despues del alta. pendingSaleIds son las ventas que lo componen: la pantalla liquida
+        -- esas mismas, asi se paga lo que se vio (hallazgo 5 de la auditoria del frontend).
+        CROSS JOIN LATERAL (
+          SELECT COALESCE(SUM(monto_comision_neto), 0) AS accumulated,
+                 COALESCE(json_agg(id ORDER BY id), '[]'::json) AS "pendingSaleIds"
+          FROM ventas
+          WHERE comisionista_id = c.id AND ${PENDING_COMMISSION_SALE}
+        ) pend
         WHERE 1=1 ${statusCondition} ${searchCondition} ${ownCondition}
         ORDER BY c.id DESC
         LIMIT ${perPage} OFFSET ${skip}
@@ -155,7 +171,8 @@ exports.listAgents = async (req, res, next) => {
       docType: a.docType || '',
       docNumber: a.docNumber || '',
       status: a.status,
-      accumulated: a.accumulated,
+      accumulated: Number(a.accumulated) || 0,
+      pendingSaleIds: a.pendingSaleIds,
       paymentThreshold: a.paymentThreshold,
       phone: a.phone,
       email: a.email,
@@ -287,7 +304,8 @@ exports.createAgent = async (req, res, next) => {
       docType: agent.persona.tipoDocumento?.abreviatura || '',
       docNumber: agent.persona.documento || '',
       status: agent.status,
-      accumulated: agent.acumulado,
+      // Reactivar a un comisionista existente por esta via puede traer ventas pendientes.
+      accumulated: await getPendingCommission(prisma, agent.id),
       paymentThreshold: agent.umbralPago,
       phone: agent.persona.telefono,
       email: agent.persona.email,
@@ -360,15 +378,13 @@ exports.updateAgent = async (req, res, next) => {
   }
 };
 
-// Comision neta de las ventas del comisionista que todavia no se le pagaron. Mismo criterio que
-// createSettlement: ni anuladas ni eliminadas. Se deriva de las ventas y no de la columna
-// `acumulado` ni de lo que suma la pantalla (invariantes 2 y 3).
+// Comision neta de las ventas del comisionista que todavia no se le pagaron. Se deriva de las
+// ventas y no de la columna `acumulado` ni de lo que suma la pantalla (invariantes 2 y 3).
 async function getPendingCommission(tx, agentId) {
   const [row] = await tx.$queryRaw`
     SELECT COALESCE(SUM(monto_comision_neto), 0) AS pending
     FROM ventas
-    WHERE comisionista_id = ${agentId} AND comision_liquidada = false
-      AND status::text <> 'anulado' AND deleted_at IS NULL`;
+    WHERE comisionista_id = ${agentId} AND ${PENDING_COMMISSION_SALE}`;
   return Number(row.pending) || 0;
 }
 

@@ -33,7 +33,7 @@ import StatCard from "../components/ui/StatCard";
 import LoadingScreen from "../components/ui/LoadingScreen";
 import { mensajeDeError } from "../utils/errors";
 import { validateDocNumber } from "../utils/docNumber";
-import { comisionPendiente } from "../utils/creditUtils";
+import { settlementThreshold } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
   const { data, addCommissionAgent, updateCommissionAgent, toggleCommissionAgentStatus, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
@@ -115,29 +115,20 @@ export default function CommissionAgents() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  // Calcular acumulados (solo ventas no liquidadas)
+  // El acumulado viene del servidor, derivado de las ventas. Se calculaba aca desde data.sales,
+  // que esta pantalla no carga: entrando directo salia en cero (hallazgo 5 de la auditoria).
   const filteredAgents = useMemo(() => {
-    const agents = data.commissionAgents || [];
-    const sales = data.sales || [];
-    
-    const mapped = agents.map((agent: any) => {
-      const accumulated = sales
-        .filter((s) => comisionPendiente(s, agent.id))
-        .reduce((sum, s) => sum + (s.commissionAgentNetPayment || 0), 0);
-      return { ...agent, accumulated };
-    });
-
-    const result = mapped.filter(
+    const result = (data.commissionAgents || []).filter(
       (a: any) =>
         a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.docNumber?.includes(searchTerm)
     ).sort((a: any, b: any) => b.id - a.id);
     return result;
-  }, [data.commissionAgents, data.sales, searchTerm]);
+  }, [data.commissionAgents, searchTerm]);
 
   const stats = useMemo(() => {
     const totalAccumulated = filteredAgents.reduce((s: number, a: any) => s + (a.accumulated || 0), 0);
-    const pendingLiquidation = filteredAgents.filter((a: any) => a.accumulated >= 50000).length;
+    const pendingLiquidation = filteredAgents.filter((a: any) => a.accumulated >= settlementThreshold(a)).length;
     return {
       total: data.commissionAgents?.length || 0,
       totalAccumulated,
@@ -240,7 +231,7 @@ export default function CommissionAgents() {
     if (!selectedAgent) return;
     setIsSaving(true);
     try {
-      await settleCommissions(selectedAgent.id, { ...settleData, agentName: selectedAgent.name });
+      await settleCommissions(selectedAgent.id, { ...settleData, agentName: selectedAgent.name }, selectedAgent.pendingSaleIds || []);
       await refreshSettlements();
       notifySuccess(`Liquidación de ${formatCurrency(selectedAgent.accumulated)} procesada`);
       setIsSettleModalOpen(false);
@@ -371,8 +362,8 @@ export default function CommissionAgents() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredAgents.map((agent: any) => {
-                    const progress = Math.min((agent.accumulated / 50000) * 100, 100);
-                    const isReady = agent.accumulated >= 50000;
+                    const progress = Math.min((agent.accumulated / settlementThreshold(agent)) * 100, 100);
+                    const isReady = agent.accumulated >= settlementThreshold(agent);
 
                     return (
                       <div
@@ -493,9 +484,9 @@ export default function CommissionAgents() {
                   </div>
                 </div>
 
-                {filteredAgents.filter((a: any) => a.accumulated >= 50000).length > 0 ? (
+                {filteredAgents.filter((a: any) => a.accumulated >= settlementThreshold(a)).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {filteredAgents.filter((a: any) => a.accumulated >= 50000).map((agent: any) => (
+                    {filteredAgents.filter((a: any) => a.accumulated >= settlementThreshold(a)).map((agent: any) => (
                       <div key={agent.id} className="relative group p-6 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-slate-800 border border-amber-100 dark:border-amber-900/30 rounded-3xl hover:shadow-xl transition-all duration-300">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                           <div className="flex items-center gap-3">
@@ -1005,17 +996,15 @@ export default function CommissionAgents() {
                       </div>
                     </div>
 
-                    {(agentDetails.paymentThreshold ?? 0) > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Umbral de Liquidación:</p>
-                          <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">{formatCurrency(agentDetails.paymentThreshold)}</p>
-                        </div>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
-                          {Math.min(Math.round(((agentDetails.accumulated || 0) / agentDetails.paymentThreshold) * 100), 100)}%
-                        </span>
+                    <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Umbral de Liquidación:</p>
+                        <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">{formatCurrency(settlementThreshold(agentDetails))}</p>
                       </div>
-                    )}
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
+                        {Math.min(Math.round(((agentDetails.accumulated || 0) / settlementThreshold(agentDetails)) * 100), 100)}%
+                      </span>
+                    </div>
 
                     {agentDetails.observacion && (
                       <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">

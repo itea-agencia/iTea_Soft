@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { AppData, User, Client, Sale, Flight, PermisosEfectivos } from '../types';
-import { comisionPendiente } from '../utils/creditUtils';
 import * as api from '../api';
 import { useAuth } from './AuthContext';
 import { getCurrentMonth } from '../utils/formatters';
@@ -101,7 +100,7 @@ interface DataContextType {
   registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean, reference?: string) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
   deleteSalePayment: (saleId: number, paymentId: string) => Promise<void>;
   updateFlight: (id: string, flight: Partial<Flight> | FormData) => Promise<void>;
-  settleCommissions: (agentId: number, settlement: any) => Promise<void>;
+  settleCommissions: (agentId: number, settlement: any, salesIds: number[]) => Promise<void>;
   refreshSettlements: () => Promise<void>;
   addConfigItem: (section: ConfigSection, item: Record<string, unknown>) => Promise<Record<string, unknown>>;
   updateConfigItem: (section: ConfigSection, id: number, item: Record<string, unknown>) => Promise<void>;
@@ -548,11 +547,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const settleCommissions = async (agentId: number, settlement: any) => {
-    const salesIds = data.sales
-      .filter(s => comisionPendiente(s, agentId))
-      .map(s => s.id);
-
+  // Se liquidan las ventas que el servidor devolvio como pendientes al cargar la lista, las que
+  // la persona vio en pantalla. Antes salian de data.sales, que la pantalla de comisiones no
+  // carga. Una venta que entre mientras tanto queda para la siguiente liquidacion.
+  const settleCommissions = async (agentId: number, settlement: any, salesIds: number[]) => {
     const created = await api.createSettlement({ ...settlement, agentId, salesIds });
     setData(prev => ({
       ...prev,
@@ -563,6 +561,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : s
       ),
     }));
+    // Sin esto, la cache de ventas devolvia estas ventas como no liquidadas al recargar
+    // (parte del hallazgo 7), y la lista mostraba el acumulado de antes de liquidar.
+    invalidateSalesCache();
+    await fetchCommissionAgents();
   };
 
   const refreshSettlements = async () => {
@@ -670,7 +672,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addCommissionAgent = async (agent: any) => {
     const created = await api.createCommissionAgent(agent);
-    setData(prev => ({ ...prev, commissionAgents: [...prev.commissionAgents, created] }));
+    // Se recarga la lista en vez de agregar la respuesta: crear puede reactivar a uno que ya
+    // estaba (quedaba duplicado) y la respuesta no trae pendingSaleIds para liquidar.
+    await fetchCommissionAgents();
     return created;
   };
 
