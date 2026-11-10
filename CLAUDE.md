@@ -117,7 +117,7 @@ No hay lint. Lo que se puede correr sin permiso:
 
 ```bash
 cd frontend && npx tsc --noEmit                    # npm run build = tsc + vite build
-cd frontend && npm test                            # node --test tests/, sin dependencias nuevas
+cd frontend && npm test                            # node --test con glob (Node 21+), sin dependencias nuevas
 node --check backend/src/controllers/sales.controller.js   # archivo por archivo
 docker exec -i itea_postgres psql -U postgres -d samtur-development   # solo lectura
 docker exec -i itea_postgres psql -U postgres -d samtur-development \
