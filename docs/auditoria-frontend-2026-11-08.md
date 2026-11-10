@@ -209,6 +209,6 @@ Prioridad media:
 - [ ] 11. `/config` se abre sin `config.view`.
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF), y una carga en curso al salir puede volver a escribir la caché (hallazgo 1).
 - [ ] 13. Adjuntos sin validar el límite anunciado.
-- [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`.
+- [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
 - [ ] 15. Modales y campos sin accesibilidad básica.
 - [ ] 16. Carga inicial y mantenimiento.
