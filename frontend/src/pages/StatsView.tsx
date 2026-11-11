@@ -17,6 +17,8 @@ import {
 import { formatCurrency } from "../utils/formatters";
 import { Users, Award, PieChart as PieChartIcon, Loader2 } from "lucide-react";
 import { getTopClients, getAsesorPerformance, getCategoryDistribution } from "../api/stats";
+import { LoadFailed } from "../components/ui/LoadFailed";
+import { isAccessDenied } from "../utils/loadFailures";
 
 // --- Estilos Compartidos de Tooltip Premium ---
 function CustomTooltip({ active, payload, label }: any) {
@@ -81,26 +83,36 @@ function getDashboardDateParams() {
   return params;
 }
 
-function TopClients() {
-  const [data, setData] = useState<{ name: string; total: number }[]>([]);
+// Un grafico que no carga decia "No hay ... registradas", igual que uno sin datos (hallazgo 9).
+function useStatsLoad<T>(load: () => Promise<T[]>) {
+  const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getTopClients({ limit: 8, ...getDashboardDateParams() })
-      .then((res) => {
-        if (!cancelled) {
-          setData((res as any[]).map((c: any) => ({
-            name: c.clientName,
-            total: c.totalPagado,
-          })));
-        }
-      })
-      .catch(() => {})
+    setFailed(false);
+    load()
+      .then((rows) => { if (!cancelled) setData(rows); })
+      .catch((err) => { if (!cancelled && !isAccessDenied(err)) setFailed(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [retryCount]);
+
+  return { data, loading, failed, retry: () => setRetryCount((c) => c + 1) };
+}
+
+function TopClients() {
+  const { data, loading, failed, retry } = useStatsLoad<{ name: string; total: number }>(() =>
+    getTopClients({ limit: 8, ...getDashboardDateParams() }).then((res) =>
+      (res as any[]).map((c: any) => ({
+        name: c.clientName,
+        total: c.totalPagado,
+      })),
+    ),
+  );
 
   return (
     <div className="h-[300px] w-full mt-2">
@@ -108,6 +120,8 @@ function TopClients() {
         <div className="h-full flex items-center justify-center text-blue-500">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
+      ) : failed ? (
+        <LoadFailed message="No se pudo cargar este gráfico." onRetry={retry} />
       ) : data.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-gray-400">
           <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-full mb-3">
@@ -157,30 +171,18 @@ function TopClients() {
 }
 
 function TopAsesores() {
-  const [data, setData] = useState<{ name: string; total: number; count: number }[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    getAsesorPerformance(getDashboardDateParams())
-      .then((res) => {
-        if (!cancelled) {
-          const mapped = (res as any[])
-            .map((a: any) => ({
-              name: a.asesorName,
-              total: a.totalIngresos,
-              count: a.totalVentas,
-            }))
-            .sort((a, b) => b.total - a.total)
-            .slice(0, 6);
-          setData(mapped);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const { data, loading, failed, retry } = useStatsLoad<{ name: string; total: number; count: number }>(() =>
+    getAsesorPerformance(getDashboardDateParams()).then((res) =>
+      (res as any[])
+        .map((a: any) => ({
+          name: a.asesorName,
+          total: a.totalIngresos,
+          count: a.totalVentas,
+        }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 6),
+    ),
+  );
 
   return (
     <div className="h-[340px] w-full mt-4">
@@ -188,6 +190,8 @@ function TopAsesores() {
         <div className="h-full flex items-center justify-center text-amber-500">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
+      ) : failed ? (
+        <LoadFailed message="No se pudo cargar este gráfico." onRetry={retry} />
       ) : data.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-gray-400">
           <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-full mb-3">
@@ -223,22 +227,11 @@ function TopAsesores() {
 }
 
 function CategoryDistribution() {
-  const [data, setData] = useState<{ name: string; value: number }[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    getCategoryDistribution(getDashboardDateParams())
-      .then((res) => {
-        if (!cancelled) {
-          setData((res as any[]).filter((d: any) => d.value > 0));
-        }
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const { data, loading, failed, retry } = useStatsLoad<{ name: string; value: number }>(() =>
+    getCategoryDistribution(getDashboardDateParams()).then((res) =>
+      (res as any[]).filter((d: any) => d.value > 0),
+    ),
+  );
 
   const COLORS = ["#4f46e5", "#0ea5e9", "#10b981", "#8b5cf6", "#f43f5e", "#f59e0b"];
 
@@ -248,6 +241,8 @@ function CategoryDistribution() {
         <div className="h-full flex items-center justify-center text-emerald-500">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
+      ) : failed ? (
+        <LoadFailed message="No se pudo cargar este gráfico." onRetry={retry} />
       ) : data.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-gray-400">
           <div className="p-4 bg-gray-50 dark:bg-slate-800 rounded-full mb-3">

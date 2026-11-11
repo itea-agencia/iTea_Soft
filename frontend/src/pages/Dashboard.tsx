@@ -34,6 +34,7 @@ import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { AlertCircle } from "lucide-react";
 import LoadingScreen from "../components/ui/LoadingScreen";
+import { LoadFailed } from "../components/ui/LoadFailed";
 
 const getPath = (x: number, y: number, width: number, height: number) => {
   return `M${x},${y + height}C${x + width / 3},${y + height} ${x + width / 2},${y + height / 3}
@@ -48,7 +49,7 @@ const TriangleBar = (props: any) => {
 };
 
 export default function Dashboard() {
-  const { dashboardData, dashboardLoading, fetchDashboard } = useData();
+  const { dashboardData, dashboardLoading, dashboardFailed, fetchDashboard } = useData();
   const { start, end } = getCurrentMonth();
   const [dateRange, setDateRange] = useState<any>(() => {
     const saved = localStorage.getItem('dashboardDateRange');
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'asesores'>('general');
   const isInitialMount = React.useRef(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (dateRange) {
@@ -96,7 +98,7 @@ export default function Dashboard() {
     fetchDashboard(params, isBackground);
     
     isInitialMount.current = false;
-  }, [dateRange, fetchDashboard]);
+  }, [dateRange, fetchDashboard, retryCount]);
 
   const stats = useMemo(() => {
     const d = dashboardData;
@@ -155,6 +157,14 @@ export default function Dashboard() {
 
   if (dashboardLoading && !dashboardData) {
     return <LoadingScreen fullScreen={false} />;
+  }
+
+  if (dashboardFailed && !dashboardData) {
+    return (
+      <div className="py-24">
+        <LoadFailed message="No se pudieron cargar los datos del panel." onRetry={() => setRetryCount((c) => c + 1)} />
+      </div>
+    );
   }
 
   const CARTERA_COLORS = ["#10b981", "#3b82f6", "#f59e0b"];

@@ -24,6 +24,7 @@ import {
   loadConfigCache,
   invalidateConfigCache,
 } from '../utils/configCache';
+import { isAccessDenied, loadErrorMessage, withLoadFailure, withoutLoadFailure } from '../utils/loadFailures';
 
 // Limpiar caché de permisos de rol si quedó de versiones anteriores
 try { localStorage.removeItem('itea_role_permissions_cache'); } catch {}
@@ -68,7 +69,8 @@ interface DataContextType {
   dashboardData: DashboardData | null;
   dashboardLoading: boolean;
   salesLoading: boolean;
-  errorDeCarga: string | null;
+  loadError: string | null;
+  dashboardFailed: boolean;
   fetchDashboard: (params?: Record<string, unknown>, isBackgroundRefresh?: boolean) => Promise<void>;
   fetchSales: () => Promise<void>;
   fetchClients: () => Promise<void>;
@@ -163,14 +165,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // conexión, la pantalla decía "no hay ventas" en vez de "no se pudieron cargar". Ahora un
   // fallo deja los datos que había (la caché o la carga anterior) y lo dice. Un 401/403 no
   // es un fallo: es un listado que ese rol no tiene permitido, y vacío es lo correcto.
-  const [errorDeCarga, setErrorDeCarga] = useState<string | null>(null);
-  const falloAlCargar = (que: string) => (err: any) => {
-    const status = err?.response?.status;
-    if (status !== 401 && status !== 403) {
-      setErrorDeCarga(`No se pudieron cargar ${que}. Lo que ves puede estar desactualizado: recarga la página.`);
-    }
-    return null;
+  const [loadFailures, setLoadFailures] = useState<string[]>([]);
+  const loadError = loadErrorMessage(loadFailures);
+  // Sin cifras que mostrar porque la carga fallo: el Dashboard muestra el error, no ceros.
+  const [dashboardFailed, setDashboardFailed] = useState(false);
+  const DASHBOARD_LOAD = 'los indicadores del panel';
+
+  // Cada recurso sale del aviso cuando vuelve a cargar; antes el mensaje quedaba hasta recargar
+  // la pagina. El resultado de una peticion de la sesion anterior no toca el aviso.
+  const trackLoad = <T,>(resource: string, request: Promise<T>): Promise<T | null> => {
+    const token = currentToken();
+    return request.then(
+      (result) => {
+        if (currentToken() === token) setLoadFailures((f) => withoutLoadFailure(f, resource));
+        return result;
+      },
+      (err) => {
+        if (currentToken() === token && !isAccessDenied(err)) setLoadFailures((f) => withLoadFailure(f, resource));
+        return null;
+      },
+    );
   };
+
+  useEffect(() => {
+    setLoadFailures([]);
+    setDashboardFailed(false);
+  }, [user?.id]);
 
   // Una carga que sale con una sesion y resuelve con otra se descarta: escribia ventas y
   // clientes del usuario anterior en el estado y en la cache del nuevo (hallazgo 1 de la
@@ -187,6 +207,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     
     if (!isBackgroundRefresh) {
       setDashboardLoading(true);
+      setDashboardFailed(false);
     }
     const token = currentToken();
     try {
@@ -196,8 +217,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
       // Guardar en caché el dashboard consultado
       saveDashboardCache(result as DashboardData);
-    } catch {
-      setDashboardData(null);
+      setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
+    } catch (err) {
+      if (currentToken() !== token) return;
+      if (isBackgroundRefresh && !isAccessDenied(err)) {
+        // Falla solo la actualizacion: los datos guardados se conservan, con el aviso.
+        setLoadFailures((f) => withLoadFailure(f, DASHBOARD_LOAD));
+      } else {
+        // Sin cifras: las del rango anterior bajo las fechas nuevas serian falsas.
+        setDashboardData(null);
+        setDashboardFailed(!isAccessDenied(err));
+        setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
+      }
     } finally {
       fetchingDashboardRef.current = false;
       if (!isBackgroundRefresh) {
@@ -210,7 +241,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSalesLoading(true);
     try {
       const token = currentToken();
-      const res = await api.listSales({ perPage: 5000 }).catch(falloAlCargar('las ventas'));
+      const res = await trackLoad('las ventas', api.listSales({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       const freshSales = res.data || [];
       setData(prev => {
@@ -228,7 +259,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchClients = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listClients({ perPage: 5000 }).catch(falloAlCargar('los clientes'));
+      const res = await trackLoad('los clientes', api.listClients({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       const freshClients = res.data || [];
       setData(prev => {
@@ -242,7 +273,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchResponsables = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listResponsables({ perPage: 5000 }).catch(falloAlCargar('los responsables'));
+      const res = await trackLoad('los responsables', api.listResponsables({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       const freshResponsables = res.data || [];
       setData(prev => ({ ...prev, responsables: freshResponsables }));
@@ -252,7 +283,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchUsers = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listUsers({ perPage: 5000 }).catch(falloAlCargar('los usuarios'));
+      const res = await trackLoad('los usuarios', api.listUsers({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       const freshUsers = res.data || [];
       saveUsersCache(freshUsers);
@@ -263,8 +294,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchConfig = useCallback(async () => {
     try {
       const token = currentToken();
-      const configAll = await api.getAllConfig().catch(() => ({}));
-      if (currentToken() !== token) return;
+      // Si falla, se conserva lo que habia: antes los catalogos se reemplazaban por listas vacias.
+      const configAll = await trackLoad('los catálogos de configuración', api.getAllConfig());
+      if (!configAll || currentToken() !== token) return;
       if (configAll && Object.keys(configAll).length > 0) {
         saveConfigCache({
           cards: configAll.cards || [],
@@ -326,7 +358,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchFlights = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listFlights({ perPage: 5000 }).catch(falloAlCargar('los itinerarios'));
+      const res = await trackLoad('los itinerarios', api.listFlights({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, flights: res.data || [] }));
     } catch (err) {
@@ -337,7 +369,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchCommissionAgents = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listCommissionAgents({ perPage: 5000 }).catch(falloAlCargar('los comisionistas'));
+      const res = await trackLoad('los comisionistas', api.listCommissionAgents({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionAgents: res.data || [] }));
     } catch {}
@@ -348,7 +380,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchCommissionAgentsForSale = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listCommissionAgents({ para: 'venta' }).catch(falloAlCargar('los comisionistas'));
+      const res = await trackLoad('los comisionistas del asistente de ventas', api.listCommissionAgents({ para: 'venta' }));
       if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionAgentsForSale: res.data || [] }));
     } catch {}
@@ -357,7 +389,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchSettlements = useCallback(async () => {
     try {
       const token = currentToken();
-      const res = await api.listSettlements({ perPage: 5000 }).catch(falloAlCargar('las liquidaciones'));
+      const res = await trackLoad('las liquidaciones', api.listSettlements({ perPage: 5000 }));
       if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
     } catch {}
@@ -592,7 +624,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const refreshSettlements = async () => {
     const token = currentToken();
-    const res = await api.listSettlements({ perPage: 100 }).catch(falloAlCargar('las liquidaciones'));
+    const res = await trackLoad('las liquidaciones', api.listSettlements({ perPage: 100 }));
     if (!res || currentToken() !== token) return;
     setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
   };
@@ -739,7 +771,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dashboardData,
       dashboardLoading,
       salesLoading,
-      errorDeCarga,
+      loadError,
+      dashboardFailed,
       fetchDashboard,
       fetchSales,
       fetchClients,

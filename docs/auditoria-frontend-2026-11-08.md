@@ -204,7 +204,7 @@ Prioridad media:
 - [x] 6. Créditos con abonos no se clasifican como vencidos. Corregido; diseño en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`.
 - [ ] 7. Cambios confirmados reaparecen desde caché. Parcial: liquidar comisiones ya invalida la caché de ventas (con el 5). Siguen los clientes, los abonos y los timestamps cruzados de `saveSalesAndClientsCache`.
 - [ ] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta.
-- [ ] 9. Errores de red presentados como ceros o listas vacías.
+- [x] 9. Errores de red presentados como ceros o listas vacías. Corregido; diseño en `docs/designs/hallazgo-9-errores-de-carga-2026-11.md`. Falta mirar las pantallas de error con la API apagada.
 - [ ] 10. Vouchers anunciados sin confirmación de envío.
 - [ ] 11. `/config` se abre sin `config.view`.
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
