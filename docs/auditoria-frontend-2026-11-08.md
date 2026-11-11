@@ -202,9 +202,9 @@ Prioridad alta:
 Prioridad media:
 
 - [x] 6. Créditos con abonos no se clasifican como vencidos. Corregido; diseño en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`.
-- [ ] 7. Cambios confirmados reaparecen desde caché. Parcial: liquidar comisiones ya invalida la caché de ventas (con el 5). Siguen los clientes, los abonos y los timestamps cruzados de `saveSalesAndClientsCache`.
-- [x] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta. Corregido; diseño en `docs/designs/hallazgo-8-refrescar-y-filtros-2026-11.md`. Falta mirarlo en pantalla.
-- [x] 9. Errores de red presentados como ceros o listas vacías. Corregido; diseño en `docs/designs/hallazgo-9-errores-de-carga-2026-11.md`. Falta mirar las pantallas de error con la API apagada.
+- [x] 7. Cambios confirmados reaparecen desde caché. Corregido: crear, editar o desactivar clientes, registrar o borrar abonos y liquidar comisiones invalidan la caché, y ventas y clientes guardan cada uno su antigüedad.
+- [x] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta. Corregido; diseño en `docs/designs/hallazgo-8-refrescar-y-filtros-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [x] 9. Errores de red presentados como ceros o listas vacías. Corregido; diseño en `docs/designs/hallazgo-9-errores-de-carga-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [ ] 10. Vouchers anunciados sin confirmación de envío.
 - [ ] 11. `/config` se abre sin `config.view`.
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).

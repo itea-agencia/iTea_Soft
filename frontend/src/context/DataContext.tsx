@@ -4,7 +4,8 @@ import * as api from '../api';
 import { useAuth } from './AuthContext';
 import { getCurrentMonth } from '../utils/formatters';
 import {
-  saveSalesAndClientsCache,
+  saveSalesCache,
+  saveClientsCache,
   loadSalesCache,
   loadClientsCache,
   invalidateSalesCache,
@@ -244,7 +245,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setData(prev => {
         // El updater puede correr despues; la cache tambien se escribe con la sesion de ahora.
         if (currentToken() !== token) return prev;
-        saveSalesAndClientsCache(freshSales, prev.clients);
+        saveSalesCache(freshSales);
         return { ...prev, sales: freshSales };
       });
     } catch {
@@ -261,7 +262,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const freshClients = res.data || [];
       setData(prev => {
         if (currentToken() !== token) return prev;
-        saveSalesAndClientsCache(prev.sales, freshClients);
+        saveClientsCache(freshClients);
         return { ...prev, clients: freshClients };
       });
     } catch {}
@@ -467,6 +468,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addClient = async (client: Omit<Client, 'id'>): Promise<Client> => {
     const created = await api.createClient(client as any);
     setData(prev => ({ ...prev, clients: [...prev.clients, created] }));
+    invalidateSalesCache();
     return created;
   };
 
@@ -476,6 +478,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, ...clientUpdate } : c)
     }));
+    invalidateSalesCache();
   };
 
   // Esto solo recargaba la lista y nunca llamaba a la API: desde junio el toast decia
@@ -487,6 +490,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, status } : c)
     }));
+    invalidateSalesCache();
     return status;
   };
 
@@ -566,6 +570,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         payments: [...(s.payments || []), result.payment]
       } : s)
     }));
+    invalidateSalesCache();
     setDashboardData(null);
     invalidateDashboardCache();
     return result;
@@ -587,6 +592,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         payments: (s.payments || []).filter((p: any) => p.id !== paymentId)
       } : s)
     }));
+    invalidateSalesCache();
     setDashboardData(null);
     invalidateDashboardCache();
   };

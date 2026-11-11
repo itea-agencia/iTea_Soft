@@ -56,9 +56,13 @@ function deleteCache(key: string): void {
 
 // ---------- API pública ----------
 
-/** Guarda ventas y clientes en caché con timestamp actual */
-export function saveSalesAndClientsCache(sales: unknown[], clients: unknown[]): void {
+// Por separado: guardar los dos juntos renovaba la antiguedad del que no se habia consultado
+// (hallazgo 7 de la auditoria del frontend).
+export function saveSalesCache(sales: unknown[]): void {
   writeCache(getCacheKey('itea_sales_cache'), sales);
+}
+
+export function saveClientsCache(clients: unknown[]): void {
   writeCache(getCacheKey('itea_clients_cache'), clients);
 }
 
@@ -72,7 +76,7 @@ export function loadClientsCache(): unknown[] | null {
   return readCache<unknown[]>(getCacheKey('itea_clients_cache'));
 }
 
-/** Invalida ambos cachés (ventas + clientes). Usar al crear/eliminar ventas. */
+/** Invalida ambos cachés: una venta muestra datos de su cliente y un cliente, su deuda. Usar al cambiar ventas, pagos o clientes. */
 export function invalidateSalesCache(): void {
   deleteCache(getCacheKey('itea_sales_cache'));
   deleteCache(getCacheKey('itea_clients_cache'));
