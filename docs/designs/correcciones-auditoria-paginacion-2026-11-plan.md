@@ -34,8 +34,8 @@
 
 `frontend/src/utils/salesQuery.ts:16`. `dateFrom` pasa a `` `${startDate}T00:00:00.000-05:00` `` y `dateTo` a `` `${endDate}T23:59:59.999-05:00` ``, sin pasar por `new Date()` del navegador. El backend ya hace `new Date(dateFrom)`, que entiende el desfase.
 
-- [ ] En `tests/salesQuery.test.mjs`, cambiar la prueba que fija el comportamiento actual por las nuevas: "Desde 2026-11-10" es `2026-11-10T05:00:00.000Z` y "Hasta 2026-11-10" es `2026-11-11T04:59:59.999Z`, con `TZ` del proceso en otra zona (p. ej. `Europe/Madrid`) para probar que no depende del navegador. Verlas fallar.
-- [ ] Implementar y verlas pasar. `tsc`. Commit.
+- [x] En `tests/salesQuery.test.mjs`, cambiar la prueba que fija el comportamiento actual por las nuevas: "Desde 2026-11-10" es `2026-11-10T05:00:00.000Z` y "Hasta 2026-11-10" es `2026-11-11T04:59:59.999Z`, con `TZ` del proceso en otra zona (p. ej. `Europe/Madrid`) para probar que no depende del navegador. Verlas fallar.
+- [x] Implementar y verlas pasar. `tsc`. Commit.
 
 ### Tarea 3: la página (las dos regresiones)
 

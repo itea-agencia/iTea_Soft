@@ -23,10 +23,19 @@ test('"todos los estados" no se manda como filtro', () => {
   assert.equal(buildSalesParams({ ...noFilters, status: 'abonado' }, 1).status, 'abonado');
 });
 
-test('las fechas cubren el mismo rango que el filtro de la pantalla', () => {
-  const params = buildSalesParams({ ...noFilters, startDate: '2026-11-01', endDate: '2026-11-30' }, 1);
-  assert.equal(params.dateFrom, new Date('2026-11-01').toISOString());
-  assert.equal(params.dateTo, new Date('2026-11-30T23:59:59').toISOString());
+// El dia del filtro es el de Colombia, como lo muestra la tabla (formatDate). Antes "Desde" se
+// leia en UTC (desde el 10 incluia el 9 desde las 19:00) y "Hasta" en la hora del navegador.
+// El proceso corre en otra zona para probar que no depende del navegador.
+test('las fechas son el día completo en hora de Colombia, sin importar la zona del navegador', () => {
+  const tz = process.env.TZ;
+  process.env.TZ = 'Europe/Madrid';
+  try {
+    const params = buildSalesParams({ ...noFilters, startDate: '2026-11-10', endDate: '2026-11-10' }, 1);
+    assert.equal(new Date(params.dateFrom).toISOString(), '2026-11-10T05:00:00.000Z');
+    assert.equal(new Date(params.dateTo).toISOString(), '2026-11-11T04:59:59.999Z');
+  } finally {
+    process.env.TZ = tz;
+  }
 });
 
 test('acepta otro tamaño de página', () => {
