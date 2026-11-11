@@ -594,8 +594,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                         return (
                           <div key={`child-${cidx}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '10px', padding: '8px 0', borderBottom: cidx < arr.length - 1 ? '1px dashed #cbd5e1' : 'none' }}>
                             <div style={{ flex: '1 1 15%' }}>
-                              <strong style={{display: 'block', color: '#475569'}}>TOUR / ACTIVIDAD</strong>
-                              <span style={{color: '#0f172a', fontWeight: 'bold'}}>{child.selectedTour || child.tourNombre || '—'}</span>
+                              <strong style={{display: 'block', color: '#475569'}}>FECHA DEL TOUR</strong>
+                              <span style={{color: '#0f172a', fontWeight: 'bold'}}>{child.preferredDate ? formatDate(child.preferredDate) : '—'}</span>
                             </div>
                             <div style={{ flex: '1 1 20%' }}>
                               <strong style={{display: 'block', color: '#475569'}}>PASAJEROS</strong>
