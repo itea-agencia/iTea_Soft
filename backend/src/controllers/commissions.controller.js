@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
-const { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
+const { fillMissingPersonFields, normalizeDocNumber, personInputError } = require('../utils/persons');
 const { diaColombia } = require('../utils/fechas');
 
 // Una liquidacion guarda la fecha que manda el formulario ('YYYY-MM-DD', queda a 00:00 UTC) o,
@@ -193,9 +193,8 @@ exports.createAgent = async (req, res, next) => {
   try {
     const data = req.body;
     data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
-    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
-      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
-    }
+    const personError = await personInputError(prisma, data, { create: true, fullName: true });
+    if (personError) return error(res, personError.message, 400, personError.code);
 
     let tipoDocumentoId = null;
     if (data.docType) {
@@ -324,9 +323,8 @@ exports.updateAgent = async (req, res, next) => {
     const id = parseInt(req.params.id);
     const data = req.body;
     data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
-    if (data.docNumber && isDocNumberOutOfRange(data.docNumber)) {
-      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
-    }
+    const personError = await personInputError(prisma, data, { create: false, fullName: true });
+    if (personError) return error(res, personError.message, 400, personError.code);
     const agent = await prisma.comisionistas.findUnique({
       where: { id },
       include: { persona: { include: { tipoDocumento: true } } }

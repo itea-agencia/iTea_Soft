@@ -2,7 +2,7 @@ const prisma = require('../config/db');
 const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
-const { fillMissingPersonFields, isDocNumberOutOfRange, normalizeDocNumber } = require('../utils/persons');
+const { fillMissingPersonFields, normalizeDocNumber, personInputError } = require('../utils/persons');
 const { auditar } = require('../utils/auditoria');
 
 exports.list = async (req, res, next) => {
@@ -156,9 +156,8 @@ exports.create = async (req, res, next) => {
     req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType);
     const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email } = req.body;
 
-    if (docNumber && isDocNumberOutOfRange(docNumber)) {
-      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
-    }
+    const personError = await personInputError(prisma, req.body, { create: true });
+    if (personError) return error(res, personError.message, 400, personError.code);
 
     // Resolve docTypeId from abbreviation if not provided as integer
     let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
@@ -249,9 +248,8 @@ exports.update = async (req, res, next) => {
     req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType);
     const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, status } = req.body;
 
-    if (docNumber && isDocNumberOutOfRange(docNumber)) {
-      return error(res, 'El documento debe tener entre 6 y 15 caracteres', 400, 'INVALID_DOC_NUMBER');
-    }
+    const personError = await personInputError(prisma, req.body, { create: false });
+    if (personError) return error(res, personError.message, 400, personError.code);
 
     // Resolve docTypeId from abbreviation if not provided as integer
     let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
