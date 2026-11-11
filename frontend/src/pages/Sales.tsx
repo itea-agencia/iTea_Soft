@@ -119,17 +119,6 @@ export default function Sales() {
     fetchClients();
   }, [fetchSales, fetchClients]);
 
-  const totals = useMemo(() => {
-    return filteredSales.reduce(
-      (acc, s) => ({
-        total: acc.total + s.total,
-        pagado: acc.pagado + (s.status === "pagado" ? s.total : 0),
-        pendiente: acc.pendiente + (s.status === "credito" ? s.total : 0),
-      }),
-      { total: 0, pagado: 0, pendiente: 0 },
-    );
-  }, [filteredSales]);
-
   // Eliminamos el prefetch silencioso para evitar peticiones "fantasma" que colapsan la red y el backend.
   // La carga detallada se hará estrictamente "On Demand" (bajo demanda) cuando el usuario pase el mouse o haga click.
 

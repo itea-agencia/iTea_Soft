@@ -189,7 +189,7 @@ Las seis pruebas actuales no cubren estos flujos. Agregar regresiones específic
 
 ## Estado
 
-Comprobado el 2026-11-09 buscando en el código de `feat-bayrol`, sin ejecutar la app ni repetir las reproducciones, y actualizado el 2026-11-10 con lo corregido. Marcar cada casilla en el commit que lo corrija. Diseños: los hallazgos 1, 2, 4 y 5 en `docs/designs/hallazgos-prioridad-alta-2026-11.md`; el 6, el 12 y el 14 en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`. Lo corregido está en `origin/feat-bayrol` y todavía no en producción: el orden de despliegue está en `docs/designs/despliegue-hallazgos-auditoria-2026-11.md`.
+Comprobado el 2026-11-09 buscando en el código de `feat-bayrol`, sin ejecutar la app ni repetir las reproducciones, y actualizado el 2026-11-10 con lo corregido. Marcar cada casilla en el commit que lo corrija. Diseños: los hallazgos 1, 2, 4 y 5 en `docs/designs/hallazgos-prioridad-alta-2026-11.md`; el 6, el 12 y el 14 en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`. Lo corregido hasta el hallazgo 15 ya está en producción: el registro del despliegue está en `docs/designs/despliegue-hallazgos-auditoria-2026-11.md`.
 
 Prioridad alta:
 
@@ -210,7 +210,7 @@ Prioridad media:
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
 - [x] 13. Adjuntos sin validar el límite anunciado. Corregido; diseño en `docs/designs/hallazgo-13-adjuntos-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
-- [x] 15. Modales y campos sin accesibilidad básica. Corregido; diseño en `docs/designs/hallazgo-15-accesibilidad-2026-11.md`. Falta probar el teclado en pantalla.
+- [x] 15. Modales y campos sin accesibilidad básica. Corregido; diseño en `docs/designs/hallazgo-15-accesibilidad-2026-11.md`. Aprobado por el usuario.
 - [ ] 16. Carga inicial y mantenimiento.
 
 Orden propuesto para lo que falta (2026-11-10): primero el 9, porque la pantalla puede mostrar $0 cuando en realidad falló la carga (invariante 4); después el resto del 7 y el 10; luego el 11 y el 13, que son chicos; el 8; y al final el 15 y el 16. El tope de 5.000 del 14 espera a que el volumen se acerque.

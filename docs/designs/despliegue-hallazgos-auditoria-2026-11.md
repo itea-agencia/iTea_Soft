@@ -2,7 +2,7 @@
 
 Checklist para llevar a producción lo que se corrigió de `docs/auditoria-frontend-2026-11-08.md` en `feat-bayrol` después del despliegue del 2026-11-09 (`despliegue-feat-bayrol-2026-11.md`). Todo está en `origin/feat-bayrol` desde `0f42907` hasta `4fe8403`.
 
-**Estado: mergeado a `main` a pedido del usuario (2026-11-10).** El usuario probó en pantalla, contra la app local, lo corregido, salvo el teclado del hallazgo 15, del que no hay confirmación. Falta la publicación del frontend, que hace el usuario.
+**Estado: terminado.** Mergeado a `main` en `3fc327c` (2026-11-10). El usuario publicó el frontend y confirmó que aprobó todo.
 
 ## Qué trae el merge a `main`
 
@@ -14,7 +14,7 @@ Checklist para llevar a producción lo que se corrigió de `docs/auditoria-front
 
 **Migraciones:** ninguna. **Scripts de `db-manual/`:** ninguno. No se escribe en producción.
 
-**Frontend** (GoDaddy, a mano): hallazgos 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15 y parte del 14 (el 15 falta probarlo con el teclado); la tabla de ventas con "Vencida"; la modal de liquidación rediseñada. El usuario también probó en pantalla los hallazgos 8, 9, 10, 11 y 13. El 7 no cambia ninguna pantalla.
+**Frontend** (GoDaddy, a mano): hallazgos 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15 y parte del 14; la tabla de ventas con "Vencida"; la modal de liquidación rediseñada. El usuario también probó en pantalla los hallazgos 8, 9, 10, 11 y 13. El 7 no cambia ninguna pantalla.
 
 ## Orden
 
