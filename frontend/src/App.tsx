@@ -4,19 +4,22 @@ import { DataProvider } from './context/DataContext';
 import { PermissionsProvider, usePermissions } from './context/PermissionsContext';
 import { Layout } from './components/layout/Layout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import StatsView from './pages/StatsView';
-import Sales from './pages/Sales';
-import Clients from './pages/Clients';
-import Responsables from './pages/Responsables';
-import Itineraries from './pages/Itineraries';
-import Users from './pages/Users';
-import Config from './pages/Config';
-import CommissionAgents from './pages/CommissionAgents';
-
+import { lazy } from 'react';
 import { LoadingScreen } from './components/ui/LoadingScreen';
 import { Button } from './components/ui/Button';
 import { firstAllowedRoute } from './utils/landingRoute';
+import { importWithReload } from './utils/lazyReload';
+
+// Cada pantalla se descarga al abrirla: antes todo venia en un archivo de 2,9 MB.
+const Dashboard = lazy(() => importWithReload(() => import('./pages/Dashboard')));
+const StatsView = lazy(() => importWithReload(() => import('./pages/StatsView')));
+const Sales = lazy(() => importWithReload(() => import('./pages/Sales')));
+const Clients = lazy(() => importWithReload(() => import('./pages/Clients')));
+const Responsables = lazy(() => importWithReload(() => import('./pages/Responsables')));
+const Itineraries = lazy(() => importWithReload(() => import('./pages/Itineraries')));
+const Users = lazy(() => importWithReload(() => import('./pages/Users')));
+const Config = lazy(() => importWithReload(() => import('./pages/Config')));
+const CommissionAgents = lazy(() => importWithReload(() => import('./pages/CommissionAgents')));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();

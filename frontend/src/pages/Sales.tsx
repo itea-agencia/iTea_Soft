@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import * as api from "../api";
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { importWithReload } from "../utils/lazyReload";
 import {
   Plus,
   ShoppingBag,
@@ -371,6 +370,11 @@ export default function Sales() {
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // 5. Capturar canvas por cada página y armar el jsPDF
+    // Se descargan al generar un PDF: pesan mucho y la mayoria de las visitas no los usa.
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      importWithReload(() => import('html2canvas')),
+      importWithReload(() => import('jspdf')),
+    ]);
     const doc = new jsPDF('p', 'mm', 'a4');
     const imgWidth = 210;
     const imgHeight = 297; // exact A4 height in mm

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Suspense, useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
+import { ChunkErrorBoundary } from '../ui/ChunkErrorBoundary';
+import { PageSkeleton } from '../ui/PageSkeleton';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useData } from '../../context/DataContext';
@@ -7,6 +9,7 @@ import { useData } from '../../context/DataContext';
 export function Layout() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { loadError } = useData();
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-gray-light">
@@ -27,7 +30,12 @@ export function Layout() {
               {loadError}
             </div>
           )}
-          <Outlet />
+          {/* La clave reinicia el error al cambiar de pantalla. */}
+          <ChunkErrorBoundary key={location.pathname}>
+            <Suspense fallback={<PageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </ChunkErrorBoundary>
         </main>
       </div>
     </div>
