@@ -25,10 +25,10 @@
 
 `backend/src/controllers/sales.controller.js:27`. El valor de `search` se escapa antes de armar `like`: `\`, `%` y `_` pasan a `\\`, `\%` y `\_`. `ILIKE` usa `\` como escape por defecto. Va en una función `escapeLike` junto al controlador, para que la use cualquier otra búsqueda que se agregue.
 
-- [ ] Antes del cambio, contar en la base local, en solo lectura, cuántas ventas trae la consulta con `_`, `a_a` y `50%` (la auditoría vio 177, 163 y 2 en producción).
-- [ ] Implementar. `node --check`.
-- [ ] Repetir los conteos con la cadena escapada: `_` y `50%` tienen que dar 0 si ningún nombre los contiene, y `a_a` solo lo que contenga ese texto. Si da algo distinto, se revisa antes de seguir.
-- [ ] Commit.
+- [x] Antes del cambio, contar en la base local, en solo lectura, cuántas ventas trae la consulta con `_`, `a_a` y `50%` (la auditoría vio 177, 163 y 2 en producción).
+- [x] Implementar. `node --check`.
+- [x] Repetir los conteos con la cadena escapada: `_` y `50%` tienen que dar 0 si ningún nombre los contiene, y `a_a` solo lo que contenga ese texto. Si da algo distinto, se revisa antes de seguir.
+- [x] Commit.
 
 ### Tarea 2: fechas en hora de Colombia
 

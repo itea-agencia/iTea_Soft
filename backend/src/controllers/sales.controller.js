@@ -14,6 +14,11 @@ const { tipoHotelDe } = require('../utils/tipoHotel');
 const { ASESOR_ACTIVO } = require('../utils/asesores');
 const siigoService = require('../services/siigo.service');
 
+// `_` y `%` son comodines de ILIKE: buscar "_" traia las 177 ventas de produccion, "a_a" 163 y
+// "50%" 2 (auditoria de la paginacion, 2026-11-10). Se escapan, con `\`, para que la busqueda
+// mire el texto literal, como el filtro que antes hacia la pantalla.
+const escapeLike = (text) => text.replace(/[\\%_]/g, '\\$&');
+
 exports.list = async (req, res, next) => {
   try {
     const { page, perPage, skip } = req.pagination;
@@ -24,7 +29,7 @@ exports.list = async (req, res, next) => {
     // interpolaban en el texto de la consulta, y `?status=' OR 1=1--` la reescribia.
     // La busqueda mira lo mismo que miraba la pantalla cuando filtraba la lista completa,
     // incluido el id relleno a cuatro digitos con que se muestra.
-    const like = `%${search}%`;
+    const like = `%${escapeLike(String(search))}%`;
     const searchCondition = search
       ? Prisma.sql`AND (cp.nombres || ' ' || cp.apellidos ILIKE ${like}
           OR up.nombres || ' ' || up.apellidos ILIKE ${like}
