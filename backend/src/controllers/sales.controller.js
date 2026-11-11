@@ -1492,6 +1492,12 @@ const CATEGORIAS_CON_PASAJERO_IMPLICITO = [
   'servicio_mascotas', 'renta_vehiculos', 'viajes_terrestres'
 ];
 
+// El pasajero es siempre el cliente: el nombre escrito ya queda en el producto
+// (prod_autos.conductor_nombre, prod_equipajes.pasajero_nombre). Buscarlo por documento
+// dejaba un duplicado del cliente por venta: vehiculos usaba la licencia como documento y
+// equipaje no manda ninguno. Spec datos-por-pasajero.
+const CATEGORIAS_PASAJERO_ES_CLIENTE = ['renta_vehiculos', 'equipaje'];
+
 // Devuelve la lista de pasajeros del item, o null si no trae ninguna.
 // Un array vacio cuenta como ausencia: `item.passengers || ...` lo tomaba como
 // presencia (todo array es truthy) y el detalle terminaba guardado sin pasajeros.
@@ -1848,7 +1854,7 @@ exports.create = async (req, res, next) => {
             if (hasPassengerInfo) {
               const passengers = listaPasajeros || [{}];
               for (const p of passengers) {
-                const pid = await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver, p.docType || item.docType, p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber, personaId);
+                const pid = CATEGORIAS_PASAJERO_ES_CLIENTE.includes(handler.category) ? personaId : await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver, p.docType || item.docType, p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber, personaId);
                 pasajerosDetalleData.push({
                   personaId: pid,
                   esTitular: p.esTitular ?? true,
