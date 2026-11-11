@@ -645,7 +645,8 @@ const PRODUCT_TRANSFORMS = {
       tripDuration: s.duracionViaje,
       dataPlan: s.planDatos,
       simType: s.tipoSim,
-      deliveryMethod: s.metodoEntrega
+      deliveryMethod: s.metodoEntrega,
+      deliveryEmail: s.emailEntrega
     ,
       supplier: d.proveedor?.nombre || null,
       supplierCost: d.costoProveedor || 0,
@@ -1297,7 +1298,12 @@ const PRODUCT_HANDLERS = {
       duracionViaje: d.tripDuration || null,
       planDatos: d.dataPlan || null,
       tipoSim: d.simType || null,
-      metodoEntrega: d.deliveryMethod || null
+      metodoEntrega: d.deliveryMethod || null,
+      // Queda como evidencia de a donde se envio la eSIM. Con otro metodo de entrega no
+      // aplica: se descarta aunque el formulario conserve lo que se habia escrito.
+      emailEntrega: d.deliveryMethod === 'Correo Electrónico'
+        ? (String(d.deliveryEmail || '').trim().slice(0, 150) || null)
+        : null
     })
   },
   carRentalData: {

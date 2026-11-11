@@ -433,6 +433,7 @@ export interface SimCardData {
   dataPlan: string;
   simType: string;
   deliveryMethod: string;
+  deliveryEmail?: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
   supplierName?: string;

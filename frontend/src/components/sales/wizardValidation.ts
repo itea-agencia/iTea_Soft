@@ -372,6 +372,7 @@ export function validateWizardStep(
             if (!sim.destinationCountry || sim.destinationCountry.trim().length === 0) errors.push("País de Destino (requerido)");
             if (!sim.arrivalDate) errors.push("Fecha de Llegada (requerida)");
             if (!sim.tripDuration || isNaN(Number(sim.tripDuration)) || Number(sim.tripDuration) <= 0) errors.push("Duración del Viaje (mayor a 0)");
+            if (sim.deliveryMethod === "Correo Electrónico" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sim.deliveryEmail || "")) errors.push("Correo de entrega (requerido y válido)");
 
             const now = new Date();
             now.setHours(0, 0, 0, 0);

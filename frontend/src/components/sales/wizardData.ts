@@ -259,6 +259,8 @@ export const INITIAL_SIMCARD = (client?: any): SimCardData => ({
   dataPlan: "",
   simType: "eSIM",
   deliveryMethod: "Correo Electrónico",
+  // Se completa con el del cliente; el asesor lo puede cambiar.
+  deliveryEmail: client?.email || "",
   voucher: undefined,
   sendVoucher: false,
   supplierName: "",

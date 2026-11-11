@@ -703,6 +703,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Plan de Datos" value={sim.dataPlan} />
                   <DataCell label="Tipo de SIM" value={sim.simType ? <span className="v-badge v-badge-accent">{sim.simType}</span> : null} />
                   <DataCell label="Método de Entrega" value={sim.deliveryMethod} />
+                  {sim.deliveryEmail && <DataCell label="Correo de entrega" value={sim.deliveryEmail} />}
                 </div>
               </React.Fragment>
             ))}

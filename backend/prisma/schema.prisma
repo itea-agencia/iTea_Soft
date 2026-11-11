@@ -704,6 +704,8 @@ model ProdSimcards {
   planDatos      String?      @map("plan_datos")
   tipoSim        String?      @map("tipo_sim")
   metodoEntrega  String?      @map("metodo_entrega")
+  // Evidencia del correo al que se envio la eSIM. Solo con entrega por correo.
+  emailEntrega   String?      @map("email_entrega")
   detalleVenta   DetalleVenta @relation(fields: [detalleVentaId], references: [id])
 
   @@map("prod_simcards")

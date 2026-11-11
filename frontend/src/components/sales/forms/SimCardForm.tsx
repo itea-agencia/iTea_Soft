@@ -94,6 +94,18 @@ export function SimCardForm({ sim, client, suppliers, paymentMethods, onChange, 
               ]}
             />
           </FormField>
+          {/* Evidencia de a donde se envio la eSIM: solo con entrega por correo. */}
+          {sim.deliveryMethod === "Correo Electrónico" && (
+            <FormField label="Correo de entrega *" className="md:col-span-2">
+              <Input
+                type="email"
+                value={sim.deliveryEmail || ""}
+                maxLength={150}
+                onChange={(e) => onChange({ deliveryEmail: e.target.value.trim() })}
+                placeholder="ejemplo@correo.com"
+              />
+            </FormField>
+          )}
         </div>
       </div>
 

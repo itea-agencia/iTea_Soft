@@ -601,6 +601,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Plan de Datos", value: item.dataPlan },
               { label: "Tipo SIM", value: item.simType },
               { label: "Método de Entrega", value: item.deliveryMethod },
+              ...(item.deliveryEmail ? [{ label: "Correo de entrega", value: item.deliveryEmail }] : []),
               { label: "Proveedor", value: item.supplier || item.supplierName },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
