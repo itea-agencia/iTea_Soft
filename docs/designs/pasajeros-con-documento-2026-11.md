@@ -1,6 +1,6 @@
 # Toda persona que entra a una venta o a un módulo tiene nombre y documento válidos
 
-**Fecha:** 2026-11-11 · **Rama:** `feat/hallazgo-16-carga-y-mantenimiento` · **Estado:** diseño aprobado (2026-11-11)
+**Fecha:** 2026-11-11 · **Rama:** `feat/hallazgo-16-carga-y-mantenimiento` · **Estado:** implementado (2026-11-11); resultado de las pruebas en el plan
 
 ## Por qué
 
@@ -128,3 +128,5 @@ No rompe ventas bien cargadas, pero el asesor lo vería como un error del servid
 ## Lo que queda abierto
 
 - La persona sin documento de la venta de equipaje en producción (deuda técnica).
+- Lo visual (selector de tipo en la SIM, catálogo en check-in, migración y visa, dueño de la mascota en solo lectura) no se pudo ver: queda para la prueba en pantalla.
+- El catálogo local no tiene `NUI`, que sí está en producción. No afecta: la regla lee el catálogo de cada base.
