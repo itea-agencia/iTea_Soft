@@ -17,8 +17,7 @@ import {
   getCreditSummaryTotals, 
   getClientStatusColor, 
   getStatusColor, 
-  getClientCreditSales,
-  ClientCreditSummary
+  getClientCreditSales
 } from "../../utils/creditUtils";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import { Client, Sale } from "../../types";
@@ -32,7 +31,9 @@ interface CreditDashboardProps {
 
 export default function CreditDashboard({ clients, sales }: CreditDashboardProps) {
   const [creditFilter, setCreditFilter] = useState<'all' | 'overdue' | 'urgent' | 'pending'>('all');
-  const [selectedCreditClient, setSelectedCreditClient] = useState<ClientCreditSummary | null>(null);
+  // Se guarda solo el id: el panel ya no se desmonta al recargar, y un resumen guardado
+  // seguia mostrando el saldo viejo despues de un abono.
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [asesorFilter, setAsesorFilter] = useState("");
@@ -56,6 +57,9 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
   const clientsWithCredit = useMemo(() => 
     getClientsWithCredit(clients, sales), 
   [clients, sales]);
+
+  // Si el cliente ya no tiene creditos abiertos, deja de estar seleccionado.
+  const selectedCreditClient = clientsWithCredit.find(c => c.client.id === selectedClientId) ?? null;
 
   const creditTotals = useMemo(() => 
     getCreditSummaryTotals(clients, sales),
@@ -199,7 +203,7 @@ export default function CreditDashboard({ clients, sales }: CreditDashboardProps
                       <div 
                         key={creditClient.client.id} 
                         className={`p-4 flex items-center justify-between hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer ${selectedCreditClient?.client.id === creditClient.client.id ? 'bg-primary/5 dark:bg-primary/20 border-l-4 border-primary' : ''}`} 
-                        onClick={() => setSelectedCreditClient(creditClient)}
+                        onClick={() => setSelectedClientId(creditClient.client.id)}
                       >
                         <div className="flex items-center gap-4">
                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${statusColors.bg} ${statusColors.text}`}>
