@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { cargarTs } from './cargarTs.mjs';
+import { bundleTs } from './bundleTs.mjs';
 
 const store = new Map();
 Object.defineProperty(globalThis, 'localStorage', {
@@ -12,7 +12,7 @@ Object.defineProperty(globalThis, 'localStorage', {
   },
 });
 
-const { saveSalesCache, saveClientsCache, loadSalesCache, loadClientsCache, invalidateSalesCache } = await cargarTs('utils/salesCache.ts');
+const { saveSalesCache, saveClientsCache, loadSalesCache, loadClientsCache, invalidateSalesCache } = await bundleTs('utils/salesCache.ts');
 
 const SALES_KEY = 'itea_sales_cache_anonymous';
 const CLIENTS_KEY = 'itea_clients_cache_anonymous';

@@ -1,83 +1,19 @@
-/**
- * salesCache.ts
- * Módulo de caché en localStorage para ventas y clientes.
- * TTL: 5 minutos — después de ese tiempo se considera stale y se recarga desde red.
- * Al crear/eliminar ventas, el caché se invalida automáticamente.
- */
+import { createCache } from './createCache';
 
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
-
-function getCacheKey(baseKey: string): string {
-  try {
-    const token = localStorage.getItem('itea_token');
-    if (!token) return `${baseKey}_anonymous`;
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return `${baseKey}_${payload.userId || 'unknown'}`;
-  } catch {
-    return `${baseKey}_anonymous`;
-  }
-}
-
-interface CacheEntry<T> {
-  data: T;
-  timestamp: number;
-}
-
-function readCache<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const entry: CacheEntry<T> = JSON.parse(raw);
-    const age = Date.now() - entry.timestamp;
-    if (age > CACHE_TTL_MS) {
-      localStorage.removeItem(key);
-      return null;
-    }
-    return entry.data;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache<T>(key: string, data: T): void {
-  try {
-    const entry: CacheEntry<T> = { data, timestamp: Date.now() };
-    localStorage.setItem(key, JSON.stringify(entry));
-  } catch {
-    // localStorage puede estar lleno — ignorar silenciosamente
-  }
-}
-
-function deleteCache(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {}
-}
-
-// ---------- API pública ----------
+const FIVE_MINUTES = 5 * 60 * 1000;
+const salesCache = createCache<unknown[]>('itea_sales_cache', FIVE_MINUTES);
+const clientsCache = createCache<unknown[]>('itea_clients_cache', FIVE_MINUTES);
 
 // Por separado: guardar los dos juntos renovaba la antiguedad del que no se habia consultado
 // (hallazgo 7 de la auditoria del frontend).
-export function saveSalesCache(sales: unknown[]): void {
-  writeCache(getCacheKey('itea_sales_cache'), sales);
-}
+export const saveSalesCache = (sales: unknown[]): void => salesCache.write(sales);
+export const saveClientsCache = (clients: unknown[]): void => clientsCache.write(clients);
 
-export function saveClientsCache(clients: unknown[]): void {
-  writeCache(getCacheKey('itea_clients_cache'), clients);
-}
-
-/** Retorna ventas desde caché si TTL no expiró, null si expirado */
-export function loadSalesCache(): unknown[] | null {
-  return readCache<unknown[]>(getCacheKey('itea_sales_cache'));
-}
-
-/** Retorna clientes desde caché si TTL no expiró, null si expirado */
-export function loadClientsCache(): unknown[] | null {
-  return readCache<unknown[]>(getCacheKey('itea_clients_cache'));
-}
+export const loadSalesCache = (): unknown[] | null => salesCache.read();
+export const loadClientsCache = (): unknown[] | null => clientsCache.read();
 
 /** Invalida ambos cachés: una venta muestra datos de su cliente y un cliente, su deuda. Usar al cambiar ventas, pagos o clientes. */
 export function invalidateSalesCache(): void {
-  deleteCache(getCacheKey('itea_sales_cache'));
-  deleteCache(getCacheKey('itea_clients_cache'));
+  salesCache.remove();
+  clientsCache.remove();
 }
