@@ -71,7 +71,7 @@ import { getDaysUntilDue } from "../../utils/creditUtils";
 import { findClientById } from "../../utils/clientOptions";
 import { listAsesores } from "../../api";
 import { Modal } from "../ui/Modal";
-import { pendingVoucherWarnings, saleSuccessMessage, vouchersSentText, VoucherFailure, VoucherIssues } from "../../utils/voucherDelivery";
+import { pendingVoucherWarnings, saleAttachmentsError, saleSuccessMessage, vouchersSentText, VoucherFailure, VoucherIssues } from "../../utils/voucherDelivery";
 
 interface Props {
   onClose: () => void;
@@ -1881,6 +1881,11 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       return;
     }
     if (isSubmittingRef.current) return;
+    const attachmentsError = saleAttachmentsError(form);
+    if (attachmentsError) {
+      triggerError(attachmentsError);
+      return;
+    }
     const warnings = pendingVoucherWarnings(form, findClientById(data.clients, form.clientId)?.email);
     if (warnings.length > 0) {
       setVoucherWarnings(warnings);

@@ -46,6 +46,24 @@ export function saleSuccessMessage(delivery: VoucherDelivery | undefined, email?
   return sentText ? `Venta registrada. ${sentText}` : 'Venta registrada exitosamente';
 }
 
+// El servidor acepta 50 MB por venta y base64 pesa 4/3 del archivo: unos 37 MB de adjuntos.
+// Se cuentan todos, marcados o no, porque todos viajan en la peticion (hallazgo 13).
+const MAX_SALE_ATTACHMENTS_MB = 37;
+
+export function saleAttachmentsError(form: Record<string, any>) {
+  let base64Length = 0;
+  for (const [field] of VOUCHER_PRODUCTS) {
+    for (const item of form[field] || []) {
+      for (const file of [item.voucher, ...(item.vouchers || [])]) {
+        base64Length += file?.base64?.length ?? 0;
+      }
+    }
+  }
+  const totalMb = (base64Length * 3) / 4 / (1024 * 1024);
+  if (totalMb <= MAX_SALE_ATTACHMENTS_MB) return null;
+  return `Los adjuntos de esta venta suman ${Math.round(totalMb)} MB. El máximo es ${MAX_SALE_ATTACHMENTS_MB} MB. Quita alguno para continuar.`;
+}
+
 // Lo que ya se sabe que no va a salir, para avisar antes de guardar.
 export function pendingVoucherWarnings(form: Record<string, any>, clientEmail?: string | null): VoucherFailure[] {
   const warnings: VoucherFailure[] = [];

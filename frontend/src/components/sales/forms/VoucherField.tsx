@@ -1,7 +1,16 @@
 import { LuFileText, LuSend, LuUser, LuUpload, LuX, LuFileCheck, LuDollarSign, LuBuilding, LuCreditCard } from "react-icons/lu";
 import { Input, Combobox , CurrencyInput, Select} from "../../ui/Form";
 import { FormField } from "../../ui/Form";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { voucherFileProblem } from "../../../utils/voucherFiles";
+
+const readFile = (file: File) =>
+  new Promise<{ name: string; base64: string }>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => (typeof reader.result === "string" ? resolve({ name: file.name, base64: reader.result }) : reject());
+    reader.onerror = () => reject();
+    reader.readAsDataURL(file);
+  });
 
 interface VoucherFieldProps {
   voucher?: { name: string; base64: string };
@@ -18,37 +27,32 @@ interface VoucherFieldProps {
 export function VoucherField({ voucher, vouchers, multiple, sendVoucher, onChange }: VoucherFieldProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [fileProblems, setFileProblems] = useState<string[]>([]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      if (multiple) {
-        const newVouchers: Array<{ name: string; base64: string }> = vouchers ? [...vouchers] : [];
-        let filesProcessed = 0;
-        files.forEach(file => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result === 'string') {
-              newVouchers.push({ name: file.name, base64: reader.result });
-            }
-            filesProcessed++;
-            if (filesProcessed === files.length) {
-              onChange({ vouchers: newVouchers });
-              if (fileInputRef.current) fileInputRef.current.value = "";
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      } else {
-        const file = files[0];
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === 'string') {
-            onChange({ voucher: { name: file.name, base64: reader.result } });
-          }
-        };
-        reader.readAsDataURL(file);
+    if (files.length === 0) return;
+
+    const problems: string[] = [];
+    const accepted: Array<{ name: string; base64: string }> = [];
+    for (const file of multiple ? files : files.slice(0, 1)) {
+      const problem = voucherFileProblem(file);
+      if (problem) {
+        problems.push(problem);
+        continue;
+      }
+      try {
+        accepted.push(await readFile(file));
+      } catch {
+        problems.push(`No se pudo leer ${file.name}.`);
       }
     }
+
+    setFileProblems(problems);
+    if (accepted.length > 0) {
+      onChange(multiple ? { vouchers: [...(vouchers || []), ...accepted] } : { voucher: accepted[0] });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const removeFile = (index?: number) => {
@@ -173,6 +177,14 @@ export function VoucherField({ voucher, vouchers, multiple, sendVoucher, onChang
           </label>
         </div>
       </div>
+
+      {fileProblems.length > 0 && (
+        <div role="alert" className="mt-3 space-y-1 text-xs text-rose-600 dark:text-rose-400">
+          {fileProblems.map((problem) => (
+            <p key={problem}>{problem}</p>
+          ))}
+        </div>
+      )}
 
       {sendVoucher && ((!multiple && voucher) || (multiple && vouchers && vouchers.length > 0)) && (
         <div className="mt-3 text-[10px] text-emerald-600 bg-emerald-50 p-2 rounded-lg flex items-center gap-2">
