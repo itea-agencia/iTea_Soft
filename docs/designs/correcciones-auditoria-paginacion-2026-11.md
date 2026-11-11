@@ -1,6 +1,6 @@
 # Correcciones de la auditoría de la paginación de Ventas
 
-Estado: **aprobado, sin plan.** Las preguntas se respondieron el 2026-11-11 (ver "Decisiones del usuario"). Sigue escribir el plan. No se tocó código.
+Estado: **aprobado, con plan** en `correcciones-auditoria-paginacion-2026-11-plan.md`. Las preguntas se respondieron el 2026-11-11 (ver "Decisiones del usuario"). No se tocó código.
 
 Sale de la auditoría del 2026-11-10 sobre los commits `c2c4077` y `30388fd` de
 `feat/hallazgo-16-carga-y-mantenimiento` (ver `ventas-paginacion-servidor-2026-11.md`).
