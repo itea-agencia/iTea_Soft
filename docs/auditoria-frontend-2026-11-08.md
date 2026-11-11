@@ -211,6 +211,6 @@ Prioridad media:
 - [x] 13. Adjuntos sin validar el límite anunciado. Corregido; diseño en `docs/designs/hallazgo-13-adjuntos-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
 - [x] 15. Modales y campos sin accesibilidad básica. Corregido; diseño en `docs/designs/hallazgo-15-accesibilidad-2026-11.md`. Aprobado por el usuario.
-- [ ] 16. Carga inicial y mantenimiento.
+- [x] 16. Carga inicial y mantenimiento. Corregido en la rama `feat/hallazgo-16-carga-y-mantenimiento`; diseño en `docs/designs/hallazgo-16-carga-y-mantenimiento-2026-11.md`. Antes de integrarla hay que probar a mano la venta de las 17 categorías. Quedan los `any`, fuera de alcance.
 
 Orden propuesto para lo que falta (2026-11-10): primero el 9, porque la pantalla puede mostrar $0 cuando en realidad falló la carga (invariante 4); después el resto del 7 y el 10; luego el 11 y el 13, que son chicos; el 8; y al final el 15 y el 16. El tope de 5.000 del 14 espera a que el volumen se acerque.

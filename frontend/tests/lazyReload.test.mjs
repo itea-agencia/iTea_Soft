@@ -48,6 +48,17 @@ test('si el almacenamiento está bloqueado rechaza sin recargar', async () => {
   await assert.rejects(importWithReload(failing, blocked, () => assert.fail('no debe recargar')), /archivo no existe/);
 });
 
+test('si acceder a sessionStorage lanza error, una carga correcta sigue funcionando', async () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, get() { throw new Error('bloqueado'); } });
+  try {
+    assert.equal(await importWithReload(() => Promise.resolve('modulo')), 'modulo');
+  } finally {
+    if (original) Object.defineProperty(globalThis, 'sessionStorage', original);
+    else delete globalThis.sessionStorage;
+  }
+});
+
 test('el almacenamiento bloqueado no rompe una carga correcta', async () => {
   const blocked = { getItem: () => null, setItem: () => {}, removeItem: () => { throw new Error('bloqueado'); } };
   assert.equal(await importWithReload(() => Promise.resolve('modulo'), blocked, () => {}), 'modulo');
