@@ -11,6 +11,8 @@ interface ModalProps {
   footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   contentClassName?: string;
+  // false: solo se cierra con un boton propio, para un aviso que no se puede perder de un clic.
+  closable?: boolean;
 }
 
 export function Modal({
@@ -21,6 +23,7 @@ export function Modal({
   footer,
   size = "md",
   contentClassName = "",
+  closable = true,
 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -47,7 +50,7 @@ export function Modal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       <div
         className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
+        onClick={closable ? onClose : undefined}
       />
       <div
         className={`relative z-[101] w-full ${maxWidth} bg-white rounded-xl shadow-2xl animate-scale-in flex flex-col max-h-[95vh] sm:max-h-[90vh]`}
@@ -57,12 +60,14 @@ export function Modal({
           <h2 className="text-base sm:text-lg font-heading font-semibold text-white truncate">
             {title}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-          >
-            <X size={20} />
-          </button>
+          {closable && (
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         {/* Content */}

@@ -1978,11 +1978,17 @@ exports.create = async (req, res, next) => {
     const clientEmail = created.cliente?.persona?.email;
     const clientName = `${created.cliente.persona.nombres} ${created.cliente.persona.apellidos}`;
 
+    // Lo que paso con cada voucher marcado, para que la pantalla no anuncie un envio que no
+    // sabe si ocurrio (hallazgo 10 de la auditoria del frontend, invariante 4).
+    const voucherDelivery = { sent: [], failed: [] };
+    const voucherLabel = (handler, items, index) =>
+      items.length > 1 ? `${handler.nombreServicio} ${index + 1}` : handler.nombreServicio;
+
     // Send vouchers emails
     if (clientEmail) {
       for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
         const items = Array.isArray(data[field]) ? data[field] : [];
-        for (const item of items) {
+        for (const [index, item] of items.entries()) {
           if (item.sendVoucher) {
             const attachments = [];
             
@@ -2028,17 +2034,30 @@ exports.create = async (req, res, next) => {
                   attachments: attachments
                 });
                 // Sin el correo del cliente en el log: alcanza con la venta para buscarlo.
+                if (result?.success) voucherDelivery.sent.push(voucherLabel(handler, items, index));
+                else voucherDelivery.failed.push({ label: voucherLabel(handler, items, index), reason: 'Falló el envío' });
                 if (!result?.success) console.error(`[VOUCHER] No se pudo enviar el voucher de ${handler.nombreServicio} de la venta ${created.id}:`, result?.error?.message);
               } catch (err) {
                 console.error('[ERROR] Sending voucher email:', err.message);
+                voucherDelivery.failed.push({ label: voucherLabel(handler, items, index), reason: 'Falló el envío' });
               }
+            } else {
+              voucherDelivery.failed.push({ label: voucherLabel(handler, items, index), reason: 'No tiene archivo' });
             }
           }
         }
       }
+    } else {
+      for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
+        const items = Array.isArray(data[field]) ? data[field] : [];
+        items.forEach((item, index) => {
+          if (item.sendVoucher) voucherDelivery.failed.push({ label: voucherLabel(handler, items, index), reason: 'El cliente no tiene correo' });
+        });
+      }
     }
 
     success(res, {
+      voucherDelivery,
       id: created.id,
       clientId: created.clienteId,
       clientName: `${created.cliente.persona.nombres} ${created.cliente.persona.apellidos}`,

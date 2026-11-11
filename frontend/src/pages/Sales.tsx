@@ -27,6 +27,7 @@ import { buildAirportMap } from "../utils/airportInfo";
 import { Sale } from "../types";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 import NewSaleWizard from "../components/sales/NewSaleWizard";
+import { VoucherIssues } from "../utils/voucherDelivery";
 import SaleDetailModal from "../components/sales/SaleDetailModal";
 import SaleEditModal from "../components/sales/SaleEditModal";
 import SalesTable from "../components/sales/SalesTable";
@@ -46,6 +47,7 @@ export default function Sales() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [salesDetails, setSalesDetails] = useState<Record<number, Sale>>({});
+  const [voucherIssues, setVoucherIssues] = useState<VoucherIssues | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showError, setShowError] = useState(false);
@@ -702,6 +704,26 @@ export default function Sales() {
         />
       )}
 
+      <Modal
+        isOpen={voucherIssues !== null}
+        onClose={() => setVoucherIssues(null)}
+        closable={false}
+        title={`Venta #${voucherIssues?.saleId} registrada`}
+        size="md"
+        footer={<Button onClick={() => setVoucherIssues(null)}>Entendido</Button>}
+      >
+        <div className="space-y-3 text-sm text-gray-700 dark:text-slate-300">
+          {voucherIssues?.sentText && <p>{voucherIssues.sentText}.</p>}
+          <p className="font-semibold">No se pudieron enviar:</p>
+          <ul className="space-y-1 list-disc pl-5">
+            {voucherIssues?.failed.map((f) => (
+              <li key={f.label}>{f.label}: {f.reason}</li>
+            ))}
+          </ul>
+          <p>Mándalos a mano.</p>
+        </div>
+      </Modal>
+
       {/* ===== WIZARD MODAL (Nueva Venta) ===== */}
       <Modal
         isOpen={isWizardOpen}
@@ -712,7 +734,12 @@ export default function Sales() {
       >
         <NewSaleWizard
           onClose={() => setIsWizardOpen(false)}
-          onSuccess={(msg) => {
+          onSuccess={(msg, issues) => {
+            // Un voucher que fallo no se puede reenviar: el aviso no se va solo, y sin confeti.
+            if (issues) {
+              setVoucherIssues(issues);
+              return;
+            }
             setSuccessMessage(msg);
             setShowSuccess(true);
             setShowConfetti(true);
