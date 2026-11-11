@@ -40,3 +40,13 @@ test('pasajeros completos: no hay error de pasajero', () => {
   const r = validate({ selectedProducts: ['hoteleria'], hotels: [{ guests: [ana, { ...ana, docNumber: '7654321' }] }] });
   assert.doesNotMatch(r.message ?? '', /pasajero/);
 });
+
+test('hotel: dos huespedes con el mismo documento no dejan avanzar', () => {
+  const r = validate({ selectedProducts: ['hoteleria'], hotels: [{ guests: [ana, { ...ana, name: 'Beto Gómez' }] }] });
+  assert.match(r.message ?? '', /Hotelería #1: los pasajeros 1 y 2 tienen el mismo documento/);
+});
+
+test('tiquete: una fila vacia no hereda los datos del producto', () => {
+  const r = validate({ selectedProducts: ['tiqueteria'], tickets: [{ passengerName: 'Ana Pérez', docType: 'CC', docNumber: '1234567', passengers: [{}, {}] }] });
+  assert.match(r.message ?? '', /Tiquetería #1, pasajero 1: Faltan el nombre y el documento/);
+});

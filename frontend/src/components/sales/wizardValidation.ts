@@ -835,6 +835,20 @@ const PASSENGERS_OF: Record<string, (item: any) => { persons: PersonInput[]; sin
   visa: (v) => ({ persons: [{ name: v.fullName, docType: v.docType, docNumber: v.docNumber }], single: true }),
 };
 
+// Los numeros (desde 1) de los dos primeros pasajeros con el mismo documento, o null. Dos
+// filas con el mismo documento terminaban siendo la misma persona dos veces en el producto.
+// El servidor aplica la misma regla.
+function repeatedDocument(persons: PersonInput[]): [number, number] | null {
+  const seen = new Map<string, number>();
+  for (const [j, p] of persons.entries()) {
+    const doc = (p.docNumber || "").trim().toUpperCase();
+    if (!doc) continue;
+    if (seen.has(doc)) return [seen.get(doc)! + 1, j + 1];
+    seen.set(doc, j);
+  }
+  return null;
+}
+
 // Primer pasajero que no cumple la regla, como "Hotelería #1, pasajero 2: <motivo>".
 function passengerError(form: WizardFormData, docTypes: string[]): string | null {
   for (const [category, passengersOf] of Object.entries(PASSENGERS_OF)) {
@@ -848,6 +862,8 @@ function passengerError(form: WizardFormData, docTypes: string[]): string | null
         const error = validatePerson(person, docTypes);
         if (error) return single ? `${label} #${i + 1}: ${error}` : `${label} #${i + 1}, pasajero ${j + 1}: ${error}`;
       }
+      const repeated = repeatedDocument(persons);
+      if (repeated) return `${label} #${i + 1}: los pasajeros ${repeated[0]} y ${repeated[1]} tienen el mismo documento`;
     }
   }
   return null;

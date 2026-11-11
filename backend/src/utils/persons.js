@@ -83,18 +83,17 @@ async function personInputError(prisma, data, { create, fullName = false, curren
     }
   }
 
-  const typeSent = has('docType') || data.docTypeId !== undefined;
+  // Solo docType: es lo que mandan todas las pantallas y lo que guardan los cuatro modulos.
+  // Aceptar docTypeId dejaba validar con un tipo y guardar con otro, y comisionistas reenvia
+  // el docTypeId viejo al editar, asi que cambiar el tipo se validaba contra el anterior.
+  const typeSent = has('docType');
   const numberSent = has('docNumber');
   if (!typeSent && !numberSent) return null;
 
-  // El tipo puede llegar por abreviatura o por id (responsables acepta los dos).
   let docType = current?.docType || '';
   if (typeSent) {
-    const byId = data.docTypeId ? parseInt(data.docTypeId) : null;
-    const tipo = byId
-      ? await prisma.tiposDocumento.findUnique({ where: { id: byId } })
-      : (data.docType ? await prisma.tiposDocumento.findFirst({ where: { abreviatura: data.docType } }) : null);
-    if (!tipo) return fail(data.docType || byId ? 'El tipo de documento no existe' : 'Seleccione un tipo de documento', 'INVALID_DOC_TYPE');
+    const tipo = data.docType ? await prisma.tiposDocumento.findFirst({ where: { abreviatura: data.docType } }) : null;
+    if (!tipo) return fail(data.docType ? 'El tipo de documento no existe' : 'Seleccione un tipo de documento', 'INVALID_DOC_TYPE');
     docType = tipo.abreviatura;
   }
   const docNumber = numberSent ? data.docNumber : current?.docNumber;

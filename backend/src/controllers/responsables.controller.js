@@ -156,11 +156,12 @@ exports.create = async (req, res, next) => {
     const personError = await personInputError(prisma, req.body, { create: true });
     if (personError) return error(res, personError.message, 400, personError.code);
     req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType);
-    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email } = req.body;
+    const { firstName, lastName, docType, docNumber, phone, email } = req.body;
 
-    // Resolve docTypeId from abbreviation if not provided as integer
-    let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
-    if (!docTypeId && docType) {
+    // Solo por abreviatura, como los demas modulos: un docTypeId en el body se ignora
+    // (personInputError valida con docType y aca se guardaba otro tipo).
+    let docTypeId = null;
+    if (docType) {
       const tipoDoc = await prisma.tiposDocumento.findFirst({ where: { abreviatura: docType } });
       docTypeId = tipoDoc ? tipoDoc.id : null;
     }
@@ -248,11 +249,12 @@ exports.update = async (req, res, next) => {
     const personError = await personInputError(prisma, req.body, { create: false, current });
     if (personError) return error(res, personError.message, 400, personError.code);
     req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType || current?.docType);
-    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, status } = req.body;
+    const { firstName, lastName, docType, docNumber, phone, email, status } = req.body;
 
-    // Resolve docTypeId from abbreviation if not provided as integer
-    let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
-    if (!docTypeId && docType) {
+    // Solo por abreviatura, como los demas modulos: un docTypeId en el body se ignora
+    // (personInputError valida con docType y aca se guardaba otro tipo).
+    let docTypeId = null;
+    if (docType) {
       const tipoDoc = await prisma.tiposDocumento.findFirst({ where: { abreviatura: docType } });
       docTypeId = tipoDoc ? tipoDoc.id : null;
     }

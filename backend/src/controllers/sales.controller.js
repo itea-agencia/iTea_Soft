@@ -1519,15 +1519,22 @@ function simDeliveryEmailError(items) {
 function resolvePassengers(item, category) {
   const list = getPassengerList(item);
   if (!list && !item.passengerName && !item.ownerName && !CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(category)) return null;
-  return (list || [{}]).map(raw => {
-    const p = raw || {};
-    return {
-      raw: p,
-      name: p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver,
-      docType: p.docType || item.docType,
-      docNumber: p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber,
-    };
-  });
+  // Una fila de una lista usa solo sus propios datos: heredar los del producto hacia que una
+  // fila vacia pasara con el nombre y el documento del producto, y que varias filas quedaran
+  // como la misma persona. Los formularios mandan todo en cada fila. Sin lista, el titular
+  // implicito si toma los datos del item.
+  if (list) {
+    return list.map(raw => {
+      const p = raw || {};
+      return { raw: p, name: p.name || p.passengerName || p.fullName, docType: p.docType, docNumber: p.docNumber };
+    });
+  }
+  return [{
+    raw: {},
+    name: item.passengerName || item.ownerName || item.mainDriver,
+    docType: item.docType,
+    docNumber: item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber,
+  }];
 }
 
 /**
@@ -1559,6 +1566,15 @@ function passengerError(data, docTypes) {
             || (!docTypes.has(p.docType) ? `El tipo de documento ${p.docType} no existe` : null)
             || docNumberError(p.docType, docNumber);
         if (reason) return `${where}: ${reason}`;
+      }
+      // Dos filas con el mismo documento terminaban siendo la misma persona dos veces. Misma
+      // regla que repeatedDocument en wizardValidation.ts.
+      const seen = new Map();
+      for (const [j, p] of passengers.entries()) {
+        const doc = String(p.docNumber || '').trim().toUpperCase();
+        if (!doc) continue;
+        if (seen.has(doc)) return `${handler.nombreServicio} #${i + 1}: los pasajeros ${seen.get(doc) + 1} y ${j + 1} tienen el mismo documento`;
+        seen.set(doc, j);
       }
     }
   }
