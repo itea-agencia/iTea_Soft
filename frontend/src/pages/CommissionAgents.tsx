@@ -32,7 +32,7 @@ import { formatCurrency, capitalizeName, todayStr } from "../utils/formatters";
 import StatCard from "../components/ui/StatCard";
 import LoadingScreen from "../components/ui/LoadingScreen";
 import { mensajeDeError } from "../utils/errors";
-import { validateDocNumber } from "../utils/docNumber";
+import { validateDocNumber, validateFullName } from "../utils/docNumber";
 import { settlementThreshold } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
@@ -164,7 +164,9 @@ export default function CommissionAgents() {
 
   const handleSave = async () => {
     const errs: Record<string, string> = {};
-    if (!formData.name) errs.name = "El nombre es obligatorio";
+    // Misma regla que pasajeros y que el servidor (fullNameError en utils/persons.js).
+    const nameErr = validateFullName(formData.name || "");
+    if (nameErr) errs.name = nameErr;
     if (!formData.docType) errs.docType = "Seleccione un tipo de documento";
     const docErr = getDocNumberError(formData.docNumber || "", formData.docType || "");
     if (docErr) errs.docNumber = docErr;
