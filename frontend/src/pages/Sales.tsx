@@ -37,7 +37,7 @@ import { LoadFailed } from "../components/ui/LoadFailed";
 import { PageSkeleton } from "../components/ui/PageSkeleton";
 import { useSalesQuery } from "../hooks/useSalesQuery";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import { buildSalesParams, lastPage, SALES_PAGE_SIZE } from "../utils/salesQuery";
+import { buildSalesParams, creditPanelState, lastPage, resolvePageState, SALES_PAGE_SIZE } from "../utils/salesQuery";
 
 export default function Sales() {
   const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, fetchClients } = useData();
@@ -90,24 +90,23 @@ export default function Sales() {
   const debouncedSearch = useDebouncedValue(searchTerm, 500);
   const filters = { search: debouncedSearch, status: statusFilter, startDate, endDate };
 
-  // La pagina va atada a sus filtros: con un filtro nuevo se vuelve a la 1 sin pedir la anterior.
-  // Ademas se guarda la 1 con la clave nueva: si solo se derivaba, la pagina vieja seguia guardada
-  // y al limpiar el filtro volvia (auditoria de la paginacion). Es el reinicio de estado en el
-  // render que recomienda React, sin un efecto que pida antes la pagina vieja.
+  // La pagina va atada a sus filtros: con un filtro nuevo se pide la 1, sin pedir antes la anterior.
+  // resolvePageState decide la pagina guardada; se aplica en el render, el reinicio de estado que
+  // recomienda React, sin un efecto.
   const filtersKey = JSON.stringify(filters);
   const [pageState, setPageState] = useState({ filtersKey, page: 1 });
-  if (pageState.filtersKey !== filtersKey) setPageState({ filtersKey, page: 1 });
   const page = pageState.filtersKey === filtersKey ? pageState.page : 1;
 
   const listQuery = useSalesQuery(activeTab === 'list' ? buildSalesParams(filters, page) : null);
-  // Si la pagina actual quedo vacia (se anulo la unica venta de la ultima con un filtro de estado),
-  // se pasa a la ultima que existe. Con total 0 no hay a donde ir: "Venta no encontrada" es correcto.
   const listLastPage = lastPage(listQuery.total, SALES_PAGE_SIZE);
-  if (!listQuery.loading && !listQuery.failed && listQuery.sales.length === 0 && listQuery.total > 0 && page > listLastPage) {
-    setPageState({ filtersKey, page: listLastPage });
-  }
+  const nextPageState = resolvePageState(pageState, filtersKey, { ...listQuery, count: listQuery.sales.length }, SALES_PAGE_SIZE);
+  if (nextPageState !== pageState) setPageState(nextPageState);
 
-  const creditQuery = useSalesQuery(activeTab === 'credit' ? { ...buildSalesParams(filters, 1, 5000), onCredit: 'true' } : null);
+  // El panel de creditos trae toda la cartera y filtra con sus propios controles. Antes recibia la
+  // busqueda, el estado y las fechas de Listado sin mostrarlos: con "Finalizado" decia "¡Todo al
+  // dia!" y $0 con 11 creditos abiertos (invariante 4).
+  const creditQuery = useSalesQuery(activeTab === 'credit' ? { page: 1, perPage: 5000, sortBy: 'id', sortOrder: 'desc', onCredit: 'true' } : null);
+  const creditView = creditPanelState(creditQuery);
 
   // Lazy Load Fetch
   useEffect(() => {
@@ -689,14 +688,22 @@ export default function Sales() {
           </Card>
         </>
       ) : (
-        creditQuery.loading ? (
+        creditView === 'skeleton' ? (
           <PageSkeleton />
-        ) : creditQuery.failed ? (
+        ) : creditView === 'error' ? (
           <div className="py-16">
             <LoadFailed message="No se pudieron cargar los créditos." onRetry={creditQuery.retry} />
           </div>
         ) : (
-          <CreditDashboard clients={data.clients} sales={creditQuery.sales} />
+          <div className="space-y-4">
+            {creditView === 'stale' && (
+              <div role="alert" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300">
+                <span className="text-sm font-semibold">No se pudieron actualizar los créditos. Las cifras pueden estar desactualizadas.</span>
+                <Button variant="outline" size="sm" onClick={creditQuery.retry}>Reintentar</Button>
+              </div>
+            )}
+            <CreditDashboard clients={data.clients} sales={creditQuery.lastSales ?? []} />
+          </div>
         )
       )}
 

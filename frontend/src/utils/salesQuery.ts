@@ -21,3 +21,29 @@ export function buildSalesParams(filters: SalesFilters, page: number, perPage = 
 }
 
 export const lastPage = (total: number, pageSize: number) => Math.max(1, Math.ceil(total / pageSize));
+
+export interface PageState { filtersKey: string; page: number }
+export interface ListStatus { loading: boolean; failed: boolean; count: number; total: number }
+
+// La pagina que corresponde a la tabla de Ventas. Devuelve el mismo objeto si no cambia, para que
+// la pantalla no vuelva a renderizar.
+// - Un filtro distinto lleva a la 1, y la 1 queda guardada con su clave: si solo se derivaba, la
+//   pagina vieja seguia guardada y al limpiar el filtro volvia (auditoria de la paginacion).
+// - Una pagina que quedo vacia con ventas en el filtro (se anulo la unica de la ultima) pasa a la
+//   ultima que existe. Con total 0 no hay a donde ir: "Venta no encontrada" es correcto.
+export function resolvePageState(state: PageState, filtersKey: string, list: ListStatus, pageSize: number): PageState {
+  if (state.filtersKey !== filtersKey) return { filtersKey, page: 1 };
+  const last = lastPage(list.total, pageSize);
+  if (!list.loading && !list.failed && list.count === 0 && list.total > 0 && state.page > last) {
+    return { filtersKey, page: last };
+  }
+  return state;
+}
+
+// Que muestra el panel de creditos. El esqueleto y el error de pagina entera, solo antes del primer
+// resultado: despues el panel queda montado con las cifras anteriores, y conserva su busqueda,
+// filtros y cliente elegido; si la recarga falla, con un aviso (decisiones del usuario).
+export function creditPanelState(query: { lastSales: unknown[] | null; failed: boolean }) {
+  if (query.lastSales === null) return query.failed ? 'error' : 'skeleton';
+  return query.failed ? 'stale' : 'panel';
+}

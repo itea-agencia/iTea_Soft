@@ -56,7 +56,7 @@
 - **Recarga fallida:** con `lastSales` y `failed`, se muestra encima del panel una alerta: "No se pudieron actualizar los créditos. Las cifras pueden estar desactualizadas." con el botón Reintentar (`creditQuery.retry`).
 - La tabla de Listado no cambia: sigue usando `sales` y `loading`.
 
-- [ ] `tsc` y `npm test`. Commit.
+- [x] `tsc` y `npm test`. Commit.
 
 ### Tarea 5: detalle desactualizado
 
