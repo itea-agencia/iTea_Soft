@@ -152,3 +152,15 @@ Verificado por la API local, con el backend reconstruido:
 - Crear un cliente con NIT `900123456-xx` da 400.
 - Un check-in con `passportNumber` y sin nombre da 400 ("Check-in #1: El nombre es obligatorio"), y `personas` no cambia (105 → 105).
 - Al responsable 8 se le restauró el tipo CC. Después, editarle solo el teléfono da 200 y el tipo sigue siendo CC, comprobado con SQL.
+
+## Segunda revisión (2026-11-11, `8fa18a6`)
+
+- **Filas de una lista:** usan solo sus datos. `resolvePassengers` les aplicaba los del producto, y un hotel con `guests: [{}, {}]` pasaba con las dos filas como la misma persona.
+- **Documentos repetidos:** dos pasajeros con el mismo documento en un producto se rechazan.
+- **Tipo de documento:** se resuelve solo por `docType` en los cuatro módulos. Con `docTypeId`, en comisionistas se validaba contra el tipo viejo que reenvía la pantalla, y en los demás módulos se guardaba un tipo distinto del validado.
+
+Verificado por la API local, con el backend reconstruido:
+- El hotel con datos en el producto y `guests: [{}, {}]` da 400: "Hotelería #1, pasajero 1: Faltan el nombre y el documento".
+- Dos huéspedes con el mismo documento dan 400, y `personas` no cambia (105 → 105).
+- Al cliente CC, mandar `docTypeId` de Pasaporte con `AB12345` da 400, y el documento guardado no cambia.
+- El comisionista 7, de CC a Pasaporte con el `docTypeId` viejo de CC, da 200 y queda con tipo Pasaporte y documento `PA9910040`.
