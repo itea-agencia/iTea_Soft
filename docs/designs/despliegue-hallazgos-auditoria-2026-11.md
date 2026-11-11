@@ -10,11 +10,11 @@ Checklist para llevar a producción lo que se corrigió de `docs/auditoria-front
 
 - `isCredit` de las ventas se deriva del estado (`isOnCredit()` en `sales.controller.js`): una venta saldada o anulada deja de ser crédito. La columna `es_credito` ya no se lee en las respuestas.
 - Comisiones: `listAgents` devuelve `accumulated` derivado de las ventas y `pendingSaleIds`; `getAgent` y `createAgent` derivan `accumulated`. `listAgents?para=venta` agrega `docLast4`.
-- Ventas: `create` agrega `voucherDelivery`, con lo que pasó con cada voucher (hallazgo 10). **Falta probarlo antes de publicar.**
+- Ventas: `create` agrega `voucherDelivery`, con lo que pasó con cada voucher (hallazgo 10).
 
 **Migraciones:** ninguna. **Scripts de `db-manual/`:** ninguno. No se escribe en producción.
 
-**Frontend** (GoDaddy, a mano): hallazgos 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 y parte del 14 (el 11 falta probarlo con un usuario freelancer, y el 13 en pantalla); la tabla de ventas con "Vencida"; la modal de liquidación rediseñada. El usuario también probó en pantalla los hallazgos 8 y 9. El 7 no cambia ninguna pantalla.
+**Frontend** (GoDaddy, a mano): hallazgos 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15 y parte del 14 (el 15 falta probarlo con el teclado); la tabla de ventas con "Vencida"; la modal de liquidación rediseñada. El usuario también probó en pantalla los hallazgos 8, 9, 10, 11 y 13. El 7 no cambia ninguna pantalla.
 
 ## Orden
 

@@ -858,6 +858,7 @@ export default function Users() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        hasForm
         title={editingUser ? "Editar Usuario" : "Nuevo Usuario"}
         size="lg"
         footer={

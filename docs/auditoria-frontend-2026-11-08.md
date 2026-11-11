@@ -205,12 +205,12 @@ Prioridad media:
 - [x] 7. Cambios confirmados reaparecen desde caché. Corregido: crear, editar o desactivar clientes, registrar o borrar abonos y liquidar comisiones invalidan la caché, y ventas y clientes guardan cada uno su antigüedad.
 - [x] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta. Corregido; diseño en `docs/designs/hallazgo-8-refrescar-y-filtros-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [x] 9. Errores de red presentados como ceros o listas vacías. Corregido; diseño en `docs/designs/hallazgo-9-errores-de-carga-2026-11.md`. Probado en pantalla por el usuario contra la app local.
-- [x] 10. Vouchers anunciados sin confirmación de envío. Corregido; diseño en `docs/designs/hallazgo-10-vouchers-2026-11.md`. Falta probarlo contra la app local.
-- [x] 11. `/config` se abre sin `config.view`. Corregido en todas las rutas; diseño en `docs/designs/hallazgo-11-rutas-por-permiso-2026-11.md`. Falta probarlo con un usuario freelancer.
+- [x] 10. Vouchers anunciados sin confirmación de envío. Corregido; diseño en `docs/designs/hallazgo-10-vouchers-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [x] 11. `/config` se abre sin `config.view`. Corregido en todas las rutas; diseño en `docs/designs/hallazgo-11-rutas-por-permiso-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
-- [x] 13. Adjuntos sin validar el límite anunciado. Corregido; diseño en `docs/designs/hallazgo-13-adjuntos-2026-11.md`. Falta mirarlo en pantalla.
+- [x] 13. Adjuntos sin validar el límite anunciado. Corregido; diseño en `docs/designs/hallazgo-13-adjuntos-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
-- [ ] 15. Modales y campos sin accesibilidad básica.
+- [x] 15. Modales y campos sin accesibilidad básica. Corregido; diseño en `docs/designs/hallazgo-15-accesibilidad-2026-11.md`. Falta probar el teclado en pantalla.
 - [ ] 16. Carga inicial y mantenimiento.
 
 Orden propuesto para lo que falta (2026-11-10): primero el 9, porque la pantalla puede mostrar $0 cuando en realidad falló la carga (invariante 4); después el resto del 7 y el 10; luego el 11 y el 13, que son chicos; el 8; y al final el 15 y el 16. El tope de 5.000 del 14 espera a que el volumen se acerque.

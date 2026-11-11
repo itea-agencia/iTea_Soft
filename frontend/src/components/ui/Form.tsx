@@ -1,4 +1,4 @@
-import { ReactNode, useState, useRef, useEffect } from 'react';
+import { ReactNode, ReactElement, useState, useRef, useEffect, useId, isValidElement, cloneElement } from 'react';
 import { X, AlertCircle, ChevronDown, Search } from 'lucide-react';
 
 interface FormFieldProps {
@@ -8,14 +8,23 @@ interface FormFieldProps {
   className?: string;
 }
 
+// Los controles que reciben id. Un contenedor o un selector de fecha sigue con la etiqueta suelta.
+const LINKABLE_CONTROLS = new Set<unknown>([Input, CurrencyInput, Combobox, Select, Textarea, 'input', 'select', 'textarea']);
+
 export function FormField({ label, children, error, className = "" }: FormFieldProps) {
   const hasMb = className.split(' ').some(c => c.startsWith('mb-'));
+  const generatedId = useId();
+  const control = isValidElement(children) && LINKABLE_CONTROLS.has(children.type) ? (children as ReactElement<any>) : null;
+  const controlId: string | undefined = control ? control.props.id ?? generatedId : undefined;
+  const errorId = `${generatedId}-error`;
   return (
     <div className={`${hasMb ? '' : 'mb-4'} ${className}`}>
-      <label className={`block text-sm font-medium mb-1 ${error ? 'text-red-500' : 'text-gray-700'}`}>{label}</label>
-      {children}
+      <label htmlFor={controlId} className={`block text-sm font-medium mb-1 ${error ? 'text-red-500' : 'text-gray-700'}`}>{label}</label>
+      {control
+        ? cloneElement(control, { id: controlId, ...(error ? { 'aria-invalid': true, 'aria-describedby': errorId } : {}) })
+        : children}
       {error && (
-        <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
+        <p id={errorId} className="mt-1 text-sm text-red-600 flex items-center gap-1">
           <AlertCircle size={14} />
           {error}
         </p>
@@ -121,9 +130,12 @@ interface ComboboxProps {
   className?: string;
   inputClassName?: string;
   preventNumbers?: boolean;
+  id?: string;
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
 }
 
-export function Combobox({ value, onChange, options, placeholder, error, className = '', inputClassName = '', preventNumbers }: ComboboxProps) {
+export function Combobox({ value, onChange, options, placeholder, error, className = '', inputClassName = '', preventNumbers, id, 'aria-invalid': ariaInvalid, 'aria-describedby': ariaDescribedBy }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -161,6 +173,9 @@ export function Combobox({ value, onChange, options, placeholder, error, classNa
     <div className={`relative ${className}`} ref={containerRef}>
       <div className="relative">
         <input
+          id={id}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           type="text"
           className={`w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent/50 transition-all ${
             error ? 'border-red-500' : 'border-gray-border'

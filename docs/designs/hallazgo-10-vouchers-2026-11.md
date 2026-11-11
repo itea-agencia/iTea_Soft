@@ -31,4 +31,4 @@ Pruebas de `utils/voucherDelivery.ts`, `tsc`, `npm test` y `node --check`. La re
 
 ## Lo que queda abierto
 
-- Al cerrar la advertencia, el fondo puede volver a desplazarse con el asistente abierto: cada modal escribe por su cuenta en `body.style.overflow`. Es parte del hallazgo 15.
+- Nada: el desbloqueo del fondo al cerrar la advertencia se corrigió con el hallazgo 15.

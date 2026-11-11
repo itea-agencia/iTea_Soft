@@ -728,6 +728,7 @@ export default function Sales() {
       <Modal
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
+        hasForm
         title="Nueva Venta"
         size="xl"
         contentClassName="!p-0 flex flex-col overflow-hidden h-[65vh] sm:h-[70vh] md:h-[75vh]"
@@ -779,6 +780,7 @@ export default function Sales() {
       <Modal
         isOpen={!!voidConfirm}
         onClose={() => setVoidConfirm(null)}
+        hasForm
         title="Anular Venta"
         size="md"
         footer={

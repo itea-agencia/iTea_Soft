@@ -665,6 +665,7 @@ export default function Itineraries() {
       <Modal
         isOpen={isCheckinModalOpen}
         onClose={() => !isSending && setIsCheckinModalOpen(false)}
+        hasForm
         title="Enviar Check-in"
         size="sm"
         footer={

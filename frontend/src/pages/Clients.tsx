@@ -775,6 +775,7 @@ export default function Clients() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        hasForm
         title={editingClient ? "Editar Cliente" : "Nuevo Cliente"}
         size="lg"
         footer={

@@ -631,6 +631,7 @@ export default function CommissionAgents() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        hasForm
         title={editingAgent ? "Editar Perfil de Comisionista" : "Registrar Nuevo Comisionista Estratégico"}
         size="lg"
       >
@@ -770,6 +771,7 @@ export default function CommissionAgents() {
       <Modal
         isOpen={isSettleModalOpen}
         onClose={() => setIsSettleModalOpen(false)}
+        hasForm
         title="Validación de Liquidación"
         size="md"
         footer={
