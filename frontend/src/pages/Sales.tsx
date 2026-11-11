@@ -37,10 +37,10 @@ import { LoadFailed } from "../components/ui/LoadFailed";
 import { PageSkeleton } from "../components/ui/PageSkeleton";
 import { useSalesQuery } from "../hooks/useSalesQuery";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import { buildSalesParams, creditPanelState, lastPage, resolvePageState, SALES_PAGE_SIZE } from "../utils/salesQuery";
+import { buildSalesParams, creditPanelState, currentDetails, DetailsCache, lastPage, resolvePageState, SALES_PAGE_SIZE, storeSaleDetail } from "../utils/salesQuery";
 
 export default function Sales() {
-  const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, fetchClients } = useData();
+  const { data, salesVersion, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, fetchClients } = useData();
   const responsables = data.responsables || [];
   const { user, isAdmin } = useAuth();
   const { puede, alcance } = usePermissions();
@@ -49,7 +49,10 @@ export default function Sales() {
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
-  const [salesDetails, setSalesDetails] = useState<Record<number, Sale>>({});
+  // El detalle vale solo para el salesVersion en que se pidio: tras anular, pagar o marcar
+  // facturada, reabrirlo lo vuelve a pedir (storeSaleDetail).
+  const [detailsCache, setDetailsCache] = useState<DetailsCache<Sale>>({ version: salesVersion, byId: {} });
+  const salesDetails = currentDetails(detailsCache, salesVersion);
   const [voucherIssues, setVoucherIssues] = useState<VoucherIssues | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -118,8 +121,9 @@ export default function Sales() {
 
   const handlePrefetchDetail = (sale: Sale) => {
     if (!salesDetails[sale.id]) {
+      const version = salesVersion;
       api.getSale(sale.id).then(fetched => {
-        setSalesDetails(prev => ({ ...prev, [sale.id]: fetched }));
+        setDetailsCache(prev => storeSaleDetail(prev, version, sale.id, fetched));
       }).catch(() => null);
     }
   };

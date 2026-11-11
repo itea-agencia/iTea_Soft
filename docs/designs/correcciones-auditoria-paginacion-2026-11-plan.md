@@ -62,7 +62,7 @@
 
 `frontend/src/pages/Sales.tsx:52` y `:112`. `salesDetails` se guarda con el `salesVersion` en que se pidió; si el `salesVersion` del contexto es otro, se trata como vacío y `handleViewDetail` lo vuelve a pedir. `salesVersion` ya sube al crear, anular, marcar facturada, pagar, borrar un pago y liquidar (`refreshSales()` en `DataContext`), y con Refrescar. Se deriva en el render, sin `useEffect` que escriba estado (`.claude/rules/frontend.md`).
 
-- [ ] `tsc` y `npm test`. Commit.
+- [x] `tsc` y `npm test`. Commit.
 
 ### Tarea 6: alcance "propios" con un usuario de prueba (con permiso)
 

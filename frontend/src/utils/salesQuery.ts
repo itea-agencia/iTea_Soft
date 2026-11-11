@@ -47,3 +47,18 @@ export function creditPanelState(query: { lastSales: unknown[] | null; failed: b
   if (query.lastSales === null) return query.failed ? 'error' : 'skeleton';
   return query.failed ? 'stale' : 'panel';
 }
+
+export interface DetailsCache<T> { version: number; byId: Record<number, T> }
+
+// El detalle de una venta se guarda con el salesVersion en que se pidio. Antes no se invalidaba
+// nunca: tras anular, pagar o marcar facturada, reabrir el detalle mostraba el estado anterior
+// (auditoria de la paginacion). salesVersion sube con cada una de esas acciones.
+export function storeSaleDetail<T>(cache: DetailsCache<T>, version: number, id: number, sale: T): DetailsCache<T> {
+  // Una respuesta pedida antes de un cambio no pisa lo que ya se guardo despues.
+  if (version < cache.version) return cache;
+  const byId = version === cache.version ? cache.byId : {};
+  return { version, byId: { ...byId, [id]: sale } };
+}
+
+export const currentDetails = <T,>(cache: DetailsCache<T>, version: number): Record<number, T> =>
+  cache.version === version ? cache.byId : {};

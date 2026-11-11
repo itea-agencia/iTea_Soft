@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { cargarTs } from './cargarTs.mjs';
 
-const { buildSalesParams, lastPage, resolvePageState, creditPanelState } = await cargarTs('utils/salesQuery.ts');
+const { buildSalesParams, lastPage, resolvePageState, creditPanelState, storeSaleDetail, currentDetails } = await cargarTs('utils/salesQuery.ts');
 
 const noFilters = { search: '', status: 'all', startDate: '', endDate: '' };
 
@@ -94,4 +94,23 @@ test('el panel de créditos muestra el esqueleto solo antes del primer resultado
 test('con un resultado anterior el panel sigue visible, y avisa si la recarga falló', () => {
   assert.equal(creditPanelState({ lastSales: [], failed: false }), 'panel');
   assert.equal(creditPanelState({ lastSales: [], failed: true }), 'stale');
+});
+
+// El detalle de una venta se guardaba sin fecha: tras anular o pagar, reabrirlo mostraba el estado
+// anterior. Se guarda con el salesVersion en que se pidio y vale solo para esa version.
+test('el detalle vale solo para la versión en que se pidió', () => {
+  const cache = storeSaleDetail({ version: 0, byId: {} }, 0, 7, { id: 7, status: 'credito' });
+  assert.deepEqual(currentDetails(cache, 0), { 7: { id: 7, status: 'credito' } });
+  assert.deepEqual(currentDetails(cache, 1), {});
+});
+
+test('un detalle de una versión nueva descarta los anteriores', () => {
+  let cache = storeSaleDetail({ version: 0, byId: {} }, 0, 7, { id: 7 });
+  cache = storeSaleDetail(cache, 1, 8, { id: 8 });
+  assert.deepEqual(cache, { version: 1, byId: { 8: { id: 8 } } });
+});
+
+test('una respuesta que llega después de un cambio no pisa lo nuevo', () => {
+  const cache = { version: 2, byId: { 8: { id: 8 } } };
+  assert.equal(storeSaleDetail(cache, 1, 7, { id: 7 }), cache);
 });
