@@ -68,10 +68,10 @@
 
 Pedir permiso al usuario antes de cada paso que escribe o levanta algo.
 
-- [ ] Con permiso: reconstruir backend y frontend (`docker compose up -d --build backend frontend`).
-- [ ] Con permiso: en la base local, un usuario de prueba con un rol cuyo `sales.view` sea `own`, y al menos una venta suya y varias ajenas. Si hace falta un script, va en `backend/db-manual/` y su estado en el README de esa carpeta.
-- [ ] Con permiso: entrar con ese usuario por la API (`curl` con su token) y comprobar que `GET /sales` con página, búsqueda, `onCredit` y fechas solo devuelve sus ventas, y que `meta.total` coincide con un conteo SQL de sus ventas.
-- [ ] Anotar el resultado en el diseño. Borrar o dejar el usuario de prueba según diga el usuario.
+- [x] Con permiso: reconstruir backend y frontend (`docker compose up -d --build backend frontend`).
+- [x] Con permiso: en la base local, un usuario de prueba con un rol cuyo `sales.view` sea `own`, y al menos una venta suya y varias ajenas. Si hace falta un script, va en `backend/db-manual/` y su estado en el README de esa carpeta.
+- [x] Con permiso: entrar con ese usuario por la API (`curl` con su token) y comprobar que `GET /sales` con página, búsqueda, `onCredit` y fechas solo devuelve sus ventas, y que `meta.total` coincide con un conteo SQL de sus ventas.
+- [x] Anotar el resultado en el diseño. Borrar o dejar el usuario de prueba según diga el usuario.
 
 ### Tarea 7: cierre
 

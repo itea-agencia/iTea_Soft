@@ -67,6 +67,27 @@ Respondidas el 2026-11-11:
 - **Merge:** espera todo junto, las correcciones y la prueba a mano de la venta de las 17 categorías del hallazgo 16. Se descartó separar la paginación en otra rama desde `main`.
 - **Alcance "propios":** se prueba con un usuario de prueba en la base local con un rol de alcance "propios", con la app levantada y `auth` incluido. Crear el usuario y levantar la app se confirman con el usuario en el momento (regla 4).
 
+## Prueba del alcance "propios" (2026-11-11)
+
+En la base local, con permiso del usuario: un rol aparte, `prueba_propios`, con solo `sales.view = own` (no afecta a ningún usuario existente), un usuario de prueba (id 14) y 3 ventas reasignadas desde el usuario 4: 101 (abonado), 104 (crédito) y 3 (pagado). Los asesores originales quedaron en la tabla local `_prueba_propios_ventas` para revertir. El script no se versionó: `db-manual/` es para producción y uno solo local ahí se podría correr donde no va.
+
+Con login real y `auth` incluido, por la API local:
+
+| Consulta | Resultado |
+|---|---|
+| Sin filtros, página 1 | total 3: 104, 101, 3 |
+| Página 2 de a 2 | total 3: la 3 |
+| `onCredit=true` | total 2: 104, 101 (SQL: 2) |
+| `status=pagado` | total 1: la 3 |
+| `search=a` | total 3, ninguna ajena |
+| `search=_` | total 0 |
+| Fechas amplias con `-05:00` | total 3 |
+| `clientId` y `asesorId` ajenos | total 0: se suman al alcance, no lo reemplazan |
+| `GET /sales/1` (ajena) | 404 |
+| `GET /sales/104` (propia) | 200 |
+
+`meta.total` coincide con el conteo SQL de sus ventas (3, y 2 en crédito). Ninguna respuesta trajo ventas de otro asesor.
+
 ## Lo que queda abierto
 
 - Factura Siigo sin recargar la tabla (decidido no entrar ahora).
