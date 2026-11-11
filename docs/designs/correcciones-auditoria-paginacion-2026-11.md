@@ -1,7 +1,6 @@
 # Correcciones de la auditoría de la paginación de Ventas
 
-Estado: **en diseño, sin aprobar.** Faltan las respuestas de "Preguntas pendientes" antes de
-escribir los planes. No se tocó código.
+Estado: **aprobado, sin plan.** Las preguntas se respondieron el 2026-11-11 (ver "Decisiones del usuario"). Sigue escribir el plan. No se tocó código.
 
 Sale de la auditoría del 2026-11-10 sobre los commits `c2c4077` y `30388fd` de
 `feat/hallazgo-16-carga-y-mantenimiento` (ver `ventas-paginacion-servidor-2026-11.md`).
@@ -58,24 +57,15 @@ Heredados (antes de la paginación):
 - **Heredado que no entra:** factura Siigo sin recargar. Queda en "Lo que queda abierto".
 - Las preguntas se hacen con opciones.
 
-## Propuesta del implementador (sin confirmar)
+Respondidas el 2026-11-11:
 
-- La búsqueda trata `_`, `%` y `\` como texto literal, como el filtro anterior.
-
-## Preguntas pendientes
-
-1. **Día del filtro de fechas:** ¿se define en hora de Colombia (como la tabla muestra las
-   fechas, `formatDate`) o en la hora del navegador? Aplica a "Desde" y "Hasta".
-2. **Detalle desactualizado:** ¿basta con que al reabrir el detalle se pida la venta de nuevo,
-   o también debe actualizarse si está abierto mientras se anula o se paga?
-3. **Rama:** ¿las correcciones van en `feat/hallazgo-16-carga-y-mantenimiento` o en una rama
-   nueva?
-4. **Planes:** ¿un solo plan o uno por corrección?
-5. **Merge:** ¿espera también la prueba pendiente del hallazgo 16 (venta de las 17
-   categorías)?
-6. **Alcance "propios":** en producción ningún usuario tiene el rol con ese alcance. ¿Cómo se
-   prueba: un usuario de prueba en la base local o de otra forma?
-7. **Comodines:** ¿confirmas la propuesta de buscar `_` y `%` como texto literal?
+- **Día del filtro de fechas:** hora de Colombia fija, para "Desde" y "Hasta": de 00:00 a 23:59:59.999 con `-05:00`. Hoy "Desde" se lee en UTC y "Hasta" en la hora del navegador, que ni siquiera coinciden entre sí. Colombia es como la tabla muestra las fechas (`formatDate`), como cuenta los días `getDaysUntilDue` y como los calcula `diaColombia` en el backend.
+- **Detalle desactualizado:** alcanza con descartar el detalle guardado tras anular, pagar, marcar facturada o liquidar, para que al reabrirlo se pida de nuevo. No hace falta actualizarlo abierto: anular se hace desde la tabla (`Sales.tsx:440`) y los pagos desde otra modal (`Sales.tsx:747`); el único caso con el detalle abierto es emitir en Siigo, que no entra.
+- **Comodines:** la búsqueda trata `_`, `%` y `\` como texto literal, como el filtro anterior en el navegador. Es corregir un resultado, no una preferencia.
+- **Rama:** las correcciones van en `feat/hallazgo-16-carga-y-mantenimiento`, donde están los commits que introdujeron las regresiones.
+- **Plan:** uno solo, con un commit por corrección: tocan los mismos archivos (`Sales.tsx`, `salesQuery.ts`).
+- **Merge:** espera todo junto, las correcciones y la prueba a mano de la venta de las 17 categorías del hallazgo 16. Se descartó separar la paginación en otra rama desde `main`.
+- **Alcance "propios":** se prueba con un usuario de prueba en la base local con un rol de alcance "propios", con la app levantada y `auth` incluido. Crear el usuario y levantar la app se confirman con el usuario en el momento (regla 4).
 
 ## Lo que queda abierto
 
