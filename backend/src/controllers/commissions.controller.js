@@ -3,7 +3,7 @@ const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
 const { formatName } = require('../utils/stringUtils');
-const { fillMissingPersonFields, normalizeDocNumber, personInputError } = require('../utils/persons');
+const { fillMissingPersonFields, normalizeDocNumber, personInputError, currentDocOf } = require('../utils/persons');
 const { diaColombia } = require('../utils/fechas');
 
 // Una liquidacion guarda la fecha que manda el formulario ('YYYY-MM-DD', queda a 00:00 UTC) o,
@@ -192,9 +192,9 @@ exports.listAgents = async (req, res, next) => {
 exports.createAgent = async (req, res, next) => {
   try {
     const data = req.body;
-    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
     const personError = await personInputError(prisma, data, { create: true, fullName: true });
     if (personError) return error(res, personError.message, 400, personError.code);
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
 
     let tipoDocumentoId = null;
     if (data.docType) {
@@ -322,9 +322,10 @@ exports.updateAgent = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
-    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
-    const personError = await personInputError(prisma, data, { create: false, fullName: true });
+    const current = await currentDocOf(prisma, 'comisionistas', id);
+    const personError = await personInputError(prisma, data, { create: false, fullName: true, current });
     if (personError) return error(res, personError.message, 400, personError.code);
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType || current?.docType);
     const agent = await prisma.comisionistas.findUnique({
       where: { id },
       include: { persona: { include: { tipoDocumento: true } } }

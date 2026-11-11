@@ -5,7 +5,7 @@ const { buildMeta } = require('../utils/paginationHelper');
 const siigoService = require('../services/siigo.service');
 const ciudadesDane = require('../config/ciudades-dane');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
-const { fillMissingPersonFields, normalizeDocNumber, personInputError } = require('../utils/persons');
+const { fillMissingPersonFields, normalizeDocNumber, personInputError, currentDocOf } = require('../utils/persons');
 const { auditar } = require('../utils/auditoria');
 
 // Sincroniza el tercero en Siigo y guarda su id en la persona, para no volver a buscarlo
@@ -184,10 +184,10 @@ exports.getById = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const data = req.body;
-    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
     let tipoDocumentoId = null;
     const personError = await personInputError(prisma, data, { create: true });
     if (personError) return error(res, personError.message, 400, personError.code);
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
 
     if (data.docType) {
       const tipoDoc = await prisma.tiposDocumento.findUnique({
@@ -315,9 +315,10 @@ exports.update = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
-    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
-    const personError = await personInputError(prisma, data, { create: false });
+    const current = await currentDocOf(prisma, 'clientes', id);
+    const personError = await personInputError(prisma, data, { create: false, current });
     if (personError) return error(res, personError.message, 400, personError.code);
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType || current?.docType);
 
     const cliente = await prisma.clientes.findUnique({ where: { id }, include: { persona: true } });
     if (!cliente) return error(res, 'Cliente no encontrado', 404);

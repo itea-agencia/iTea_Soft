@@ -2,7 +2,7 @@ const prisma = require('../config/db');
 const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
 const { buildMeta } = require('../utils/paginationHelper');
-const { fillMissingPersonFields, normalizeDocNumber, personInputError } = require('../utils/persons');
+const { fillMissingPersonFields, normalizeDocNumber, personInputError, currentDocOf } = require('../utils/persons');
 const { auditar } = require('../utils/auditoria');
 
 exports.list = async (req, res, next) => {
@@ -153,11 +153,10 @@ exports.getById = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType);
-    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email } = req.body;
-
     const personError = await personInputError(prisma, req.body, { create: true });
     if (personError) return error(res, personError.message, 400, personError.code);
+    req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType);
+    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email } = req.body;
 
     // Resolve docTypeId from abbreviation if not provided as integer
     let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
@@ -245,11 +244,11 @@ exports.create = async (req, res, next) => {
 exports.update = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType);
-    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, status } = req.body;
-
-    const personError = await personInputError(prisma, req.body, { create: false });
+    const current = await currentDocOf(prisma, 'responsables', id);
+    const personError = await personInputError(prisma, req.body, { create: false, current });
     if (personError) return error(res, personError.message, 400, personError.code);
+    req.body.docNumber = normalizeDocNumber(req.body.docNumber, req.body.docType || current?.docType);
+    const { firstName, lastName, docType, docTypeId: rawDocTypeId, docNumber, phone, email, status } = req.body;
 
     // Resolve docTypeId from abbreviation if not provided as integer
     let docTypeId = rawDocTypeId ? parseInt(rawDocTypeId) : null;
@@ -286,7 +285,9 @@ exports.update = async (req, res, next) => {
         data: {
           nombres: firstName,
           apellidos: lastName,
-          tipoDocumentoId: docTypeId,
+          // Sin tipo en el body se conserva el guardado: escribir null lo borraba al editar
+          // solo el telefono. Prisma ignora los undefined.
+          tipoDocumentoId: docTypeId ?? undefined,
           documento: docNumber,
           telefono: phone,
           email: email

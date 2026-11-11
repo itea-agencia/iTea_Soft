@@ -60,9 +60,15 @@ function fullNameError(value) {
  * responsables o comisionistas. En un alta (`create`) todo es obligatorio; en una edicion
  * se valida solo lo que llega, para que cambiar el telefono no exija reenviar el nombre.
  * `fullName` usa `name` (comisionistas) en vez de `firstName` y `lastName`.
+ *
+ * Tipo y documento se validan juntos: en una edicion que trae solo uno, el otro sale de
+ * `current` (lo guardado, de currentDocOf). Antes un "ABCDEF" sin tipo pasaba solo con el
+ * largo aunque la persona fuera CC, y cambiar el tipo a CC no revisaba el numero guardado.
+ * Se valida el documento tal como llego, antes de normalizeDocNumber: normalizar primero
+ * convertia "900123456-xx" en "900123456" y lo aceptaba.
  * Devuelve { message, code } o null.
  */
-async function personInputError(prisma, data, { create, fullName = false }) {
+async function personInputError(prisma, data, { create, fullName = false, current = null }) {
   const has = (field) => create || data[field] !== undefined;
   const fail = (message, code) => ({ message, code });
 
@@ -77,20 +83,33 @@ async function personInputError(prisma, data, { create, fullName = false }) {
     }
   }
 
+  const typeSent = has('docType') || data.docTypeId !== undefined;
+  const numberSent = has('docNumber');
+  if (!typeSent && !numberSent) return null;
+
   // El tipo puede llegar por abreviatura o por id (responsables acepta los dos).
-  if (has('docType') || data.docTypeId !== undefined) {
+  let docType = current?.docType || '';
+  if (typeSent) {
     const byId = data.docTypeId ? parseInt(data.docTypeId) : null;
     const tipo = byId
       ? await prisma.tiposDocumento.findUnique({ where: { id: byId } })
       : (data.docType ? await prisma.tiposDocumento.findFirst({ where: { abreviatura: data.docType } }) : null);
     if (!tipo) return fail(data.docType || byId ? 'El tipo de documento no existe' : 'Seleccione un tipo de documento', 'INVALID_DOC_TYPE');
-    if (has('docNumber')) { const e = docNumberError(tipo.abreviatura, data.docNumber); if (e) return fail(e, 'INVALID_DOC_NUMBER'); }
-  } else if (has('docNumber')) {
-    // Llega el numero sin el tipo: solo se puede revisar lo que no depende del tipo.
-    const e = docNumberError('', data.docNumber);
-    if (e) return fail(e, 'INVALID_DOC_NUMBER');
+    docType = tipo.abreviatura;
   }
-  return null;
+  const docNumber = numberSent ? data.docNumber : current?.docNumber;
+  const e = docNumberError(docType, docNumber);
+  return e ? fail(e, 'INVALID_DOC_NUMBER') : null;
+}
+
+// Tipo y documento guardados de la persona de un cliente, usuario, responsable o
+// comisionista, para validar una edicion parcial con personInputError.
+async function currentDocOf(prisma, model, id) {
+  const row = await prisma[model].findUnique({
+    where: { id },
+    select: { persona: { select: { documento: true, tipoDocumento: { select: { abreviatura: true } } } } },
+  });
+  return row?.persona ? { docType: row.persona.tipoDocumento?.abreviatura || '', docNumber: row.persona.documento || '' } : null;
 }
 
 // El NIT se guarda sin digito de verificacion: el formulario acepta 900123456 y 900123456-7,
@@ -102,4 +121,4 @@ function normalizeDocNumber(docNumber, docType) {
   return String(docNumber).trim().split('-')[0].trim();
 }
 
-module.exports = { fillMissingPersonFields, normalizeDocNumber, docNumberError, namePartError, fullNameError, personInputError };
+module.exports = { fillMissingPersonFields, normalizeDocNumber, docNumberError, namePartError, fullNameError, personInputError, currentDocOf };

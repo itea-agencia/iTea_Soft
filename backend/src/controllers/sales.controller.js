@@ -1510,14 +1510,33 @@ function simDeliveryEmailError(items) {
 }
 
 /**
+ * Los pasajeros que create va a guardar para un item, con el nombre, el tipo y el documento
+ * que se usan para buscar o crear la persona; null si el producto no lleva pasajeros.
+ * passengerError valida exactamente esto, para que lo validado y lo guardado no se separen:
+ * antes la validacion miraba solo docNumber y la escritura tambien tomaba passportNumber,
+ * licenseNumber e idNumber, y un check-in con passportNumber creaba un "Pasajero Temporal".
+ */
+function resolvePassengers(item, category) {
+  const list = getPassengerList(item);
+  if (!list && !item.passengerName && !item.ownerName && !CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(category)) return null;
+  return (list || [{}]).map(raw => {
+    const p = raw || {};
+    return {
+      raw: p,
+      name: p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver,
+      docType: p.docType || item.docType,
+      docNumber: p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber,
+    };
+  });
+}
+
+/**
  * Primer pasajero de la venta que no tiene nombre, tipo o documento validos, o null.
- * Spec datos-por-pasajero ("Todo pasajero tiene nombre y documento"). Antes un pasajero sin
- * documento creaba una persona nueva en cada venta. El asistente aplica la misma regla
- * (passengerError en wizardValidation.ts).
+ * Spec datos-por-pasajero ("Todo pasajero tiene nombre y documento"). El asistente aplica la
+ * misma regla (passengerError en wizardValidation.ts).
  *
- * Sigue la misma logica que arma pasajerosDetalle en create, para que no se separen: una
- * lista explicita se valida fila por fila (una fila vacia se rechaza); sin lista, el titular
- * implicito se valida solo si el item trae nombre o documento; si no trae nada es el cliente.
+ * En una lista explicita una fila sin nombre ni documento se rechaza; sin lista, el titular
+ * implicito sin nombre ni documento es el cliente (findOrCreatePersona devuelve su persona).
  */
 function passengerError(data, docTypes) {
   for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
@@ -1525,26 +1544,20 @@ function passengerError(data, docTypes) {
     const items = Array.isArray(data[field]) ? data[field] : [];
     for (const [i, item] of items.entries()) {
       if (!item || Object.keys(item).length === 0) continue;
-      const list = getPassengerList(item);
-      let persons;
-      if (list) {
-        persons = list.map(p => ({ name: (p || {}).name || (p || {}).passengerName || (p || {}).fullName, docType: (p || {}).docType, docNumber: (p || {}).docNumber }));
-      } else {
-        const implicit = item.passengerName || item.ownerName || CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(handler.category);
-        const person = { name: item.passengerName || item.ownerName, docType: item.docType, docNumber: item.docNumber };
-        if (!implicit || (!String(person.name || '').trim() && !String(person.docNumber || '').trim())) continue;
-        persons = [person];
-      }
-      for (const [j, p] of persons.entries()) {
-        const where = list ? `${handler.nombreServicio} #${i + 1}, pasajero ${j + 1}` : `${handler.nombreServicio} #${i + 1}`;
+      const passengers = resolvePassengers(item, handler.category);
+      if (!passengers) continue;
+      const explicit = !!getPassengerList(item);
+      for (const [j, p] of passengers.entries()) {
         const name = String(p.name || '').trim();
         const docNumber = String(p.docNumber || '').trim();
-        let reason = null;
-        if (!name && !docNumber) reason = 'Faltan el nombre y el documento';
-        else reason = fullNameError(name)
-          || (!p.docType ? 'Seleccione un tipo de documento' : null)
-          || (!docTypes.has(p.docType) ? `El tipo de documento ${p.docType} no existe` : null)
-          || docNumberError(p.docType, docNumber);
+        if (!explicit && !name && !docNumber) continue;
+        const where = explicit ? `${handler.nombreServicio} #${i + 1}, pasajero ${j + 1}` : `${handler.nombreServicio} #${i + 1}`;
+        const reason = (!name && !docNumber)
+          ? 'Faltan el nombre y el documento'
+          : fullNameError(name)
+            || (!p.docType ? 'Seleccione un tipo de documento' : null)
+            || (!docTypes.has(p.docType) ? `El tipo de documento ${p.docType} no existe` : null)
+            || docNumberError(p.docType, docNumber);
         if (reason) return `${where}: ${reason}`;
       }
     }
@@ -1910,14 +1923,11 @@ exports.create = async (req, res, next) => {
 
            const pasajerosDetalleData = [];
           if (personaId) {
-            const listaPasajeros = getPassengerList(item);
-            const hasPassengerInfo = listaPasajeros || item.passengerName || item.ownerName ||
-              CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(handler.category);
+            const passengers = resolvePassengers(item, handler.category);
 
-            if (hasPassengerInfo) {
-              const passengers = listaPasajeros || [{}];
-              for (const p of passengers) {
-                const pid = CATEGORIAS_PASAJERO_ES_CLIENTE.includes(handler.category) ? personaId : await findOrCreatePersona(tx, p.name || p.passengerName || p.fullName || item.passengerName || item.ownerName || item.mainDriver, p.docType || item.docType, p.docNumber || item.docNumber || item.licenseNumber || item.passportNumber || item.idNumber, personaId);
+            if (passengers) {
+              for (const { raw: p, name, docType, docNumber } of passengers) {
+                const pid = CATEGORIAS_PASAJERO_ES_CLIENTE.includes(handler.category) ? personaId : await findOrCreatePersona(tx, name, docType, docNumber, personaId);
                 pasajerosDetalleData.push({
                   personaId: pid,
                   esTitular: p.esTitular ?? true,

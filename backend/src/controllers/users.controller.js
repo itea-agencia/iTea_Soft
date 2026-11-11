@@ -10,7 +10,7 @@ const { ASESOR_ACTIVO } = require('../utils/asesores');
 const sesiones = require('../services/sesiones.service');
 const { permisosEfectivos, alcanceDe } = require('../config/permisos');
 const { auditar } = require('../utils/auditoria');
-const { normalizeDocNumber, personInputError } = require('../utils/persons');
+const { normalizeDocNumber, personInputError, currentDocOf } = require('../utils/persons');
 
 exports.list = async (req, res, next) => {
   try {
@@ -168,9 +168,9 @@ const esAdmin = (req) => req.user?.role === 'admin';
 exports.create = async (req, res, next) => {
   try {
     const data = req.body;
-    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
     const personError = await personInputError(prisma, data, { create: true });
     if (personError) return error(res, personError.message, 400, personError.code);
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
 
     if (typeof data.password !== 'string' || !data.password) {
       return error(res, 'La contraseña es requerida', 400, 'VALIDATION_ERROR');
@@ -315,9 +315,10 @@ exports.update = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
     const data = req.body;
-    data.docNumber = normalizeDocNumber(data.docNumber, data.docType);
-    const personError = await personInputError(prisma, data, { create: false });
+    const current = await currentDocOf(prisma, 'usuarios', id);
+    const personError = await personInputError(prisma, data, { create: false, current });
     if (personError) return error(res, personError.message, 400, personError.code);
+    data.docNumber = normalizeDocNumber(data.docNumber, data.docType || current?.docType);
 
     const usuario = await prisma.usuarios.findUnique({ where: { id }, include: { persona: true, rol: true } });
     // Un eliminado no existe para la interfaz: no se edita. Volver es reingresar por `create`.
