@@ -135,3 +135,20 @@ Backend reconstruido; pruebas por la API local con `prueba.ventas@local`.
   - un cliente con NIT `900123456-7` se crea (201).
 - **Producción**, solo lectura: clientes 128, usuarios 5, responsables 11 y comisionistas 2, con 0 que fallen la regla. Pasajeros: 101, con 1 que falla, que es la persona del equipaje (deuda técnica).
 - **Datos que quedaron en la base local:** las ventas 162 a 164, y un cliente, un responsable, un usuario y un comisionista de prueba (documentos `991000010` a `991000040`). Además, un cliente con NIT `900123456`.
+
+## Correcciones tras la revisión del código (2026-11-11, `220c654`)
+
+Una revisión encontró cuatro huecos que las pruebas de la tarea 7 no detectaron:
+- Una edición parcial validaba el número sin el tipo guardado, y el tipo sin el número guardado.
+- La validación de pasajeros no miraba `passportNumber`, `licenseNumber` ni `idNumber`, que la escritura sí usa.
+- La normalización del NIT corría antes de validar.
+- Editar solo el teléfono de un responsable borraba su tipo de documento. Esto venía de antes del plan.
+
+Este último lo sufrió el responsable de prueba 8 en la tarea 7: su "edición solo teléfono → 200" de arriba sí devolvía 200, pero dejaba a la persona sin tipo, y la prueba no lo miraba. En producción no pasó: los 11 responsables tienen tipo.
+
+Verificado por la API local, con el backend reconstruido:
+- A un cliente CC, mandar solo `docNumber: "ABCDEF"` da 400.
+- A un cliente con pasaporte `PA991234`, cambiar solo el tipo a CC da 400.
+- Crear un cliente con NIT `900123456-xx` da 400.
+- Un check-in con `passportNumber` y sin nombre da 400 ("Check-in #1: El nombre es obligatorio"), y `personas` no cambia (105 → 105).
+- Al responsable 8 se le restauró el tipo CC. Después, editarle solo el teléfono da 200 y el tipo sigue siendo CC, comprobado con SQL.
