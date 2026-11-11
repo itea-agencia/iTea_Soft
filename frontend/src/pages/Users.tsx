@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useData } from "../context/DataContext";
+import { useSalesQuery } from "../hooks/useSalesQuery";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "../components/ui/Button";
 import { Card, CardHeader, CardBody } from "../components/ui/Card";
@@ -56,13 +57,11 @@ const ROLE_LABELS: Record<string, string> = {
 export default function Users() {
   const {
     data,
-    salesLoading,
     addUser,
     updateUser,
     deleteUser,
     updateRolePermissions,
     fetchUsers,
-    fetchSales,
     rolePermissionsReady,
     fetchRolePermissions,
   } = useData();
@@ -215,12 +214,11 @@ export default function Users() {
   const itemsPerPage = 8;
 
   // Lazy Load Fetch
+  const userSalesQuery = useSalesQuery(selectedUserForDetail ? { asesorId: selectedUserForDetail.id, perPage: 5000 } : null);
+
   useEffect(() => {
-    Promise.all([
-      fetchUsers(),
-      fetchSales()
-    ]).finally(() => setIsLoading(false));
-  }, [fetchUsers, fetchSales]);
+    fetchUsers().finally(() => setIsLoading(false));
+  }, [fetchUsers]);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -651,7 +649,7 @@ export default function Users() {
               </div>
             ))}
           >
-            {salesLoading && data.users.length === 0 ? (
+            {isLoading && data.users.length === 0 ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><div className="h-4 w-6 bg-gray-200 rounded animate-pulse" /></TableCell>
@@ -782,7 +780,7 @@ export default function Users() {
             )}
           </div>
 
-          {filteredUsers.length === 0 && !salesLoading && (
+          {filteredUsers.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center p-12 text-gray-500 bg-white">
               <UserX size={48} className="text-gray-200 mb-4" />
               <p className="text-lg font-medium">No se encontraron usuarios</p>
@@ -1089,7 +1087,9 @@ export default function Users() {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         user={selectedUserForDetail}
-        userSales={data.sales.filter(s => Number((s as any).asesorId || (s as any).usuarioId || (s as any).usuario_id) === Number(selectedUserForDetail?.id))}
+        userSales={userSalesQuery.sales}
+        salesLoading={userSalesQuery.loading}
+        salesFailed={userSalesQuery.failed}
       />
     </div>
   );

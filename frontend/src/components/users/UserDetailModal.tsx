@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { User, Sale } from '../../types';
+import { SalesLoadStatus } from '../sales/SalesLoadStatus';
 import { DatePicker } from '../sales/forms/TicketForm';
 
 interface UserDetailModalProps {
@@ -12,6 +13,8 @@ interface UserDetailModalProps {
   onClose: () => void;
   user: User | null;
   userSales: Sale[];
+  salesLoading: boolean;
+  salesFailed: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -20,7 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
   freelancer: "Freelancer",
 };
 
-export default function UserDetailModal({ isOpen, onClose, user, userSales }: UserDetailModalProps) {
+export default function UserDetailModal({ isOpen, onClose, user, userSales, salesLoading, salesFailed }: UserDetailModalProps) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -85,7 +88,7 @@ export default function UserDetailModal({ isOpen, onClose, user, userSales }: Us
           <div className="flex flex-col gap-3 mb-3">
             <div className="flex items-center justify-between">
               <h4 className="font-semibold text-gray-900 dark:!text-[#ffffff] flex items-center gap-2">
-                <TrendingUp size={16} className="text-accent" /> Historial de Ventas ({filteredSales.length})
+                <TrendingUp size={16} className="text-accent" /> Historial de Ventas{salesLoading || salesFailed ? '' : ` (${filteredSales.length})`}
               </h4>
               {filteredSales.length > 0 && (
                 <span className="text-xs font-bold text-primary dark:text-teal-400 bg-primary/10 dark:bg-teal-950/40 px-2 py-1 rounded-lg">
@@ -124,7 +127,7 @@ export default function UserDetailModal({ isOpen, onClose, user, userSales }: Us
             </div>
           </div>
           
-          {filteredSales.length > 0 ? (
+          {salesLoading || salesFailed ? <SalesLoadStatus failed={salesFailed} /> : filteredSales.length > 0 ? (
             <div className="flex flex-col gap-2">
               <div className="max-h-60 overflow-y-auto custom-scrollbar border border-gray-100 dark:border-slate-700 rounded-lg">
                 <table className="w-full text-sm">

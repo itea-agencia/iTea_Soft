@@ -4,12 +4,10 @@ import * as api from '../api';
 import { useAuth } from './AuthContext';
 import { getCurrentMonth } from '../utils/formatters';
 import {
-  saveSalesCache,
   saveClientsCache,
-  loadSalesCache,
   loadClientsCache,
-  invalidateSalesCache,
-} from '../utils/salesCache';
+  invalidateClientsCache,
+} from '../utils/clientsCache';
 import {
   saveUsersCache,
   loadUsersCache,
@@ -70,11 +68,11 @@ interface DataContextType {
   data: AppData;
   dashboardData: DashboardData | null;
   dashboardRefreshCount: number;
-  salesLoading: boolean;
+  salesVersion: number;
   loadError: string | null;
   dashboardFailed: boolean;
   fetchDashboard: (params?: Record<string, unknown>, isBackgroundRefresh?: boolean) => Promise<void>;
-  fetchSales: () => Promise<void>;
+  refreshSales: () => void;
   fetchClients: () => Promise<void>;
   fetchResponsables: () => Promise<void>;
   fetchUsers: () => Promise<void>;
@@ -98,7 +96,7 @@ interface DataContextType {
   updateResponsable: (id: number, responsable: any) => Promise<void>;
   deleteResponsable: (id: number) => Promise<void>;
   toggleResponsableStatus: (id: number, status: string) => Promise<void>;
-  addSale: (sale: Omit<Sale, 'id'>) => Promise<Sale>;
+  addSale: (sale: Omit<Sale, 'id'>) => ReturnType<typeof api.createSale>;
   voidSale: (id: number, reason: string) => Promise<string[]>;
   updateReviewStatus: (id: number, isReviewed: boolean) => Promise<void>;
   registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean, reference?: string) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
@@ -116,7 +114,7 @@ interface DataContextType {
 }
 
 const emptyData: AppData = {
-  users: [], clients: [], responsables: [], sales: [], flights: [],
+  users: [], clients: [], responsables: [], flights: [],
   commissionAgents: [], commissionAgentsForSale: [], commissionSettlements: [],
   config: {
     cards: [], paymentMethods: [], documentTypes: [],
@@ -135,7 +133,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // ── Inicialización optimista desde caché ──────────────────────────────
     // Si hay datos cacheados válidos, pre-populamos el estado para que la
     // tabla de ventas/usuarios/catálogos se renderice en 0ms antes del primer fetch de red.
-    const cachedSales = loadSalesCache();
     const cachedClients = loadClientsCache();
     const cachedUsers = loadUsersCache();
     const cachedConfig = loadConfigCache();
@@ -145,10 +142,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...(cachedConfig || {})
     };
 
-    if (cachedSales || cachedClients || cachedUsers || cachedConfig) {
+    if (cachedClients || cachedUsers || cachedConfig) {
       return {
         ...emptyData,
-        sales: (cachedSales as Sale[]) || [],
         clients: (cachedClients as Client[]) || [],
         users: (cachedUsers as User[]) || [],
         config: initialConfig,
@@ -158,11 +154,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(() => loadDashboardCache());
   const [dashboardRefreshCount, setDashboardRefreshCount] = useState(0);
-  // salesLoading = true sólo cuando NO hay caché y se está haciendo el primer fetch
-  const [salesLoading, setSalesLoading] = useState<boolean>(() => {
-    const hasCachedSales = loadSalesCache() !== null;
-    return !hasCachedSales;
-  });
+  // Sube con cada cambio en las ventas: las consultas de useSalesQuery se repiten.
+  const [salesVersion, setSalesVersion] = useState(0);
+  const refreshSales = useCallback(() => setSalesVersion((v) => v + 1), []);
   // Un listado que no carga se mostraba como vacío (`.catch(() => ({ data: [] }))`): sin
   // conexión, la pantalla decía "no hay ventas" en vez de "no se pudieron cargar". Ahora un
   // fallo deja los datos que había (la caché o la carga anterior) y lo dice. Un 401/403 no
@@ -232,25 +226,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setDashboardFailed(true);
         setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
       }
-    }
-  }, []);
-
-  const fetchSales = useCallback(async () => {
-    setSalesLoading(true);
-    try {
-      const token = currentToken();
-      const res = await trackLoad('las ventas', api.listSales({ perPage: 5000 }));
-      if (!res || currentToken() !== token) return;
-      const freshSales = res.data || [];
-      setData(prev => {
-        // El updater puede correr despues; la cache tambien se escribe con la sesion de ahora.
-        if (currentToken() !== token) return prev;
-        saveSalesCache(freshSales);
-        return { ...prev, sales: freshSales };
-      });
-    } catch {
-    } finally {
-      setSalesLoading(false);
     }
   }, []);
 
@@ -406,13 +381,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const cachedConfig = loadConfigCache();
     setData(prev => ({
       ...emptyData,
-      sales: (loadSalesCache() as Sale[]) || [],
       clients: (loadClientsCache() as Client[]) || [],
       users: (loadUsersCache() as User[]) || [],
       config: { ...emptyData.config, ...(cachedConfig || {}) },
     }));
     setDashboardData(loadDashboardCache());
-    setSalesLoading(!loadSalesCache());
 
     // Los permisos de rol se piden SIEMPRE. La cache de configuracion los excluye a
     // proposito (son de la BD y deben ser frescos), pero el fetch de permisos colgaba de
@@ -433,7 +406,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setDashboardRefreshCount((c) => c + 1);
     setDashboardData(null);
     invalidateDashboardCache();
-    fetchSales();
+    refreshSales();
     fetchClients();
     fetchFlights();
   };
@@ -468,7 +441,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addClient = async (client: Omit<Client, 'id'>): Promise<Client> => {
     const created = await api.createClient(client as any);
     setData(prev => ({ ...prev, clients: [...prev.clients, created] }));
-    invalidateSalesCache();
+    invalidateClientsCache();
     return created;
   };
 
@@ -478,7 +451,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, ...clientUpdate } : c)
     }));
-    invalidateSalesCache();
+    invalidateClientsCache();
   };
 
   // Esto solo recargaba la lista y nunca llamaba a la API: desde junio el toast decia
@@ -490,7 +463,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, status } : c)
     }));
-    invalidateSalesCache();
+    invalidateClientsCache();
     return status;
   };
 
@@ -514,15 +487,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await fetchResponsables();
   };
 
-  const addSale = async (sale: Omit<Sale, 'id'>): Promise<Sale> => {
-    const created = await api.createSale(sale as any);
-    setData(prev => {
-      const updatedSales = [...prev.sales, created];
-      // Invalida caché para que próximas visitas recarguen datos frescos
-      invalidateSalesCache();
-      invalidateDashboardCache();
-      return { ...prev, sales: updatedSales };
-    });
+  const addSale = async (sale: Omit<Sale, 'id'>) => {
+    const created = await api.createSale(sale);
+    invalidateClientsCache();
+    invalidateDashboardCache();
+    refreshSales();
     setDashboardData(null);
     fetchFlights();
     return created;
@@ -531,68 +500,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Devuelve los avisos del servidor: lo que anular no deshace (factura en Siigo, comisión pagada).
   const voidSale = async (id: number, reason: string): Promise<string[]> => {
     const result = await api.voidSale(id, reason);
-    const updated = await api.getSale(id);
-    setData(prev => ({
-      ...prev,
-      sales: prev.sales.map(s => s.id === id ? { ...s, ...updated } : s)
-    }));
-    invalidateSalesCache();
+    invalidateClientsCache();
+    refreshSales();
     invalidateDashboardCache();
     setDashboardData(null);
     return result?.avisos || [];
   };
 
   const updateReviewStatus = async (id: number, isReviewed: boolean) => {
-    const updated = await api.updateReviewStatus(id, isReviewed);
-    setData(prev => ({
-      ...prev,
-      sales: prev.sales.map(s => s.id === id ? { ...s, isReviewed: updated.isReviewed } : s)
-    }));
-    invalidateSalesCache();
+    await api.updateReviewStatus(id, isReviewed);
+    invalidateClientsCache();
+    refreshSales();
   };
 
   const registerCreditPayment = async (saleId: number, amount: number, method?: string, isTotal: boolean = false, reference?: string) => {
-    const sale = data.sales.find(s => s.id === saleId);
-    const payload: Record<string, any> = { 
-      amount, 
-      method, 
-      isTotal, 
-      reference,
-      currentPaidAmount: sale?.creditPaidAmount ?? 0,
-    };
+    const payload = { amount, method, isTotal, reference };
     const result = await api.registerPayment(saleId, payload);
-    setData(prev => ({
-      ...prev,
-      sales: prev.sales.map(s => s.id === saleId ? {
-        ...s,
-        creditPaidAmount: result.creditPaidAmount,
-        status: result.status,
-        payments: [...(s.payments || []), result.payment]
-      } : s)
-    }));
-    invalidateSalesCache();
+    invalidateClientsCache();
+    refreshSales();
     setDashboardData(null);
     invalidateDashboardCache();
     return result;
   };
 
   const deleteSalePayment = async (saleId: number, paymentId: string) => {
-    // Pass current payments array so backend can compute new total without a query
-    const sale = data.sales.find(s => s.id === saleId);
-    const result = await api.deletePayment(saleId, paymentId, {
-      currentPayments: sale?.payments || [],
-      saleTotal: sale?.total ?? undefined
-    });
-    setData(prev => ({
-      ...prev,
-      sales: prev.sales.map(s => s.id === saleId ? {
-        ...s,
-        creditPaidAmount: result.creditPaidAmount,
-        status: result.status,
-        payments: (s.payments || []).filter((p: any) => p.id !== paymentId)
-      } : s)
-    }));
-    invalidateSalesCache();
+    await api.deletePayment(saleId, paymentId);
+    invalidateClientsCache();
+    refreshSales();
     setDashboardData(null);
     invalidateDashboardCache();
   };
@@ -614,15 +548,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setData(prev => ({
       ...prev,
       commissionSettlements: [...(prev.commissionSettlements || []), created],
-      sales: prev.sales.map(s =>
-        salesIds.includes(s.id)
-          ? { ...s, isSettled: true, settlementDate: settlement.date }
-          : s
-      ),
     }));
-    // Sin esto, la cache de ventas devolvia estas ventas como no liquidadas al recargar
-    // (parte del hallazgo 7), y la lista mostraba el acumulado de antes de liquidar.
-    invalidateSalesCache();
+    // Sin esto, la lista mostraba el acumulado de antes de liquidar.
+    refreshSales();
     await fetchCommissionAgents();
   };
 
@@ -774,11 +702,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       data,
       dashboardData,
       dashboardRefreshCount,
-      salesLoading,
+      salesVersion,
       loadError,
       dashboardFailed,
       fetchDashboard,
-      fetchSales,
+      refreshSales,
       fetchClients,
       fetchUsers,
       fetchConfig,

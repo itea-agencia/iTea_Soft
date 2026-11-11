@@ -209,8 +209,8 @@ Prioridad media:
 - [x] 11. `/config` se abre sin `config.view`. Corregido en todas las rutas; diseño en `docs/designs/hallazgo-11-rutas-por-permiso-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
 - [x] 13. Adjuntos sin validar el límite anunciado. Corregido; diseño en `docs/designs/hallazgo-13-adjuntos-2026-11.md`. Probado en pantalla por el usuario contra la app local.
-- [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
+- [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total` y Ventas ya pagina en el servidor (`docs/designs/ventas-paginacion-servidor-2026-11.md`). Las demás pantallas están por etapas en `docs/designs/plan-carga-y-tipos-2026-11.md`.
 - [x] 15. Modales y campos sin accesibilidad básica. Corregido; diseño en `docs/designs/hallazgo-15-accesibilidad-2026-11.md`. Aprobado por el usuario.
-- [x] 16. Carga inicial y mantenimiento. Corregido en la rama `feat/hallazgo-16-carga-y-mantenimiento`; diseño en `docs/designs/hallazgo-16-carga-y-mantenimiento-2026-11.md`. Antes de integrarla hay que probar a mano la venta de las 17 categorías. Quedan los `any`, fuera de alcance.
+- [x] 16. Carga inicial y mantenimiento. Corregido en la rama `feat/hallazgo-16-carga-y-mantenimiento`; diseño en `docs/designs/hallazgo-16-carga-y-mantenimiento-2026-11.md`. Antes de integrarla hay que probar a mano la venta de las 17 categorías. Los `any` están por etapas en `docs/designs/plan-carga-y-tipos-2026-11.md`.
 
 Orden propuesto para lo que falta (2026-11-10): primero el 9, porque la pantalla puede mostrar $0 cuando en realidad falló la carga (invariante 4); después el resto del 7 y el 10; luego el 11 y el 13, que son chicos; el 8; y al final el 15 y el 16. El tope de 5.000 del 14 espera a que el volumen se acerque.

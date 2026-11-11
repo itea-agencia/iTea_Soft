@@ -34,7 +34,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
   
   const { 
     refreshData,
-    fetchSales,
+    refreshSales,
     fetchClients,
     fetchResponsables,
     fetchFlights,
@@ -56,7 +56,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
       else if (path === '/clients') await fetchClients();
       else if (path === '/itineraries') await fetchFlights();
       else if (path === '/sales') {
-        await Promise.all([fetchSales(), fetchClients(), fetchResponsables(), fetchCommissionAgents()]);
+        refreshSales();
+        await Promise.all([fetchClients(), fetchResponsables(), fetchCommissionAgents()]);
       }
       else {
         // Fallback for Dashboard / Stats

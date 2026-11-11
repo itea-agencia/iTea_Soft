@@ -5,16 +5,19 @@ import { Button } from '../ui/Button';
 import { Plane } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Client, Sale } from '../../types';
+import { SalesLoadStatus } from '../sales/SalesLoadStatus';
 
 interface ClientDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   client: Client | null;
   clientSales: Sale[];
+  salesLoading: boolean;
+  salesFailed: boolean;
   clientFlights: any[];
 }
 
-export default function ClientDetailModal({ isOpen, onClose, client, clientSales, clientFlights }: ClientDetailModalProps) {
+export default function ClientDetailModal({ isOpen, onClose, client, clientSales, salesLoading, salesFailed, clientFlights }: ClientDetailModalProps) {
   if (!client) return null;
 
   return (
@@ -43,14 +46,14 @@ export default function ClientDetailModal({ isOpen, onClose, client, clientSales
         </div>
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-semibold text-gray-900 dark:!text-[#ffffff]">Historial de Compras ({clientSales.length})</h4>
+            <h4 className="font-semibold text-gray-900 dark:!text-[#ffffff]">Historial de Compras{salesLoading || salesFailed ? '' : ` (${clientSales.length})`}</h4>
             {clientSales.length > 0 && (
               <span className="text-xs font-bold text-primary dark:text-teal-400 bg-primary/10 dark:bg-teal-950/40 px-2 py-1 rounded-lg">
                 Total: {formatCurrency(clientSales.reduce((acc, s) => acc + s.total, 0))}
               </span>
             )}
           </div>
-          {clientSales.length > 0 ? (
+          {salesLoading || salesFailed ? <SalesLoadStatus failed={salesFailed} /> : clientSales.length > 0 ? (
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left bg-gray-50 dark:bg-slate-800 text-xs text-gray-500 dark:text-slate-400 uppercase">

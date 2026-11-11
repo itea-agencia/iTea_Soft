@@ -1,11 +1,13 @@
 import api from './client';
+import { PaginationState, Sale } from '../types';
+import { VoucherDelivery } from '../utils/voucherDelivery';
 
-export async function listSales(params: Record<string, unknown>) {
+export async function listSales(params: Record<string, unknown>): Promise<{ data: Sale[]; meta: PaginationState }> {
   const res = await api.get('/sales', { params });
   return res.data;
 }
 
-export async function getSale(id: number) {
+export async function getSale(id: number): Promise<Sale> {
   const res = await api.get(`/sales/${id}`);
   return res.data.data;
 }
@@ -15,12 +17,12 @@ export async function getSalePaginatedDetails(id: number, tab: string, page = 1,
   return res.data;
 }
 
-export async function createSale(data: Record<string, unknown>) {
+export async function createSale(data: Omit<Sale, 'id'>): Promise<Sale & { voucherDelivery?: VoucherDelivery }> {
   const res = await api.post('/sales', data);
   return res.data.data;
 }
 
-export async function voidSale(id: number, reason: string) {
+export async function voidSale(id: number, reason: string): Promise<{ avisos?: string[] }> {
   const res = await api.post(`/sales/${id}/void`, { reason });
   return res.data.data;
 }

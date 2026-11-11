@@ -11,6 +11,7 @@ import StatCard from '../components/ui/StatCard';
 import SortIcon from '../components/ui/SortIcon';
 import ResponsableDetailModal from '../components/responsables/ResponsableDetailModal';
 import { useData } from '../context/DataContext';
+import { useSalesQuery } from "../hooks/useSalesQuery";
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionsContext';
 import { validateDocNumber } from '../utils/docNumber';
@@ -21,7 +22,7 @@ import LoadingScreen from '../components/ui/LoadingScreen';
 import { DatePicker } from '../components/sales/forms/TicketForm';
 
 export default function Responsables() {
-  const { data, addResponsable, updateResponsable, deleteResponsable, toggleResponsableStatus, fetchResponsables, fetchSales } = useData();
+  const { data, addResponsable, updateResponsable, deleteResponsable, toggleResponsableStatus, fetchResponsables } = useData();
   const { user } = useAuth();
   const { puede } = usePermissions();
   const [isLoading, setIsLoading] = useState(true);
@@ -102,8 +103,7 @@ export default function Responsables() {
   // Lazy Load Fetch
   useEffect(() => {
     fetchResponsables().finally(() => setIsLoading(false));
-    fetchSales().catch(() => {});
-  }, [fetchResponsables, fetchSales]);
+  }, [fetchResponsables]);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -325,11 +325,7 @@ export default function Responsables() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  const responsableSales = useMemo(() => {
-    return selectedResponsable
-      ? data.sales.filter(s => s.responsableId === selectedResponsable.id)
-      : [];
-  }, [selectedResponsable, data.sales]);
+  const responsableSalesQuery = useSalesQuery(selectedResponsable ? { responsableId: selectedResponsable.id, perPage: 5000 } : null);
 
   const responsableFlights = useMemo(() => {
     return selectedResponsable
@@ -726,7 +722,9 @@ export default function Responsables() {
         isOpen={isDetailOpen} 
         onClose={() => setIsDetailOpen(false)} 
         responsable={selectedResponsable} 
-        responsableSales={responsableSales} 
+        responsableSales={responsableSalesQuery.sales}
+        salesLoading={responsableSalesQuery.loading}
+        salesFailed={responsableSalesQuery.failed} 
         responsableFlights={responsableFlights} 
       />
 

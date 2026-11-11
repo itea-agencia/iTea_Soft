@@ -33,10 +33,14 @@ import SalesTable from "../components/sales/SalesTable";
 import StatCard from "../components/ui/StatCard";
 import CreditDashboard from "../components/sales/CreditDashboard";
 import { VoucherPDF } from "../components/sales/VoucherPDF";
-import LoadingScreen from "../components/ui/LoadingScreen";
+import { LoadFailed } from "../components/ui/LoadFailed";
+import { PageSkeleton } from "../components/ui/PageSkeleton";
+import { useSalesQuery } from "../hooks/useSalesQuery";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { buildSalesParams, SALES_PAGE_SIZE } from "../utils/salesQuery";
 
 export default function Sales() {
-  const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, salesLoading, fetchSales, fetchClients } = useData();
+  const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, fetchClients } = useData();
   const responsables = data.responsables || [];
   const { user, isAdmin } = useAuth();
   const { puede, alcance } = usePermissions();
@@ -82,41 +86,22 @@ export default function Sales() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const filteredSales = useMemo(() => {
-    const seeAll = alcance('sales', 'view') === 'all';
-    const list = seeAll ? data.sales : data.sales.filter((s) => s.asesorId === user?.id);
-    return list.filter((sale) => {
-      // 1. Text Search Filter (client name, status, asesor, commissionAgent, id)
-      const query = searchTerm.toLowerCase().trim();
-      const matchesText = !query || 
-        sale.clientName.toLowerCase().includes(query) ||
-        sale.status.toLowerCase().includes(query) ||
-        sale.asesorName.toLowerCase().includes(query) ||
-        (sale.commissionAgentName || "").toLowerCase().includes(query) ||
-        String(sale.id).includes(query) ||
-        formatId(sale.id).toLowerCase().includes(query);
+  // La busqueda espera a que se deje de escribir; el servidor filtra y aplica el alcance.
+  const debouncedSearch = useDebouncedValue(searchTerm, 500);
+  const filters = { search: debouncedSearch, status: statusFilter, startDate, endDate };
 
-      // 2. Status Select Filter
-      const matchesStatus = statusFilter === 'all' || sale.status === statusFilter;
+  // La pagina va atada a sus filtros: con un filtro nuevo se vuelve a la 1 sin pedir la anterior.
+  const filtersKey = JSON.stringify(filters);
+  const [pageState, setPageState] = useState({ filtersKey, page: 1 });
+  const page = pageState.filtersKey === filtersKey ? pageState.page : 1;
 
-      // 3. Date Range Filter
-      let matchesDate = true;
-      if (startDate) {
-        matchesDate = matchesDate && new Date(sale.date) >= new Date(startDate);
-      }
-      if (endDate) {
-        matchesDate = matchesDate && new Date(sale.date) <= new Date(endDate + "T23:59:59");
-      }
-
-      return matchesText && matchesStatus && matchesDate;
-    }).sort((a, b) => b.id - a.id);
-  }, [data.sales, alcance, user?.id, searchTerm, statusFilter, startDate, endDate]);
+  const listQuery = useSalesQuery(activeTab === 'list' ? buildSalesParams(filters, page) : null);
+  const creditQuery = useSalesQuery(activeTab === 'credit' ? { ...buildSalesParams(filters, 1, 5000), onCredit: 'true' } : null);
 
   // Lazy Load Fetch
   useEffect(() => {
-    fetchSales();
     fetchClients();
-  }, [fetchSales, fetchClients]);
+  }, [fetchClients]);
 
   // Eliminamos el prefetch silencioso para evitar peticiones "fantasma" que colapsan la red y el backend.
   // La carga detallada se hará estrictamente "On Demand" (bajo demanda) cuando el usuario pase el mouse o haga click.
@@ -470,10 +455,6 @@ export default function Sales() {
     }
   };
 
-  if (salesLoading && data.sales.length === 0) {
-    return <LoadingScreen fullScreen={false} />;
-  }
-
   return (
     <div className="space-y-6 relative">
       {showConfetti && (
@@ -632,8 +613,7 @@ export default function Sales() {
               Lista de Ventas {alcance("sales", "view") === "all" ? "(Todas)" : "(Mis Ventas)"}
             </CardHeader>
 
-            {/* Skeleton de carga — solo se muestra en el primer fetch sin caché */}
-            {salesLoading && filteredSales.length === 0 ? (
+            {listQuery.loading ? (
               <div className="p-4 space-y-3 animate-pulse">
                 {[...Array(7)].map((_, i) => (
                   <div key={i} className="flex items-center gap-4">
@@ -654,7 +634,11 @@ export default function Sales() {
                   </div>
                 ))}
               </div>
-            ) : filteredSales.length === 0 ? (
+            ) : listQuery.failed ? (
+              <div className="py-16">
+                <LoadFailed message="No se pudieron cargar las ventas." onRetry={listQuery.retry} />
+              </div>
+            ) : listQuery.sales.length === 0 ? (
               <div className="flex flex-col items-center justify-center p-12 text-gray-500 bg-white rounded-b-2xl border-t border-gray-100">
                 <Ban size={48} className="text-gray-200 mb-4 animate-bounce" />
                 <p className="text-lg font-bold text-gray-700">Venta no encontrada</p>
@@ -662,7 +646,10 @@ export default function Sales() {
               </div>
             ) : (
               <SalesTable
-                sales={filteredSales}
+                sales={listQuery.sales}
+                currentPage={page}
+                totalPages={Math.ceil(listQuery.total / SALES_PAGE_SIZE)}
+                onPageChange={(next) => setPageState({ filtersKey, page: next })}
                 clients={data.clients}
                 users={data.users}
                 onViewDetail={handleViewDetail}
@@ -691,10 +678,15 @@ export default function Sales() {
           </Card>
         </>
       ) : (
-        <CreditDashboard 
-          clients={data.clients}
-          sales={filteredSales} 
-        />
+        creditQuery.loading ? (
+          <PageSkeleton />
+        ) : creditQuery.failed ? (
+          <div className="py-16">
+            <LoadFailed message="No se pudieron cargar los créditos." onRetry={creditQuery.retry} />
+          </div>
+        ) : (
+          <CreditDashboard clients={data.clients} sales={creditQuery.sales} />
+        )
       )}
 
       <Modal

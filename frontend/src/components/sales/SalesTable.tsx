@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Eye, FileDown, Pencil, Ban, ChevronDown, CheckCircle2 } from "lucide-react";
 import { RxUpdate } from "react-icons/rx";
 import { Table, TableRow, TableCell, Pagination } from "../ui/Table";
@@ -63,6 +63,9 @@ function marcaSiigo(sale: Sale) {
 
 interface SalesTableProps {
   sales: Sale[];
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
   clients: Client[];
   users: User[];
   onViewDetail: (sale: Sale) => void;
@@ -77,6 +80,9 @@ interface SalesTableProps {
 
 export default function SalesTable({
   sales,
+  currentPage,
+  totalPages,
+  onPageChange,
   clients,
   users,
   onViewDetail,
@@ -89,18 +95,9 @@ export default function SalesTable({
   onReviewStatusChange,
 }: SalesTableProps) {
   const { puede } = usePermissions();
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(sales.length / itemsPerPage);
-  
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
-  // Volver a la página 1 cuando se agrega una nueva venta
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [sales.length]);
-
-  const currentSales = sales.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const currentSales = sales;
 
   return (
     <div className="flex flex-col gap-4">
@@ -292,7 +289,7 @@ export default function SalesTable({
     <Pagination 
       currentPage={currentPage} 
       totalPages={totalPages} 
-      onPageChange={setCurrentPage} 
+      onPageChange={onPageChange} 
     />
     </div>
   );

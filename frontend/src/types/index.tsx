@@ -907,7 +907,6 @@ export interface AppData {
   users: User[];
   clients: Client[];
   responsables: Responsable[];
-  sales: Sale[];
   flights: Flight[];
   commissionAgents: CommissionAgent[];
   /** Para elegir comisionista en el asistente: todos, solo id/nombre/estado (?para=venta). */

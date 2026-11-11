@@ -24,6 +24,7 @@ import StatCard from "../components/ui/StatCard";
 import SortIcon from "../components/ui/SortIcon";
 import ClientDetailModal from "../components/clients/ClientDetailModal";
 import { useData } from "../context/DataContext";
+import { useSalesQuery } from "../hooks/useSalesQuery";
 import { useAuth } from "../context/AuthContext";
 import { usePermissions } from "../context/PermissionsContext";
 import { validateDocNumber } from "../utils/docNumber";
@@ -44,7 +45,6 @@ export default function Clients() {
     updateClient,
     toggleClientStatus,
     fetchClients,
-    fetchSales,
   } = useData();
   const { user } = useAuth();
   const { puede, alcance } = usePermissions();
@@ -161,8 +161,7 @@ export default function Clients() {
   // Lazy Load Fetch
   useEffect(() => {
     fetchClients();
-    fetchSales();
-  }, [fetchClients, fetchSales]);
+  }, [fetchClients]);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -436,11 +435,7 @@ export default function Clients() {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
-  const clientSales = useMemo(() => {
-    return selectedClient
-      ? data.sales.filter((s) => s.clientId === selectedClient.id)
-      : [];
-  }, [selectedClient, data.sales]);
+  const clientSalesQuery = useSalesQuery(selectedClient ? { clientId: selectedClient.id, perPage: 5000 } : null);
 
   const clientFlights = useMemo(() => {
     return selectedClient
@@ -978,7 +973,9 @@ export default function Clients() {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         client={selectedClient}
-        clientSales={clientSales}
+        clientSales={clientSalesQuery.sales}
+        salesLoading={clientSalesQuery.loading}
+        salesFailed={clientSalesQuery.failed}
         clientFlights={clientFlights}
       />
     </div>

@@ -543,13 +543,13 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     };
 
     try {
-      const created: any = await addSale(saleData as any);
+      const created = await addSale(saleData as any);
       localStorage.removeItem(draftKey);
 
       const delivery = created.voucherDelivery;
       onSuccess(
         saleSuccessMessage(delivery, created.clientEmail),
-        delivery?.failed.length > 0
+        delivery && delivery.failed.length > 0
           ? { saleId: created.id, sentText: vouchersSentText(delivery.sent.length, created.clientEmail), failed: delivery.failed }
           : undefined,
       );
