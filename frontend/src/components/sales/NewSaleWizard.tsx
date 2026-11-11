@@ -835,7 +835,6 @@ function isItemEmpty(item: any, category: SaleProductId): boolean {
       return !item.checkInDate && !item.checkOutDate && !item.petType;
     case "tours":
       return (
-        !item.selectedTour &&
         !item.preferredDate &&
         !item.childrenAges &&
         !item.pickupPoint &&

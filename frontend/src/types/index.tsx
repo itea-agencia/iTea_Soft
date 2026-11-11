@@ -408,14 +408,12 @@ export interface CheckInData {
 export interface MigrationData {
   linkedToPlanIndex?: number | null;
   passengerName: string;
-  birthDate: string;
   nationality: string;
   docType: string;
   docNumber: string;
   passportExpiry: string;
   destinationCountry: string;
   requestedDocType: string;
-  email: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
   supplierName?: string;
@@ -435,7 +433,6 @@ export interface SimCardData {
   dataPlan: string;
   simType: string;
   deliveryMethod: string;
-  email: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
   supplierName?: string;
@@ -501,7 +498,6 @@ export interface FincaData {
   hasPets: boolean;
   petType: string;
   additionalServices: string[];
-  phone: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
   supplierName?: string;
@@ -514,7 +510,6 @@ export interface FincaData {
 export interface TourData {
   linkedToPlanIndex?: number | null;
   passengerName: string;
-  selectedTour: string;
   preferredDate: string;
   adultsCount: number;
   childrenCount: number;

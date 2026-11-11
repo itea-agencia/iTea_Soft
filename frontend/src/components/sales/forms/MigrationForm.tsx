@@ -28,15 +28,6 @@ export function MigrationForm({ migration, client, suppliers, paymentMethods, on
           <FormField label="Nombre del Pasajero">
             <Input value={migration.passengerName} onChange={(e) => onChange({ passengerName: e.target.value })} placeholder="Nombre completo" />
           </FormField>
-          <FormField label="Fecha de Nacimiento">
-            <DatePicker
-              value={migration.birthDate}
-              onChange={(val) => onChange({ birthDate: val })}
-              max={todayStr}
-              triggerError={triggerError}
-              fieldName="Nacimiento del pasajero"
-            />
-          </FormField>
           <FormField label="Nacionalidad">
             <Input 
               value={migration.nationality} 
@@ -115,20 +106,6 @@ export function MigrationForm({ migration, client, suppliers, paymentMethods, on
                 { value: "ESTA USA", label: "ESTA USA" },
                 { value: "Otro", label: "Otro trámite" },
               ]}
-            />
-          </FormField>
-          <FormField label="Correo Electrónico">
-            <Input 
-              type="email" 
-              value={migration.email} 
-              onChange={(e) => {
-                let val = e.target.value;
-                if (val.includes(".com")) {
-                  val = val.substring(0, val.indexOf(".com") + 4);
-                }
-                onChange({ email: val.trim() });
-              }} 
-              placeholder="ejemplo@correo.com" 
             />
           </FormField>
         </div>

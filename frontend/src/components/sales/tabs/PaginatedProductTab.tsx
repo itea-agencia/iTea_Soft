@@ -420,10 +420,6 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
             </h4>
             {renderGrid([
               { label: "Plan", value: ins.planName || ins.insuranceType },
-              { label: "Cobertura", value: ins.coverageAmount ? `$${Number(ins.coverageAmount).toLocaleString("es-CO")}` : ins.coverageAmount },
-              { label: "Días", value: ins.coverageDays },
-              { label: "Fecha Inicio", value: ins.startDate ? formatDate(ins.startDate) : "-" },
-              { label: "Fecha Fin", value: ins.endDate ? formatDate(ins.endDate) : "-" },
               { label: "Proveedor", value: ins.supplier || ins.supplierName },
               { label: "Costo Proveedor", value: ins.supplierCost ? formatCurrency(ins.supplierCost) : "-" },
               { label: "Contacto Emergencia", value: ins.contactName },

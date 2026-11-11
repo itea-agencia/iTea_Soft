@@ -236,14 +236,12 @@ export const INITIAL_CHECKIN = (client?: any): CheckInData => ({
 
 export const INITIAL_MIGRATION = (client?: any): MigrationData => ({
   passengerName: client?.name || "",
-  birthDate: client?.birthDate ? client.birthDate.split('T')[0] : "",
   nationality: "",
   docType: client?.docType || "CC",
   docNumber: client?.docNumber || "",
   passportExpiry: "",
   destinationCountry: "",
   requestedDocType: "Visa Turismo",
-  email: client?.email || "",
   voucher: undefined,
   sendVoucher: false,
   supplierName: "",
@@ -261,7 +259,6 @@ export const INITIAL_SIMCARD = (client?: any): SimCardData => ({
   dataPlan: "",
   simType: "eSIM",
   deliveryMethod: "Correo Electrónico",
-  email: client?.email || "",
   voucher: undefined,
   sendVoucher: false,
   supplierName: "",
@@ -346,7 +343,6 @@ export const INITIAL_FINCA = (client?: any): FincaData => ({
   hasPets: false,
   petType: "",
   additionalServices: [],
-  phone: client?.phone || "",
   voucher: undefined,
   sendVoucher: false,
   supplierName: "",
@@ -357,7 +353,6 @@ export const INITIAL_FINCA = (client?: any): FincaData => ({
 
 export const INITIAL_TOUR = (client?: any): TourData => ({
   passengerName: client?.name || "",
-  selectedTour: "",
   preferredDate: "",
   adultsCount: 2,
   childrenCount: 0,

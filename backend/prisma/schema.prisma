@@ -659,10 +659,6 @@ model ProdPlanes {
 model ProdSeguros {
   id                  String       @id @default(uuid())
   detalleVentaId      String       @unique @map("detalle_venta_id")
-  coberturaUsd        Float?       @default(0) @map("cobertura_usd")
-  diasCobertura       Int?         @default(0) @map("dias_cobertura")
-  fechaInicioVigencia DateTime?    @map("fecha_inicio_vigencia")
-  fechaFinVigencia    DateTime?    @map("fecha_fin_vigencia")
   telefonoContacto    String?      @map("telefono_contacto")
   tipoSeguro          String?      @map("tipo_seguro")
   detalleVenta        DetalleVenta @relation(fields: [detalleVentaId], references: [id])
@@ -754,7 +750,6 @@ model ProdFincas {
 model ProdTours {
   id                 String       @id @default(uuid())
   detalleVentaId     String       @unique @map("detalle_venta_id")
-  tourNombre         String?      @map("tour_nombre")
   fechaPreferida     DateTime?    @map("fecha_preferida")
   adultosCount       Int?         @default(1) @map("adultos_count")
   menoresCount       Int?         @default(0) @map("menores_count")

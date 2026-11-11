@@ -624,7 +624,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                           <div style={{ flex: '1 1 20%' }}>
                             <strong style={{display: 'block', color: '#475569'}}>SERVICIO</strong>
                             <span style={{color: '#0f172a', fontWeight: 'bold'}}>
-                              {child.selectedTour || child.hotelName || child.airlineName || child.vehicleCategory || child.insuranceType || child.tipoTramiteMigratorio || child.planDatos || child.fincaName || child.reservationName || child._type.toUpperCase() || 'Servicio Extra'}
+                              {child.hotelName || child.airlineName || child.vehicleCategory || child.insuranceType || child.tipoTramiteMigratorio || child.planDatos || child.fincaName || child.reservationName || child._type.toUpperCase() || 'Servicio Extra'}
                             </span>
                           </div>
                           <div style={{ flex: '1 1 20%' }}>

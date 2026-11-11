@@ -94,20 +94,6 @@ export function SimCardForm({ sim, client, suppliers, paymentMethods, onChange, 
               ]}
             />
           </FormField>
-          <FormField label="Correo Electrónico" className="md:col-span-2">
-            <Input 
-              type="email" 
-              value={sim.email} 
-              onChange={(e) => {
-                let val = e.target.value;
-                if (val.includes(".com")) {
-                  val = val.substring(0, val.indexOf(".com") + 4);
-                }
-                onChange({ email: val.trim() });
-              }} 
-              placeholder="ejemplo@correo.com" 
-            />
-          </FormField>
         </div>
       </div>
 
@@ -129,4 +115,4 @@ export function SimCardForm({ sim, client, suppliers, paymentMethods, onChange, 
       />
     </div>
   );
-}
+}

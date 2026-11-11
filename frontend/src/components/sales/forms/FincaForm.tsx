@@ -123,9 +123,6 @@ export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, 
               <Input value={finca.petType || ""} maxLength={30} onChange={(e) => onChange({ petType: e.target.value })} placeholder="Ej. Perro" />
             </FormField>
           )}
-          <FormField label="Teléfono">
-            <Input value={finca.phone} onChange={(e) => onChange({ phone: e.target.value })} placeholder="+57 300 123 4567" />
-          </FormField>
           <div className="md:col-span-2">
             <FormField label="Observaciones (Opcional)">
               <div className="relative pb-5">

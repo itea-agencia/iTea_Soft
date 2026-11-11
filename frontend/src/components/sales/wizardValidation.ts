@@ -340,24 +340,13 @@ export function validateWizardStep(
           if (!mig) errors.push("Documento inválido");
           else {
             if (!mig.passengerName || mig.passengerName.trim().length === 0) errors.push("Nombre del pasajero (requerido)");
-            if (!mig.birthDate) errors.push("Fecha de Nacimiento (requerida)");
             if (!mig.nationality || mig.nationality.trim().length === 0 || mig.nationality.length > 30) errors.push("Nacionalidad (1-30 chars)");
             if (!mig.docType) errors.push("Tipo de Documento (requerido)");
             if (!mig.docNumber || mig.docNumber.trim().length < 5 || mig.docNumber.length > 20) errors.push("Número de Documento (5-20 chars)");
             if (mig.docType === "Pasaporte" && !mig.passportExpiry) errors.push("Vencimiento de Documento (requerido)");
             if (!mig.destinationCountry || mig.destinationCountry.trim().length === 0) errors.push("País de Destino (requerido)");
             if (!mig.requestedDocType || mig.requestedDocType.trim().length === 0) errors.push("Trámite (requerido)");
-            
-            if (mig.email) {
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              if (!emailRegex.test(mig.email)) errors.push("Correo electrónico inválido");
-              if (!mig.email.endsWith(".com")) errors.push("Correo debe terminar en .com");
-            }
 
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            
-            if (mig.birthDate && new Date(mig.birthDate) > now) errors.push("Fecha de Nacimiento no puede ser futura");
             if (mig.passportExpiry && getDaysUntilDue(mig.passportExpiry) < 0) errors.push("Vencimiento de Documento no puede ser pasado");
           }
 
@@ -383,12 +372,6 @@ export function validateWizardStep(
             if (!sim.destinationCountry || sim.destinationCountry.trim().length === 0) errors.push("País de Destino (requerido)");
             if (!sim.arrivalDate) errors.push("Fecha de Llegada (requerida)");
             if (!sim.tripDuration || isNaN(Number(sim.tripDuration)) || Number(sim.tripDuration) <= 0) errors.push("Duración del Viaje (mayor a 0)");
-            
-            if (sim.email) {
-              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-              if (!emailRegex.test(sim.email)) errors.push("Correo electrónico inválido");
-              if (!sim.email.endsWith(".com")) errors.push("Correo debe terminar en .com");
-            }
 
             const now = new Date();
             now.setHours(0, 0, 0, 0);

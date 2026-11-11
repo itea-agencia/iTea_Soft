@@ -528,10 +528,6 @@ const PRODUCT_TRANSFORMS = {
     target.push({
       id: s.id,
       insuranceType: s.tipoSeguro,
-      coverageAmount: s.coberturaUsd,
-      coverageDays: s.diasCobertura,
-      startDate: s.fechaInicioVigencia?.toISOString() || null,
-      endDate: s.fechaFinVigencia?.toISOString() || null,
       phone: s.telefonoContacto,
       members: members.length > 0 ? members : (venta?.cliente?.persona ? [{ name: `${venta.cliente.persona.nombres} ${venta.cliente.persona.apellidos}`, docType: '', docNumber: venta.cliente.persona.documento || '' }] : [])
     ,
@@ -709,7 +705,6 @@ const PRODUCT_TRANSFORMS = {
     target.push({
       id: t.id,
       passengerName: passengers.length > 0 ? passengers[0].nombreCompleto : null,
-      selectedTour: t.tourNombre,
       preferredDate: t.fechaPreferida?.toISOString() || null,
       adultsCount: t.adultosCount,
       childrenCount: t.menoresCount,
@@ -1228,10 +1223,6 @@ const PRODUCT_HANDLERS = {
     transform: (d, detalleId) => ({
       detalleVentaId: detalleId,
       tipoSeguro: d.insuranceType || 'basico',
-      coberturaUsd: Number(d.coverageAmount) || 0,
-      diasCobertura: Number(d.coverageDays) || 0,
-      fechaInicioVigencia: d.startDate ? new Date(d.startDate) : null,
-      fechaFinVigencia: d.endDate ? new Date(d.endDate) : null,
       telefonoContacto: d.phone || null
     })
   },
@@ -1350,7 +1341,6 @@ const PRODUCT_HANDLERS = {
     nombreServicio: 'Tours',
     transform: (d, detalleId) => ({
       detalleVentaId: detalleId,
-      tourNombre: d.selectedTour || null,
       fechaPreferida: d.preferredDate ? new Date(d.preferredDate) : null,
       adultosCount: parseInt(d.adultsCount) || 1,
       menoresCount: parseInt(d.childrenCount) || 0,
