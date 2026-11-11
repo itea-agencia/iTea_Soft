@@ -1,3 +1,4 @@
+import { docTypeOptions } from "./passengerHelpers";
 import { LuPlane } from "react-icons/lu";
 import { FormField, Input, Combobox , CurrencyInput} from "../../ui/Form";
 import { CheckInData } from "../../../types";
@@ -7,6 +8,7 @@ import { DateTimePicker } from "./TicketForm";
 interface CheckInFormProps {
   checkIn: CheckInData;
   client: any;
+  documentTypes?: { abreviatura: string }[];
   suppliers?: any[];
   baggage?: any[];
   paymentMethods?: any[];
@@ -14,7 +16,7 @@ interface CheckInFormProps {
   triggerError?: (msg: string) => void;
 }
 
-export function CheckInForm({ checkIn, client, suppliers, baggage, paymentMethods, onChange, triggerError }: CheckInFormProps) {
+export function CheckInForm({ checkIn, client, documentTypes, suppliers, baggage, paymentMethods, onChange, triggerError }: CheckInFormProps) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -37,11 +39,7 @@ export function CheckInForm({ checkIn, client, suppliers, baggage, paymentMethod
               <Combobox
                 value={checkIn.docType}
                 onChange={(val) => onChange({ docType: val })}
-                options={[
-                  { value: "CC", label: "C.C." },
-                  { value: "CE", label: "C.E." },
-                  { value: "PP", label: "P.P." },
-                ]}
+                options={docTypeOptions(documentTypes)}
               />
             </FormField>
             <FormField label="Nº Documento" className="col-span-2">

@@ -217,7 +217,7 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
 
 export const INITIAL_CHECKIN = (client?: any): CheckInData => ({
   passengerName: client?.name || "",
-  docType: client?.docType || "CC",
+  docType: client?.docType || "",
   docNumber: client?.docNumber || "",
   flightOrReservation: "",
   travelDate: "",
@@ -237,7 +237,7 @@ export const INITIAL_CHECKIN = (client?: any): CheckInData => ({
 export const INITIAL_MIGRATION = (client?: any): MigrationData => ({
   passengerName: client?.name || "",
   nationality: "",
-  docType: client?.docType || "CC",
+  docType: client?.docType || "",
   docNumber: client?.docNumber || "",
   passportExpiry: "",
   destinationCountry: "",
@@ -252,6 +252,7 @@ export const INITIAL_MIGRATION = (client?: any): MigrationData => ({
 
 export const INITIAL_SIMCARD = (client?: any): SimCardData => ({
   passengerName: client?.name || "",
+  docType: client?.docType || "",
   docNumber: client?.docNumber || "",
   destinationCountry: "",
   arrivalDate: "",
@@ -419,7 +420,7 @@ export const INITIAL_VISA = (client?: any): VisaData => ({
   fullName: client?.name || "",
   birthDate: client?.birthDate ? client.birthDate.split('T')[0] : "",
   nationality: "",
-  docType: client?.docType || "CC",
+  docType: client?.docType || "",
   docNumber: client?.docNumber || "",
   passportExpiration: "",
   countryApplying: "",
@@ -451,7 +452,6 @@ export const INITIAL_PASSPORT = (client?: any): PassportData => ({
 });
 
 export const INITIAL_PET_SERVICE = (client?: any): PetServiceData => ({
-  ownerName: client?.name || "",
   petName: "",
   species: "perro",
   breed: "",

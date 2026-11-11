@@ -739,12 +739,6 @@ export function validateWizardStep(
           const errors: string[] = [];
           if (!pet) errors.push("Transporte de Mascotas inválido");
           else {
-            if (!pet.ownerName || pet.ownerName.trim().length === 0) {
-              errors.push("Nombre del Dueño (requerido)");
-            } else if (/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(pet.ownerName)) {
-              errors.push("Nombre del Dueño solo permite letras");
-            }
-
             if (!pet.petName || pet.petName.trim().length === 0) {
               errors.push("Nombre de la Mascota (requerido)");
             } else if (/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(pet.petName)) {

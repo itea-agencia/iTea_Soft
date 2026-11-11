@@ -285,7 +285,7 @@ export function Step2Products({ form, set, data, errors, toggleProduct, actions 
                     idx,
                     targetKey,
                     // Try to get a descriptive name from the item data
-                    detail: (item as any).hotelName || (item as any).planName || (item as any).passengerName || (item as any).passengerInfo?.name || (item as any).fareType || (item as any).reservationNumber || (item as any).petName || (item as any).ownerName || (item as any).mainDriver || "Información pendiente"
+                    detail: (item as any).hotelName || (item as any).planName || (item as any).passengerName || (item as any).passengerInfo?.name || (item as any).fareType || (item as any).reservationNumber || (item as any).petName || (item as any).mainDriver || "Información pendiente"
                   });
                 });
               });

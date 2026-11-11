@@ -1,3 +1,4 @@
+import { docTypeOptions } from "./passengerHelpers";
 import { LuSmartphone } from "react-icons/lu";
 import { FormField, Input, Combobox , CurrencyInput} from "../../ui/Form";
 import { SimCardData } from "../../../types";
@@ -7,13 +8,14 @@ import { DateTimePicker } from "./TicketForm";
 interface SimCardFormProps {
   sim: SimCardData;
   client: any;
+  documentTypes?: { abreviatura: string }[];
   suppliers?: any[];
   paymentMethods?: any[];
   onChange: (updates: Partial<SimCardData>) => void;
   triggerError?: (msg: string) => void;
 }
 
-export function SimCardForm({ sim, client, suppliers, paymentMethods, onChange, triggerError }: SimCardFormProps) {
+export function SimCardForm({ sim, client, documentTypes, suppliers, paymentMethods, onChange, triggerError }: SimCardFormProps) {
   const minDateTime = (() => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -31,9 +33,14 @@ export function SimCardForm({ sim, client, suppliers, paymentMethods, onChange, 
           <FormField label="Nombre del Titular">
             <Input value={sim.passengerName} onChange={(e) => onChange({ passengerName: e.target.value })} placeholder="Nombre completo" />
           </FormField>
-          <FormField label="Número de Documento">
-            <Input value={sim.docNumber} onChange={(e) => onChange({ docNumber: e.target.value })} placeholder="C.C. o Pasaporte" />
-          </FormField>
+          <div className="grid grid-cols-3 gap-2">
+            <FormField label="Tipo Doc" className="col-span-1">
+              <Combobox value={sim.docType || ""} onChange={(val) => onChange({ docType: val })} options={docTypeOptions(documentTypes)} />
+            </FormField>
+            <FormField label="Número de Documento" className="col-span-2">
+              <Input value={sim.docNumber} maxLength={15} onChange={(e) => onChange({ docNumber: e.target.value.trim() })} placeholder="Número" />
+            </FormField>
+          </div>
           <FormField label="País de Destino">
             <Input 
               value={sim.destinationCountry} 

@@ -25,18 +25,13 @@ export function PetServiceForm({ pet, client, suppliers, paymentMethods, onChang
           <LuDog size={14} /> Transporte de Mascotas
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <FormField label="Nombre del Dueño">
-            <Input 
-              value={pet.ownerName} 
-              onChange={(e) => {
-                let cleaned = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
-                if (cleaned.length > 0) {
-                  cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-                }
-                onChange({ ownerName: cleaned });
-              }} 
-              placeholder="Nombre completo" 
-              maxLength={50}
+          {/* El dueño es el cliente de la venta: el servidor lo guarda asi y lo escrito aca no
+              iba a ningun lado (CATEGORIAS_PASAJERO_ES_CLIENTE). Se deriva del cliente actual. */}
+          <FormField label="Dueño">
+            <Input
+              value={client ? `${client.name || `${client.firstName || ""} ${client.lastName || ""}`.trim()} · ${client.docType || ""} ${client.docNumber || ""}` : "Elija el cliente en el paso 1"}
+              disabled
+              className="bg-gray-50 dark:bg-slate-900/50"
             />
           </FormField>
           <FormField label="Nombre de la Mascota">

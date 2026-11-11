@@ -34,3 +34,9 @@ export function idxTitular<T extends { esTitular?: boolean }>(lista: T[]): numbe
 export function sanearCodigo(valor: string, maxLen = 20): string {
   return String(valor || '').replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase().slice(0, maxLen);
 }
+
+// Opciones del selector de tipo de documento: siempre el catalogo de la base. Check-in,
+// migracion y visa tenian una lista fija con `TI` y `PP`, que no existen en el catalogo
+// (`T.I`, `Pasaporte`), y el servidor guardaba a la persona sin tipo.
+export const docTypeOptions = (types: { abreviatura: string }[] = []) =>
+  types.map((d) => ({ value: d.abreviatura, label: d.abreviatura }));

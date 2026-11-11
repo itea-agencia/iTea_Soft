@@ -1,3 +1,4 @@
+import { docTypeOptions } from "./passengerHelpers";
 import { LuGlobe } from "react-icons/lu";
 import { FormField, Input, Combobox , CurrencyInput} from "../../ui/Form";
 import { VisaData } from "../../../types";
@@ -8,13 +9,14 @@ import { todayStr as todayStrHelper } from "../../../utils/formatters";
 interface VisaFormProps {
   visa: VisaData;
   client: any;
+  documentTypes?: { abreviatura: string }[];
   suppliers?: any[];
   paymentMethods?: any[];
   onChange: (updates: Partial<VisaData>) => void;
   triggerError?: (msg: string) => void;
 }
 
-export function VisaForm({ visa, client, suppliers, paymentMethods, onChange, triggerError }: VisaFormProps) {
+export function VisaForm({ visa, client, documentTypes, suppliers, paymentMethods, onChange, triggerError }: VisaFormProps) {
   const todayStr = todayStrHelper();
   return (
     <div className="space-y-6 animate-fade-in">
@@ -53,15 +55,9 @@ export function VisaForm({ visa, client, suppliers, paymentMethods, onChange, tr
           </FormField>
           <FormField label="Tipo de Documento">
             <Combobox
-              value={visa.docType || "CC"}
+              value={visa.docType || ""}
               onChange={(val) => onChange({ docType: val, docNumber: "" })}
-              options={[
-                { value: "CC", label: "Cédula de Ciudadanía" },
-                { value: "TI", label: "Tarjeta de Identidad" },
-                { value: "CE", label: "Cédula de Extranjería" },
-                { value: "Pasaporte", label: "Pasaporte" },
-                { value: "Otro", label: "Otro Documento" },
-              ]}
+              options={docTypeOptions(documentTypes)}
             />
           </FormField>
           <FormField label="Número de Documento">
@@ -70,7 +66,7 @@ export function VisaForm({ visa, client, suppliers, paymentMethods, onChange, tr
                 value={visa.docNumber} 
                 onChange={(e) => {
                   let cleaned = e.target.value;
-                  if (visa.docType === "CC" || visa.docType === "TI") {
+                  if (visa.docType === "CC" || visa.docType === "T.I") {
                     cleaned = cleaned.replace(/[^0-9]/g, "");
                   } else {
                     cleaned = cleaned.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -78,10 +74,10 @@ export function VisaForm({ visa, client, suppliers, paymentMethods, onChange, tr
                   onChange({ docNumber: cleaned });
                 }} 
                 placeholder={visa.docType === "Pasaporte" ? "N° Pasaporte" : "Número de documento"} 
-                maxLength={20}
+                maxLength={15}
               />
-              {visa.docNumber !== undefined && visa.docNumber.length > 0 && visa.docNumber.length < 5 && (
-                <p className="text-amber-500 text-xs mt-1 absolute bottom-0 left-0">⚠️ Mínimo 5 caracteres</p>
+              {visa.docNumber !== undefined && visa.docNumber.length > 0 && visa.docNumber.length < 6 && (
+                <p className="text-amber-500 text-xs mt-1 absolute bottom-0 left-0">⚠️ Mínimo 6 caracteres</p>
               )}
             </div>
           </FormField>

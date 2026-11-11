@@ -83,7 +83,7 @@ La validación va en `create`, antes de la transacción, y recorre `PRODUCT_HAND
 
 Visa no crea pasajero en el servidor (no está en las listas de pasajero), pero su formulario pasa a la misma regla para que el rango no cambie según dónde se cargue a alguien.
 
-**Tipos de documento:** check-in, migración y visa dejan su lista fija y usan `data.config.documentTypes`, como hotel o planes. Tiquetería agrega un selector de tipo por pasajero. Hoy esas listas mandan `TI` y `PP`, que no están en el catálogo (`T.I`, `Pasaporte`), y el servidor guarda a la persona sin tipo.
+**Tipos de documento:** check-in, migración y visa dejan su lista fija y usan `data.config.documentTypes`, como hotel o planes. SIM card agrega su selector de tipo. Tiquetería no lo necesita: sus pasajeros se eligen de la lista de clientes y traen el tipo de la ficha (corregido al ejecutar el plan). Hoy esas listas mandan `TI` y `PP`, que no están en el catálogo (`T.I`, `Pasaporte`), y el servidor guarda a la persona sin tipo.
 
 **Mascotas:** "Nombre del dueño" pasa a solo lectura con el nombre y el documento del cliente elegido en el paso 1. Se deriva del cliente actual, así que si el cliente cambia se actualiza solo. `ownerName` deja de mandarse.
 

@@ -367,6 +367,7 @@ export function ActiveProductForm({ activeForm, activeIdx, closeActiveForm, data
           case "checkin":
             return (
               <CheckInForm
+                documentTypes={data.config.documentTypes}
                 checkIn={form.checkIns[activeIdx] || INITIAL_CHECKIN(client)}
                 client={client}
                 suppliers={data.config.suppliers}
@@ -383,6 +384,7 @@ export function ActiveProductForm({ activeForm, activeIdx, closeActiveForm, data
           case "documentacion_migratoria":
             return (
               <MigrationForm
+                documentTypes={data.config.documentTypes}
                 migration={form.migrations[activeIdx] || INITIAL_MIGRATION(client)}
                 client={client}
                 suppliers={data.config.suppliers}
@@ -398,6 +400,7 @@ export function ActiveProductForm({ activeForm, activeIdx, closeActiveForm, data
           case "simcard":
             return (
               <SimCardForm
+                documentTypes={data.config.documentTypes}
                 sim={form.simCards[activeIdx] || INITIAL_SIMCARD(client)}
                 client={client}
                 suppliers={data.config.suppliers}
@@ -507,6 +510,7 @@ export function ActiveProductForm({ activeForm, activeIdx, closeActiveForm, data
           case "visa":
             return (
               <VisaForm
+                documentTypes={data.config.documentTypes}
                 visa={form.visas[activeIdx] || INITIAL_VISA(client)}
                 client={client}
                 suppliers={data.config.suppliers}

@@ -78,7 +78,8 @@ En planes, los integrantes dejan de ser opcionales. Se quitan los rangos 5–20 
 ### Tarea 4: tipos del catálogo y dueño de la mascota
 
 - **Catálogo de tipos:** `CheckInForm.tsx`, `MigrationForm.tsx` y `VisaForm.tsx` cambian su lista fija por `data.config.documentTypes` (`value` y `label` = `abreviatura`), como en `HotelForm.tsx`. `wizardData.ts` siembra el tipo del cliente (`client?.docType`) y no `"CC"` o `"Pasaporte"` fijos.
-- **Tiquetería:** `TicketForm.tsx` agrega un selector de tipo por pasajero con el catálogo.
+- **Tiquetería:** ~~selector de tipo por pasajero~~. No hace falta: cada pasajero se elige de la lista de clientes y su documento queda bloqueado, así que el tipo llega de la ficha del cliente, y en producción todos lo tienen. Un selector solo dejaría contradecir la ficha. Una fila sin elegir queda vacía y la frena la regla de fila vacía. (Corrección del agente al ejecutar, 2026-11-11.)
+- **SIM card:** no tenía selector de tipo y el servidor la guardaba sin tipo: se agrega, sembrado con el del cliente.
 - **Mascotas:** `PetServiceForm.tsx` muestra "Dueño" en solo lectura con el nombre y el documento del cliente del paso 1, derivados de `form.clientId` y no guardados en el ítem. `ownerName` sale de `wizardData.ts` y de los tipos.
 
 - [ ] `tsc`, `npm test`, `vite build`. Commit. Lo visual queda para la prueba en pantalla.

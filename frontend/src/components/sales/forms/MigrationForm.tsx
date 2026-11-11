@@ -1,3 +1,4 @@
+import { docTypeOptions } from "./passengerHelpers";
 import { LuMapPin } from "react-icons/lu";
 import { FormField, Input, Combobox , CurrencyInput} from "../../ui/Form";
 import { MigrationData } from "../../../types";
@@ -8,13 +9,14 @@ import { todayStr as todayStrHelper } from "../../../utils/formatters";
 interface MigrationFormProps {
   migration: MigrationData;
   client: any;
+  documentTypes?: { abreviatura: string }[];
   suppliers?: any[];
   paymentMethods?: any[];
   onChange: (updates: Partial<MigrationData>) => void;
   triggerError?: (msg: string) => void;
 }
 
-export function MigrationForm({ migration, client, suppliers, paymentMethods, onChange, triggerError }: MigrationFormProps) {
+export function MigrationForm({ migration, client, documentTypes, suppliers, paymentMethods, onChange, triggerError }: MigrationFormProps) {
   const todayStr = todayStrHelper();
   return (
     <div className="space-y-6 animate-fade-in">
@@ -41,15 +43,9 @@ export function MigrationForm({ migration, client, suppliers, paymentMethods, on
           </FormField>
           <FormField label="Tipo de Documento">
             <Combobox
-              value={migration.docType || "CC"}
+              value={migration.docType || ""}
               onChange={(val) => onChange({ docType: val, docNumber: "" })}
-              options={[
-                { value: "CC", label: "Cédula de Ciudadanía" },
-                { value: "TI", label: "Tarjeta de Identidad" },
-                { value: "CE", label: "Cédula de Extranjería" },
-                { value: "Pasaporte", label: "Pasaporte" },
-                { value: "Otro", label: "Otro Documento" },
-              ]}
+              options={docTypeOptions(documentTypes)}
             />
           </FormField>
           <FormField label="Número de Documento">
@@ -58,7 +54,7 @@ export function MigrationForm({ migration, client, suppliers, paymentMethods, on
                 value={migration.docNumber} 
                 onChange={(e) => {
                   let cleaned = e.target.value;
-                  if (migration.docType === "CC" || migration.docType === "TI") {
+                  if (migration.docType === "CC" || migration.docType === "T.I") {
                     cleaned = cleaned.replace(/[^0-9]/g, "");
                   } else {
                     cleaned = cleaned.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -66,10 +62,10 @@ export function MigrationForm({ migration, client, suppliers, paymentMethods, on
                   onChange({ docNumber: cleaned });
                 }} 
                 placeholder={migration.docType === "Pasaporte" ? "N° Pasaporte" : "Número de documento"} 
-                maxLength={20}
+                maxLength={15}
               />
-              {migration.docNumber !== undefined && migration.docNumber.length > 0 && migration.docNumber.length < 5 && (
-                <p className="text-amber-500 text-xs mt-1 absolute bottom-0 left-0">⚠️ Mínimo 5 caracteres</p>
+              {migration.docNumber !== undefined && migration.docNumber.length > 0 && migration.docNumber.length < 6 && (
+                <p className="text-amber-500 text-xs mt-1 absolute bottom-0 left-0">⚠️ Mínimo 6 caracteres</p>
               )}
             </div>
           </FormField>

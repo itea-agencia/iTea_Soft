@@ -426,6 +426,7 @@ export interface MigrationData {
 export interface SimCardData {
   linkedToPlanIndex?: number | null;
   passengerName: string;
+  docType: string;
   docNumber: string;
   destinationCountry: string;
   arrivalDate: string;
@@ -613,8 +614,9 @@ export interface PassportData {
 }
 
 export interface PetServiceData {
+  // Solo lectura: lo devuelve el servidor y es el cliente de la venta. El asistente no lo manda.
+  ownerName?: string;
   linkedToPlanIndex?: number | null;
-  ownerName: string;
   petName: string;
   species: string;
   breed: string;
