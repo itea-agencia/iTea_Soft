@@ -18,11 +18,23 @@ exports.list = async (req, res, next) => {
   try {
     const { page, perPage, skip } = req.pagination;
     const { search, sortBy, sortOrder } = req;
-    const { status, asesorId, clientId, dateFrom, dateTo } = req.query;
+    const { status, asesorId, clientId, responsableId, onCredit, dateFrom, dateTo } = req.query;
 
     // Todo valor del request entra al SQL como parametro. Antes `search` y `status` se
     // interpolaban en el texto de la consulta, y `?status=' OR 1=1--` la reescribia.
-    const searchCondition = search ? Prisma.sql`AND v.observaciones ILIKE ${`%${search}%`}` : Prisma.empty;
+    // La busqueda mira lo mismo que miraba la pantalla cuando filtraba la lista completa,
+    // incluido el id relleno a cuatro digitos con que se muestra.
+    const like = `%${search}%`;
+    const searchCondition = search
+      ? Prisma.sql`AND (cp.nombres || ' ' || cp.apellidos ILIKE ${like}
+          OR up.nombres || ' ' || up.apellidos ILIKE ${like}
+          OR comp.nombres || ' ' || comp.apellidos ILIKE ${like}
+          OR v.status::text ILIKE ${like}
+          OR v.id::text ILIKE ${like}
+          OR lpad(v.id::text, 4, '0') ILIKE ${like})`
+      : Prisma.empty;
+    const responsableCondition = responsableId ? Prisma.sql`AND v.responsable_id = ${parseInt(responsableId)}` : Prisma.empty;
+    const creditCondition = onCredit === 'true' ? Prisma.sql`AND v.status::text IN ('credito', 'abonado')` : Prisma.empty;
     const statusCondition = status ? Prisma.sql`AND v.status::text = ${String(status)}` : Prisma.empty;
     const asesorCondition = asesorId ? Prisma.sql`AND v.usuario_id = ${parseInt(asesorId)}` : Prisma.empty;
     const clientCondition = clientId ? Prisma.sql`AND v.cliente_id = ${parseInt(clientId)}` : Prisma.empty;
@@ -30,26 +42,22 @@ exports.list = async (req, res, next) => {
     const dateToCondition = dateTo ? Prisma.sql`AND v.creado_at <= ${new Date(dateTo)}` : Prisma.empty;
     const ownCondition = req.permissionScope === 'own' ? Prisma.sql`AND v.usuario_id = ${req.user.id}` : Prisma.empty;
 
-    const where = {};
-    if (search) where.observaciones = { contains: search, mode: 'insensitive' };
-    if (status) where.status = status;
-    if (asesorId) where.usuarioId = parseInt(asesorId);
-    if (clientId) where.clienteId = parseInt(clientId);
-    if (dateFrom || dateTo) {
-      where.creadoAt = {};
-      if (dateFrom) where.creadoAt.gte = new Date(dateFrom);
-      if (dateTo) where.creadoAt.lte = new Date(dateTo);
-    }
-    if (req.permissionScope === 'own') {
-      where.usuarioId = req.user.id;
-    }
+    // Las mismas uniones y condiciones para las filas y para el total: la busqueda mira
+    // tablas unidas, y un total contado aparte no coincidiria con las filas.
+    const joins = Prisma.sql`
+        JOIN clientes c ON v.cliente_id = c.id
+        JOIN personas cp ON c.persona_id = cp.id
+        JOIN usuarios u ON v.usuario_id = u.id
+        JOIN personas up ON u.persona_id = up.id
+        LEFT JOIN comisionistas com ON v.comisionista_id = com.id
+        LEFT JOIN personas comp ON com.persona_id = comp.id`;
+    const conditions = Prisma.sql`WHERE 1=1 ${searchCondition} ${statusCondition} ${asesorCondition} ${clientCondition} ${responsableCondition} ${creditCondition} ${dateFromCondition} ${dateToCondition} ${ownCondition}`;
 
-    const sortFieldMap = { 'creadoAt': 'creadoAt', 'date': 'creadoAt', 'total': 'montoTotal', 'status': 'status', 'clientName': 'clienteId' };
-    const effectiveSortBy = sortFieldMap[sortBy] || 'creadoAt';
-    const sqlOrderBy = effectiveSortBy === 'montoTotal' ? 'v.monto_total' : (effectiveSortBy === 'status' ? 'v.status' : 'v.creado_at');
+    const sqlOrderByField = { id: 'v.id', total: 'v.monto_total', status: 'v.status' };
+    const sqlOrderBy = sqlOrderByField[sortBy] || 'v.creado_at';
 
-    const [total, ventasRaw] = await Promise.all([
-      prisma.ventas.count({ where }),
+    const [[{ total }], ventasRaw] = await Promise.all([
+      prisma.$queryRaw(Prisma.sql`SELECT count(*)::int AS total FROM ventas v ${joins} ${conditions}`),
       prisma.$queryRaw(Prisma.sql`
         SELECT 
           v.id,
@@ -83,14 +91,9 @@ exports.list = async (req, res, next) => {
           f.respuesta->'stamp'->>'status' as "siigoEstampilla"
 
         FROM ventas v
-        JOIN clientes c ON v.cliente_id = c.id
-        JOIN personas cp ON c.persona_id = cp.id
-        JOIN usuarios u ON v.usuario_id = u.id
-        JOIN personas up ON u.persona_id = up.id
-        LEFT JOIN comisionistas com ON v.comisionista_id = com.id
-        LEFT JOIN personas comp ON com.persona_id = comp.id
+        ${joins}
         LEFT JOIN facturas_siigo f ON f.venta_id = v.id
-        WHERE 1=1 ${searchCondition} ${statusCondition} ${asesorCondition} ${clientCondition} ${dateFromCondition} ${dateToCondition} ${ownCondition}
+        ${conditions}
         ORDER BY ${Prisma.raw(sqlOrderBy)} ${Prisma.raw(sortOrder === 'desc' ? 'DESC' : 'ASC')}
         LIMIT ${perPage} OFFSET ${skip}
       `)
