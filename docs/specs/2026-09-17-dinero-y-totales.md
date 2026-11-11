@@ -68,10 +68,11 @@ sumaban **$8.165.000**.
 | Totales después de crear | no hay forma de cambiarlos: desde el 2026-10-24 no existen `PUT /sales/:id` ni los endpoints de producto suelto, que tenían su propio recálculo y no los llamaba la interfaz |
 | Importes de un ítem | `financierosDe()` en el backend, `importesDe()` en `wizardData.ts`. **Una función por lado**, no dieciocho |
 | Monto abonado | `registerPayment` y `deletePayment` suman desde `pagos_venta` dentro de la transacción; `create` guarda la suma de los pagos con que nace la venta |
-| Estado de la venta | `estadoDeVenta()` en `sales.controller.js`, la usan `create`, `registerPayment` y `deletePayment`. **Ningún endpoint acepta `status` ni `isCredit` del cliente**; `esCredito` sale del estado. En el frontend, `estadoDeVenta()` de `wizardData.ts` es solo vista previa |
+| Estado de la venta | `estadoDeVenta()` en `sales.controller.js`, la usan `create`, `registerPayment` y `deletePayment`. **Ningún endpoint acepta `status` ni `isCredit` del cliente**. `isCredit` significa que la venta **todavía está en crédito**: las respuestas lo calculan del estado (`credito` o `abonado`) y no leen la columna `es_credito`, que solo se escribe al crear y quedaba en `true` después de saldar con abonos (decisión del 2026-11-10). En el frontend, `estadoDeVenta()` de `wizardData.ts` es solo vista previa |
 | Una venta anulada se queda anulada | `registerPayment`, `deletePayment` y `generateSiigoInvoice` responden 409 `VENTA_ANULADA`; `voidSale` también, si ya estaba anulada. Antes, borrar un pago de una anulada la devolvía a `credito` y volvía a sumar a la deuda. Anular con factura emitida o comisión liquidada se permite, pero la respuesta trae `avisos`: lo que hay que deshacer a mano |
 | Neto de la comisión | `comisionDe()` en `sales.controller.js`: bruto × (1 − retención/100), con la retención entre 0 y 100. `create` y `update` ignoran `commissionAgentNetPayment` |
-| Liquidación de comisiones | `createSettlement` en `commissions.controller.js` bloquea las ventas con `FOR UPDATE`, rechaza (409 `VENTAS_NO_LIQUIDABLES`) las que no existen, son de otro comisionista, ya están liquidadas o están anuladas, y guarda como monto la suma de sus netos. `data.amount` se ignora. En el frontend, `comisionPendiente()` de `creditUtils.ts` decide qué ventas se mandan |
+| Liquidación de comisiones | `createSettlement` en `commissions.controller.js` bloquea las ventas con `FOR UPDATE`, rechaza (409 `VENTAS_NO_LIQUIDABLES`) las que no existen, son de otro comisionista, ya están liquidadas o están anuladas, y guarda como monto la suma de sus netos. `data.amount` se ignora. Las ventas que se mandan son las `pendingSaleIds` que devolvió `listAgents` para ese comisionista: se paga lo que se vio, y una venta que entre mientras se confirma queda para la siguiente liquidación. |
+| Acumulado de un comisionista | Se deriva de sus ventas con el criterio `PENDING_COMMISSION_SALE` de `commissions.controller.js`, el mismo de `getPendingCommission()`: `comision_liquidada = false`, sin anuladas ni eliminadas. `listAgents`, `getAgent` y `createAgent` lo devuelven como `accumulated` y la pantalla no lo recalcula. La columna `comisionistas.acumulado` no la actualiza nadie después del alta y no se lee (invariante 3) |
 | Pagos al crear | `create` rechaza un pago que no sea mayor a cero (400) y pagos que superen el total (409 `SALDO_INSUFICIENTE`) |
 | Que lo pagado no supere el total | `registerPayment` calcula el saldo pendiente y rechaza (409) lo que lo exceda, o cualquier pago si el saldo ya es cero. `SELECT ... FOR UPDATE` sobre la venta serializa dos registros casi simultáneos del mismo pago |
 | Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda** |
@@ -106,6 +107,8 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
 `backend/db-manual/backfill_pagos_proveedor_paquetes.sql`, que aborta si algo no cuadra.
 
 ## Lo que queda abierto
+
+- **La columna `ventas.es_credito` queda desactualizada y sin uso en las respuestas.** Al 2026-11-10 había en producción 10 ventas `pagado` y 3 `anulado` con `es_credito = true`. Solo la lee `siigo.service.js` para elegir crédito o contado al facturar; Siigo se va a dejar de usar y no se corrige. Quitar la columna necesita una migración.
 
 - **Las ventas 84 y 86 tienen la comisión liquidada estando anuladas** ($161.367 y
   $125.350, liquidación del 2026-09-09). La pantalla de comisiones sumaba lo pendiente sin

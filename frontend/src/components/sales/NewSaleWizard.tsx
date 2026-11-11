@@ -68,11 +68,14 @@ import { Step2Products } from "./steps/Step2Products";
 import { Step3Payment } from "./steps/Step3Payment";
 import { todayStr } from "../../utils/formatters";
 import { getDaysUntilDue } from "../../utils/creditUtils";
+import { findClientById } from "../../utils/clientOptions";
 import { listAsesores } from "../../api";
+import { Modal } from "../ui/Modal";
+import { pendingVoucherWarnings, saleAttachmentsError, saleSuccessMessage, vouchersSentText, VoucherFailure, VoucherIssues } from "../../utils/voucherDelivery";
 
 interface Props {
   onClose: () => void;
-  onSuccess: (msg: string) => void;
+  onSuccess: (msg: string, voucherIssues?: VoucherIssues) => void;
 }
 
 const STEPS = [
@@ -84,8 +87,10 @@ const STEPS = [
 export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   const { data, addSale, fetchClients, fetchCommissionAgentsForSale, fetchResponsables } = useData();
   const { user } = useAuth();
+  const [voucherWarnings, setVoucherWarnings] = useState<VoucherFailure[]>([]);
 
-  const draftKey = `itea_new_sale_draft_v2_${user?.id || 'unknown'}`;
+  // v3: desde el hallazgo 4, clientId guarda el id; un borrador v2 guarda el nombre y se descarta.
+  const draftKey = `itea_new_sale_draft_v3_${user?.id || 'unknown'}`;
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardFormData>(() => {
@@ -185,7 +190,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const hasTa = hotel.ta > 0;
       
       // Ignore initial prefilled passenger in guests list for empty check
-      const client = data.clients.find((c: any) => c.name === form.clientId);
+      const client = findClientById(data.clients, form.clientId);
       const initialGuestName = client?.name || "";
       const initialGuestDoc = client?.docNumber || "";
       
@@ -211,7 +216,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const hasCost = ins.supplierCost > 0;
       const hasTa = ins.ta > 0;
       
-      const client = data.clients.find((c: any) => c.name === form.clientId);
+      const client = findClientById(data.clients, form.clientId);
       const initialMemberName = client?.name || "";
       const initialMemberDoc = client?.docNumber || "";
       
@@ -419,6 +424,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     const errs: Record<string, string> = {};
     if (s === 1) {
       if (!form.clientId) errs.clientId = "El cliente es obligatorio";
+      else if (!findClientById(data.clients, form.clientId)) errs.clientId = "Elija un cliente de la lista";
       // Cubre el campo vacio, un texto que no es nadie y un borrador con alguien ya inactivo.
       if (!asesores.some((a) => String(a.id) === String(form.asesorId))) {
         errs.asesorId = "Elija un asesor de la lista";
@@ -1309,7 +1315,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     if (!activeForm || activeIdx === null) return null;
 
     const product = SALE_PRODUCTS.find((p) => p.id === activeForm);
-    const client = data.clients.find((c: any) => c.name === form.clientId);
+    const client = findClientById(data.clients, form.clientId);
 
     return (
       <form 
@@ -1501,7 +1507,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
                   case "servicio_mascotas": targetKey = "petServices"; initialFn = INITIAL_PET_SERVICE; break;
                 }
                 if (targetKey && initialFn) {
-                  const client = data.clients.find((c: any) => c.name === form.clientId);
+                  const client = findClientById(data.clients, form.clientId);
                   const currentItems = (form as any)[targetKey] || [];
                   const newItem = initialFn(client);
                   const nextItems = [...currentItems, newItem];
@@ -1857,7 +1863,6 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
-    console.log("👉 Intentando finalizar venta. Paso actual:", step, "Form state:", form);
     if (!validateStep(1)) {
       console.warn("⚠️ Validación falló en Paso 1");
       triggerError("Por favor revisa los datos del cliente en el Paso 1.");
@@ -1876,9 +1881,25 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       return;
     }
     if (isSubmittingRef.current) return;
+    const attachmentsError = saleAttachmentsError(form);
+    if (attachmentsError) {
+      triggerError(attachmentsError);
+      return;
+    }
+    const warnings = pendingVoucherWarnings(form, findClientById(data.clients, form.clientId)?.email);
+    if (warnings.length > 0) {
+      setVoucherWarnings(warnings);
+      return;
+    }
+    await submitSale();
+  };
+
+  const submitSale = async () => {
+    setVoucherWarnings([]);
+    if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
     setIsSubmitting(true);
-    const client = data.clients.find((c: any) => c.name === form.clientId);
+    const client = findClientById(data.clients, form.clientId);
     if (!client) {
       console.warn("⚠️ Cliente no encontrado:", form.clientId);
       triggerError("El cliente seleccionado no es válido.");
@@ -1955,20 +1976,16 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
     };
 
     try {
-      await addSale(saleData as any);
+      const created: any = await addSale(saleData as any);
       localStorage.removeItem(draftKey);
 
-      const hasVouchersToSend = [
-        ...form.plans, ...form.checkIns, ...form.migrations, ...form.simCards, ...form.baggages, ...form.carRentals, ...form.landTravels,
-        ...form.fincas, ...form.tours, ...form.conventions, ...form.restaurants,
-        ...form.visas, ...form.passports, ...form.petServices
-      ].some(item => item.sendVoucher);
-
-      if (hasVouchersToSend) {
-        onSuccess("Venta registrada y vouchers enviados al cliente");
-      } else {
-        onSuccess("Venta registrada exitosamente");
-      }
+      const delivery = created.voucherDelivery;
+      onSuccess(
+        saleSuccessMessage(delivery, created.clientEmail),
+        delivery?.failed.length > 0
+          ? { saleId: created.id, sentText: vouchersSentText(delivery.sent.length, created.clientEmail), failed: delivery.failed }
+          : undefined,
+      );
       onClose();
     } catch (err: any) {
       console.error("Error al registrar venta:", err);
@@ -1987,6 +2004,25 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
+      <Modal
+        isOpen={voucherWarnings.length > 0}
+        onClose={() => setVoucherWarnings([])}
+        title="Vouchers que no se enviarán"
+        size="md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setVoucherWarnings([])}>Volver</Button>
+            <Button onClick={submitSale}>Guardar igual</Button>
+          </>
+        }
+      >
+        <ul className="space-y-2 text-sm text-gray-700 dark:text-slate-300">
+          {voucherWarnings.map((w) => (
+            <li key={w.label}><span className="font-semibold">{w.label}:</span> {w.reason}</li>
+          ))}
+        </ul>
+      </Modal>
+
       {/* Toast Error Notification */}
       {showError && (
         <div className="fixed top-24 right-6 z-[200] bg-rose-50 border border-rose-200 text-rose-700 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in-right">

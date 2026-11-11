@@ -560,6 +560,7 @@ export default function Config() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        hasForm
         title={editingItem ? `Editar ${getSingularLabel(currentSection)}` : `Nuevo ${getSingularLabel(currentSection)}`}
         size={currentSection === 'packages' ? 'xl' : 'lg'}
         footer={

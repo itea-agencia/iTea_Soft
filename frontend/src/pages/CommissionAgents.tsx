@@ -24,7 +24,7 @@ import * as api from "../api";
 import { Card, CardHeader } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
-import { FormField, Input, Select } from "../components/ui/Form";
+import { FormField, Input, Select, Textarea } from "../components/ui/Form";
 import { DatePicker } from "../components/sales/forms/TicketForm";
 import { useData } from "../context/DataContext";
 import { usePermissions } from "../context/PermissionsContext";
@@ -33,7 +33,7 @@ import StatCard from "../components/ui/StatCard";
 import LoadingScreen from "../components/ui/LoadingScreen";
 import { mensajeDeError } from "../utils/errors";
 import { validateDocNumber } from "../utils/docNumber";
-import { comisionPendiente } from "../utils/creditUtils";
+import { settlementThreshold } from "../utils/creditUtils";
 
 export default function CommissionAgents() {
   const { data, addCommissionAgent, updateCommissionAgent, toggleCommissionAgentStatus, settleCommissions, refreshSettlements, fetchCommissionAgents, fetchSettlements } = useData();
@@ -115,29 +115,20 @@ export default function CommissionAgents() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  // Calcular acumulados (solo ventas no liquidadas)
+  // El acumulado viene del servidor, derivado de las ventas. Se calculaba aca desde data.sales,
+  // que esta pantalla no carga: entrando directo salia en cero (hallazgo 5 de la auditoria).
   const filteredAgents = useMemo(() => {
-    const agents = data.commissionAgents || [];
-    const sales = data.sales || [];
-    
-    const mapped = agents.map((agent: any) => {
-      const accumulated = sales
-        .filter((s) => comisionPendiente(s, agent.id))
-        .reduce((sum, s) => sum + (s.commissionAgentNetPayment || 0), 0);
-      return { ...agent, accumulated };
-    });
-
-    const result = mapped.filter(
+    const result = (data.commissionAgents || []).filter(
       (a: any) =>
         a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.docNumber?.includes(searchTerm)
     ).sort((a: any, b: any) => b.id - a.id);
     return result;
-  }, [data.commissionAgents, data.sales, searchTerm]);
+  }, [data.commissionAgents, searchTerm]);
 
   const stats = useMemo(() => {
     const totalAccumulated = filteredAgents.reduce((s: number, a: any) => s + (a.accumulated || 0), 0);
-    const pendingLiquidation = filteredAgents.filter((a: any) => a.accumulated >= 50000).length;
+    const pendingLiquidation = filteredAgents.filter((a: any) => a.accumulated >= settlementThreshold(a)).length;
     return {
       total: data.commissionAgents?.length || 0,
       totalAccumulated,
@@ -240,7 +231,7 @@ export default function CommissionAgents() {
     if (!selectedAgent) return;
     setIsSaving(true);
     try {
-      await settleCommissions(selectedAgent.id, { ...settleData, agentName: selectedAgent.name });
+      await settleCommissions(selectedAgent.id, { ...settleData, agentName: selectedAgent.name }, selectedAgent.pendingSaleIds || []);
       await refreshSettlements();
       notifySuccess(`Liquidación de ${formatCurrency(selectedAgent.accumulated)} procesada`);
       setIsSettleModalOpen(false);
@@ -371,8 +362,8 @@ export default function CommissionAgents() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredAgents.map((agent: any) => {
-                    const progress = Math.min((agent.accumulated / 50000) * 100, 100);
-                    const isReady = agent.accumulated >= 50000;
+                    const progress = Math.min((agent.accumulated / settlementThreshold(agent)) * 100, 100);
+                    const isReady = agent.accumulated >= settlementThreshold(agent);
 
                     return (
                       <div
@@ -493,9 +484,9 @@ export default function CommissionAgents() {
                   </div>
                 </div>
 
-                {filteredAgents.filter((a: any) => a.accumulated >= 50000).length > 0 ? (
+                {filteredAgents.filter((a: any) => a.accumulated >= settlementThreshold(a)).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {filteredAgents.filter((a: any) => a.accumulated >= 50000).map((agent: any) => (
+                    {filteredAgents.filter((a: any) => a.accumulated >= settlementThreshold(a)).map((agent: any) => (
                       <div key={agent.id} className="relative group p-6 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-slate-800 border border-amber-100 dark:border-amber-900/30 rounded-3xl hover:shadow-xl transition-all duration-300">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                           <div className="flex items-center gap-3">
@@ -640,6 +631,7 @@ export default function CommissionAgents() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        hasForm
         title={editingAgent ? "Editar Perfil de Comisionista" : "Registrar Nuevo Comisionista Estratégico"}
         size="lg"
       >
@@ -779,39 +771,49 @@ export default function CommissionAgents() {
       <Modal
         isOpen={isSettleModalOpen}
         onClose={() => setIsSettleModalOpen(false)}
+        hasForm
         title="Validación de Liquidación"
         size="md"
+        footer={
+          <>
+            <Button variant="outline" className="border-none" onClick={() => setIsSettleModalOpen(false)} disabled={isSaving}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSettle}
+              className="flex items-center gap-2 font-bold"
+              disabled={isSaving || !settleData.date || !settleData.paymentMethod}
+            >
+              {isSaving && <Loader2 size={16} className="animate-spin" />}
+              {isSaving ? "Procesando..." : "Confirmar"}
+            </Button>
+          </>
+        }
       >
-        <div className="space-y-6">
-          <div className="relative p-6 bg-gradient-to-br from-amber-500 to-amber-600 rounded-[2rem] text-white shadow-xl shadow-amber-200 overflow-hidden">
-            <div className="absolute -right-6 -bottom-6 opacity-20 transform rotate-12">
-               <BadgeDollarSign size={140} />
+        <div>
+          <div className="mb-4 flex items-center justify-between gap-3 p-4 rounded-xl border border-amber-100 bg-amber-50 dark:bg-amber-500/10 dark:border-amber-500/20">
+            <div className="min-w-0">
+              <p className="text-xs text-gray-500 font-medium">Liquidación para</p>
+              <p className="font-bold text-gray-800 truncate">{selectedAgent?.name}</p>
             </div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] opacity-80 mb-2">Orden de Pago para</p>
-            <h3 className="text-2xl font-black mb-4 truncate">{selectedAgent?.name}</h3>
-            <div className="flex items-end justify-between">
-               <div>
-                  <p className="text-[10px] font-bold uppercase opacity-80">Monto Total</p>
-                  <p className="text-4xl font-black">{formatCurrency(selectedAgent?.accumulated || 0)}</p>
-               </div>
-               <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] font-bold border border-white/20">
-                  REF: {new Date().getFullYear()}-00{selectedAgent?.id}
-               </div>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-gray-500 font-medium">Monto</p>
+              <p className="text-xl font-black text-amber-600 dark:text-amber-400">{formatCurrency(selectedAgent?.accumulated || 0)}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Fecha de Ejecución">
+          {/* text-xs en los dos: el DatePicker usa ese tamaño y, con otro, el select quedaba mas alto. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+            <FormField label="Fecha de Ejecución *">
               <DatePicker
                 value={settleData.date}
                 onChange={(val) => setSettleData({ ...settleData, date: val })}
-                fieldName="ejecución"
-                className="h-12 rounded-xl"
+                fieldName="Fecha de ejecución"
               />
             </FormField>
-            <FormField label="Canal de Pago">
+            <FormField label="Canal de Pago *">
               <Select
-                className="h-12 rounded-xl"
+                className="text-xs"
                 value={settleData.paymentMethod?.toString() || ""}
                 onChange={(e) => setSettleData({ ...settleData, paymentMethod: e.target.value })}
                 options={[
@@ -825,32 +827,24 @@ export default function CommissionAgents() {
             </FormField>
           </div>
 
-          <FormField label="Referencia de Transacción (Opcional)">
+          <FormField label="Referencia">
             <Input
-              className="h-12 rounded-xl"
+              className="text-xs"
               placeholder="Ej. N° de comprobante o PIN"
               value={settleData.reference}
               onChange={(e) => setSettleData({ ...settleData, reference: e.target.value })}
             />
           </FormField>
 
-          <FormField label="Notas del Proceso">
-            <textarea
-              className="w-full p-4 rounded-2xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none bg-white text-sm min-h-[100px]"
+          <FormField label="Notas" className="mb-0">
+            <Textarea
+              className="text-xs"
+              rows={3}
               placeholder="Añade detalles adicionales..."
               value={settleData.notes}
               onChange={(e) => setSettleData({ ...settleData, notes: e.target.value })}
             />
           </FormField>
-
-          <div className="flex flex-col gap-3 pt-4">
-            <Button onClick={handleSettle} className="bg-emerald-600 hover:bg-emerald-700 text-white h-14 rounded-2xl font-black text-lg shadow-xl shadow-emerald-100 transition-all hover:scale-[1.02] active:scale-95" disabled={isSaving}>
-              {isSaving ? "Procesando..." : "Confirmar y Saldar Cuentas"}
-            </Button>
-            <Button variant="outline" onClick={() => setIsSettleModalOpen(false)} className="h-12 rounded-xl border-gray-200 text-gray-400 font-bold" disabled={isSaving}>
-              Cancelar Operación
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1005,17 +999,15 @@ export default function CommissionAgents() {
                       </div>
                     </div>
 
-                    {(agentDetails.paymentThreshold ?? 0) > 0 && (
-                      <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Umbral de Liquidación:</p>
-                          <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">{formatCurrency(agentDetails.paymentThreshold)}</p>
-                        </div>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
-                          {Math.min(Math.round(((agentDetails.accumulated || 0) / agentDetails.paymentThreshold) * 100), 100)}%
-                        </span>
+                    <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-400 dark:text-slate-400 font-medium mb-0.5">Umbral de Liquidación:</p>
+                        <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">{formatCurrency(settlementThreshold(agentDetails))}</p>
                       </div>
-                    )}
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
+                        {Math.min(Math.round(((agentDetails.accumulated || 0) / settlementThreshold(agentDetails)) * 100), 100)}%
+                      </span>
+                    </div>
 
                     {agentDetails.observacion && (
                       <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">

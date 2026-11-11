@@ -1,7 +1,33 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "./Button";
+import { createModalStack } from "../../utils/modalStack";
+
+const modalStack = createModalStack();
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function keepTabInside(e: KeyboardEvent, panel: HTMLElement | null) {
+  if (!panel) return;
+  const active = document.activeElement;
+  // El calendario se abre en un portal, fuera de la ventana: ahi manda el.
+  if (active && active !== document.body && !panel.contains(active)) return;
+  const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+  if (items.length === 0) {
+    e.preventDefault();
+    return;
+  }
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (e.shiftKey && (active === first || active === panel || active === document.body)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (active === last || active === document.body)) {
+    e.preventDefault();
+    first.focus();
+  }
+}
 
 interface ModalProps {
   isOpen: boolean;
@@ -11,6 +37,10 @@ interface ModalProps {
   footer?: ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   contentClassName?: string;
+  // false: solo se cierra con un boton propio, para un aviso que no se puede perder de un clic.
+  closable?: boolean;
+  // true: tiene un formulario. Ni Escape ni el clic afuera lo cierran, para no perder lo escrito.
+  hasForm?: boolean;
 }
 
 export function Modal({
@@ -21,15 +51,33 @@ export function Modal({
   footer,
   size = "md",
   contentClassName = "",
+  closable = true,
+  hasForm = false,
 }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const dismissible = closable && !hasForm;
+  // En un ref: onClose cambia en cada render, y reinstalar el efecto moveria el foco.
+  const latest = useRef({ onClose, dismissible });
+  latest.current = { onClose, dismissible };
+
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
+    if (!isOpen) return;
+    const entry = modalStack.push();
+    const previousFocus = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    if (!panelRef.current?.contains(document.activeElement)) panelRef.current?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!entry.isTop()) return;
+      if (e.key === "Escape" && latest.current.dismissible) latest.current.onClose();
+      if (e.key === "Tab") keepTabInside(e, panelRef.current);
+    };
+    document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = "unset";
+      document.removeEventListener("keydown", onKeyDown);
+      if (entry.remove()) document.body.style.overflow = "unset";
+      previousFocus?.focus();
     };
   }, [isOpen]);
 
@@ -47,22 +95,31 @@ export function Modal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4">
       <div
         className="fixed inset-0 bg-primary/40 backdrop-blur-sm transition-opacity duration-300"
-        onClick={onClose}
+        onClick={dismissible ? onClose : undefined}
       />
       <div
-        className={`relative z-[101] w-full ${maxWidth} bg-white rounded-xl shadow-2xl animate-scale-in flex flex-col max-h-[95vh] sm:max-h-[90vh]`}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`relative z-[101] w-full ${maxWidth} bg-white rounded-xl shadow-2xl animate-scale-in flex flex-col max-h-[95vh] sm:max-h-[90vh] outline-none`}
       >
         {/* Header con color primary */}
         <div className="bg-primary px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-shrink-0 rounded-t-xl">
-          <h2 className="text-base sm:text-lg font-heading font-semibold text-white truncate">
+          <h2 id={titleId} className="text-base sm:text-lg font-heading font-semibold text-white truncate">
             {title}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
-          >
-            <X size={20} />
-          </button>
+          {closable && (
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={onClose}
+              className="text-white/80 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         {/* Content */}

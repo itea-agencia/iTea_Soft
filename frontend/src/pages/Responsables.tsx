@@ -584,6 +584,7 @@ export default function Responsables() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        hasForm
         title={editingResponsable ? 'Editar Responsable' : 'Nuevo Responsable'}
         size="lg"
         contentClassName="overflow-visible"

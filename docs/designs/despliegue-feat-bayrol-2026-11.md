@@ -2,6 +2,8 @@
 
 Checklist único para llevar `feat-bayrol` a producción. Junta lo que estaba repartido entre `comisionistas-desactivar-en-vez-de-borrar.md`, `proveedores-registrados-por-usuario.md`, el README de `backend/db-manual/` y los mensajes de commit. Cada paso que escribe en producción se confirma antes de correrlo.
 
+**Estado: ejecutado el 2026-11-09, con el merge `450b0fc`.** Los pasos 1 a 3 y la migración de proveedores se comprobaron en producción (0 documentos fuera de rango, 0 tramos sin tipo). El usuario confirmó el deploy, la publicación del frontend, el aviso a la gerencia y la comprobación final. Dos datos de este checklist resultaron inexactos: las migraciones 1 y 2 ya se habían aplicado con el deploy del 8 de noviembre, así que el merge solo aplicó la de proveedores; y al desplegar había 28 proveedores sin fecha de alta, no 26.
+
 ## Qué trae el merge a `main`
 
 **Backend** (Render lo despliega solo al mergear):

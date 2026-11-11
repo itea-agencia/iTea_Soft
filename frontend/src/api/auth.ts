@@ -26,8 +26,11 @@ export async function login(email: string, password: string, remember?: boolean)
   return res.data.data as LoginResponse;
 }
 
-export async function logout() {
-  await api.post('/auth/logout');
+// El token llega como argumento porque quien cierra la sesion lo borra de localStorage en el
+// mismo tick, y el interceptor corre despues: sin esto, el logout salia sin Authorization y el
+// servidor nunca revocaba la sesion.
+export async function logout(token: string) {
+  await api.post('/auth/logout', null, { headers: { Authorization: `Bearer ${token}` } });
 }
 
 export async function getMe() {

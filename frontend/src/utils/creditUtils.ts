@@ -30,29 +30,27 @@ export function getDaysUntilDue(dueDate: string): number {
 }
 
 export function getCreditSaleStatus(sale: Sale): 'pending' | 'partial' | 'paid' | 'overdue' {
-  if (!sale.isCredit && sale.status !== 'credito' && sale.status !== 'abonado') return 'paid';
+  if (!esCreditoVigente(sale)) return 'paid';
   
   const paidAmount = sale.creditPaidAmount || 0;
   
   if (paidAmount >= sale.total) return 'paid';
-  if (paidAmount > 0) return 'partial';
-  
-  const daysUntilDue = getDaysUntilDue(sale.creditDueDate || '');
-  if (daysUntilDue < 0) return 'overdue';
-  
-  return 'pending';
+  // El vencimiento va antes que el abono: un credito vencido con abonos salia "parcial" y su
+  // saldo no sumaba a lo vencido (hallazgo 6 de la auditoria del frontend).
+  if (getDaysUntilDue(sale.creditDueDate || '') < 0) return 'overdue';
+  return paidAmount > 0 ? 'partial' : 'pending';
 }
 
-// Una venta anulada conserva isCredit=true (voidSale solo cambia el estado), así que sin
-// excluirla por estado seguía sumando al crédito y a la deuda del cliente.
-const esCreditoVigente = (s: Sale) =>
-  s.status !== 'anulado' && (s.isCredit === true || s.status === 'credito' || s.status === 'abonado');
+// Una venta está en crédito si su estado es credito o abonado, igual que isOnCredit() del
+// backend. No se mira isCredit: la columna quedaba en true al saldar o anular, y el estado en
+// memoria tras un abono cambia el status pero no isCredit.
+const esCreditoVigente = (s: Sale) => s.status === 'credito' || s.status === 'abonado';
 
-// Comisión que todavía se le debe al comisionista. Sin excluir las anuladas, el acumulado
-// las sumaba y la liquidación las incluía: así se pagó comisión de las ventas 84 y 86.
-// El servidor rechaza (409) liquidar una anulada, así que este filtro tiene que coincidir.
-export const comisionPendiente = (s: Sale, agentId: number | string) =>
-  String(s.commissionAgentId) === String(agentId) && !s.isSettled && s.status !== 'anulado';
+// Desde cuánto un comisionista está "listo para liquidar": su umbral si es mayor que 0, si no
+// 50.000. El directorio usaba 50.000 fijos y el detalle el umbral propio; en producción
+// ninguno tiene umbral propio (2026-11-09). Regla confirmada por el usuario el 2026-11-10.
+export const settlementThreshold = (agent: { paymentThreshold?: number | null }) =>
+  (agent.paymentThreshold ?? 0) > 0 ? agent.paymentThreshold! : 50000;
 
 export function getClientsWithCredit(clients: Client[], sales: Sale[]): ClientCreditSummary[] {
   const creditSales = sales.filter(esCreditoVigente);

@@ -156,7 +156,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
         if (isMounted) {
           setData(res.data || []);
           setTotalPages(res.meta?.totalPages || 1);
-          setTotalItems(res.meta?.totalItems || 0);
+          setTotalItems(res.meta?.total || 0);
           setLoading(false);
         }
       })

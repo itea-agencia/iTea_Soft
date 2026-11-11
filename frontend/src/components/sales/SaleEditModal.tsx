@@ -208,6 +208,7 @@ export default function SaleEditModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      hasForm
       title="Gestión de Abonos y Pagos"
       size="lg"
       footer={

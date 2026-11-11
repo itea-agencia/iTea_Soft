@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { clientOption, findClientById } from "../../../utils/clientOptions";
 import { Building2, Users, Briefcase, Trash2, PlusCircle } from "lucide-react";
 import * as LuIcons from "react-icons/lu";
 import { FormField, Input, Combobox, Select , CurrencyInput} from "../../ui/Form";
@@ -185,13 +186,11 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
                   <FormField label="Nombre Completo">
                     <Combobox
                       value={guest.name}
-                      onChange={(val) => {
+                      onChange={(val, picked) => {
                         const cleaned = val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
-                        const client = (data?.clients || []).find(
-                          (c: any) =>
-                            (c.name === cleaned || `${c.firstName} ${c.lastName || ""}`.trim() === cleaned) &&
-                            c.status === "active"
-                        );
+                        // Por id y solo si se eligio de la lista: por nombre, con homonimos se copiaban los
+                        // documentos del primero (hallazgo 4). Lo escrito queda como nombre libre.
+                        const client = picked ? findClientById(data?.clients || [], val) : undefined;
                         if (client) {
                           updateGuest(gIdx, {
                             name: client.name || `${client.firstName} ${client.lastName || ""}`.trim(),
@@ -204,10 +203,7 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
                       }}
                       options={(data?.clients || [])
                         .filter((c: any) => c.status === "active" && String(c.id) !== String(mainClient?.id))
-                        .map((c: any) => ({
-                          value: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
-                          label: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
-                        }))}
+                        .map(clientOption)}
                       placeholder="Nombre completo"
                       preventNumbers={true}
                     />

@@ -186,3 +186,31 @@ El backend revisado exige Bearer y autorización en estadísticas; el contexto d
 5. División de carga y reducción gradual de duplicación.
 
 Las seis pruebas actuales no cubren estos flujos. Agregar regresiones específicas junto con cada corrección; no usar la compilación exitosa como prueba de comportamiento de pagos, permisos o facturación.
+
+## Estado
+
+Comprobado el 2026-11-09 buscando en el código de `feat-bayrol`, sin ejecutar la app ni repetir las reproducciones, y actualizado el 2026-11-10 con lo corregido. Marcar cada casilla en el commit que lo corrija. Diseños: los hallazgos 1, 2, 4 y 5 en `docs/designs/hallazgos-prioridad-alta-2026-11.md`; el 6, el 12 y el 14 en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`. Lo corregido está en `origin/feat-bayrol` y todavía no en producción: el orden de despliegue está en `docs/designs/despliegue-hallazgos-auditoria-2026-11.md`.
+
+Prioridad alta:
+
+- [x] 1. Datos de otra sesión. Corregido: cada carga de `DataContext` descarta su respuesta, y no escribe la caché, si el token cambió mientras estaba en curso. Las mutaciones (crear, editar, abonar) no se cubren: las inicia el usuario en su propia sesión.
+- [x] 2. Logout sin revocar. Corregido en `e93fda5` y probado en pantalla por el usuario contra la app local (2026-11-10).
+- [ ] 3. Siigo: dry run mostrado como emitida. **Fuera de alcance**: hoy no se usa Siigo y se va a dejar de usar (decisión del usuario, 2026-11-09 y 2026-11-10). Si se volviera a usar, se corrige antes.
+- [x] 4. Clientes y comisionistas por nombre. Corregido: el cliente, el comisionista y el autocompletado de integrantes (seguros, hoteles, tours y planes) se eligen por id; la etiqueta del cliente lleva el documento.
+- [x] 5. Comisiones dependen de visitar Ventas. Corregido: el servidor deriva el acumulado y las ventas a liquidar, y el umbral es uno solo (`settlementThreshold`).
+
+Prioridad media:
+
+- [x] 6. Créditos con abonos no se clasifican como vencidos. Corregido; diseño en `docs/designs/hallazgos-media-creditos-sesion-2026-11.md`.
+- [x] 7. Cambios confirmados reaparecen desde caché. Corregido: crear, editar o desactivar clientes, registrar o borrar abonos y liquidar comisiones invalidan la caché, y ventas y clientes guardan cada uno su antigüedad.
+- [x] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta. Corregido; diseño en `docs/designs/hallazgo-8-refrescar-y-filtros-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [x] 9. Errores de red presentados como ceros o listas vacías. Corregido; diseño en `docs/designs/hallazgo-9-errores-de-carga-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [x] 10. Vouchers anunciados sin confirmación de envío. Corregido; diseño en `docs/designs/hallazgo-10-vouchers-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [x] 11. `/config` se abre sin `config.view`. Corregido en todas las rutas; diseño en `docs/designs/hallazgo-11-rutas-por-permiso-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
+- [x] 13. Adjuntos sin validar el límite anunciado. Corregido; diseño en `docs/designs/hallazgo-13-adjuntos-2026-11.md`. Probado en pantalla por el usuario contra la app local.
+- [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
+- [x] 15. Modales y campos sin accesibilidad básica. Corregido; diseño en `docs/designs/hallazgo-15-accesibilidad-2026-11.md`. Falta probar el teclado en pantalla.
+- [ ] 16. Carga inicial y mantenimiento.
+
+Orden propuesto para lo que falta (2026-11-10): primero el 9, porque la pantalla puede mostrar $0 cuando en realidad falló la carga (invariante 4); después el resto del 7 y el 10; luego el 11 y el 13, que son chicos; el 8; y al final el 15 y el 16. El tope de 5.000 del 14 espera a que el volumen se acerque.

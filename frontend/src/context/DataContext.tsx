@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { AppData, User, Client, Sale, Flight, PermisosEfectivos } from '../types';
-import { comisionPendiente } from '../utils/creditUtils';
 import * as api from '../api';
 import { useAuth } from './AuthContext';
 import { getCurrentMonth } from '../utils/formatters';
 import {
-  saveSalesAndClientsCache,
+  saveSalesCache,
+  saveClientsCache,
   loadSalesCache,
   loadClientsCache,
   invalidateSalesCache,
@@ -25,6 +25,8 @@ import {
   loadConfigCache,
   invalidateConfigCache,
 } from '../utils/configCache';
+import { isAccessDenied, loadErrorMessage, withLoadFailure, withoutLoadFailure } from '../utils/loadFailures';
+import { createLatestRequests } from '../utils/latestRequests';
 
 // Limpiar caché de permisos de rol si quedó de versiones anteriores
 try { localStorage.removeItem('itea_role_permissions_cache'); } catch {}
@@ -67,9 +69,10 @@ interface DashboardData {
 interface DataContextType {
   data: AppData;
   dashboardData: DashboardData | null;
-  dashboardLoading: boolean;
+  dashboardRefreshCount: number;
   salesLoading: boolean;
-  errorDeCarga: string | null;
+  loadError: string | null;
+  dashboardFailed: boolean;
   fetchDashboard: (params?: Record<string, unknown>, isBackgroundRefresh?: boolean) => Promise<void>;
   fetchSales: () => Promise<void>;
   fetchClients: () => Promise<void>;
@@ -101,7 +104,7 @@ interface DataContextType {
   registerCreditPayment: (saleId: number, amount: number, method?: string, isTotal?: boolean, reference?: string) => Promise<{ payment: any; status: string; creditPaidAmount: number }>;
   deleteSalePayment: (saleId: number, paymentId: string) => Promise<void>;
   updateFlight: (id: string, flight: Partial<Flight> | FormData) => Promise<void>;
-  settleCommissions: (agentId: number, settlement: any) => Promise<void>;
+  settleCommissions: (agentId: number, settlement: any, salesIds: number[]) => Promise<void>;
   refreshSettlements: () => Promise<void>;
   addConfigItem: (section: ConfigSection, item: Record<string, unknown>) => Promise<Record<string, unknown>>;
   updateConfigItem: (section: ConfigSection, id: number, item: Record<string, unknown>) => Promise<void>;
@@ -154,7 +157,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return emptyData;
   });
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(() => loadDashboardCache());
-  const [dashboardLoading, setDashboardLoading] = useState<boolean>(() => !loadDashboardCache());
+  const [dashboardRefreshCount, setDashboardRefreshCount] = useState(0);
   // salesLoading = true sólo cuando NO hay caché y se está haciendo el primer fetch
   const [salesLoading, setSalesLoading] = useState<boolean>(() => {
     const hasCachedSales = loadSalesCache() !== null;
@@ -164,37 +167,70 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // conexión, la pantalla decía "no hay ventas" en vez de "no se pudieron cargar". Ahora un
   // fallo deja los datos que había (la caché o la carga anterior) y lo dice. Un 401/403 no
   // es un fallo: es un listado que ese rol no tiene permitido, y vacío es lo correcto.
-  const [errorDeCarga, setErrorDeCarga] = useState<string | null>(null);
-  const falloAlCargar = (que: string) => (err: any) => {
-    const status = err?.response?.status;
-    if (status !== 401 && status !== 403) {
-      setErrorDeCarga(`No se pudieron cargar ${que}. Lo que ves puede estar desactualizado: recarga la página.`);
-    }
-    return null;
+  const [loadFailures, setLoadFailures] = useState<string[]>([]);
+  const loadError = loadErrorMessage(loadFailures);
+  // Sin cifras que mostrar porque la carga fallo: el Dashboard muestra el error, no ceros.
+  const [dashboardFailed, setDashboardFailed] = useState(false);
+  const DASHBOARD_LOAD = 'los indicadores del panel';
+
+  // Cada recurso sale del aviso cuando vuelve a cargar; antes el mensaje quedaba hasta recargar
+  // la pagina. El resultado de una peticion de la sesion anterior no toca el aviso.
+  const trackLoad = <T,>(resource: string, request: Promise<T>): Promise<T | null> => {
+    const token = currentToken();
+    return request.then(
+      (result) => {
+        if (currentToken() === token) setLoadFailures((f) => withoutLoadFailure(f, resource));
+        return result;
+      },
+      (err) => {
+        if (currentToken() === token && !isAccessDenied(err)) setLoadFailures((f) => withLoadFailure(f, resource));
+        return null;
+      },
+    );
   };
 
+  useEffect(() => {
+    setLoadFailures([]);
+    setDashboardFailed(false);
+  }, [user?.id]);
+
+  // Una carga que sale con una sesion y resuelve con otra se descarta: escribia ventas y
+  // clientes del usuario anterior en el estado y en la cache del nuevo (hallazgo 1 de la
+  // auditoria del frontend). La identidad es el token con el que salio la peticion: cambia en el
+  // mismo tick del logout, sin esperar un render. Solo el login lo escribe.
+  const currentToken = () => localStorage.getItem('itea_token');
+
   const backgroundLoadingRef = useRef(false);
-  const fetchingDashboardRef = useRef(false);
+  const dashboardRequests = useRef(createLatestRequests()).current;
 
   const fetchDashboard = useCallback(async (params: Record<string, unknown> = {}, isBackgroundRefresh = false) => {
-    if (fetchingDashboardRef.current) return;
-    fetchingDashboardRef.current = true;
+    const isLatestRequest = dashboardRequests.begin();
     
     if (!isBackgroundRefresh) {
-      setDashboardLoading(true);
+      // Sin datos y sin error es "cargando": se ve el esqueleto, no cifras de otro rango.
+      setDashboardData(null);
+      setDashboardFailed(false);
     }
+    const token = currentToken();
     try {
       const result = await api.getDashboard(params);
+      if (!isLatestRequest() || currentToken() !== token) return;
       setDashboardData(result as DashboardData);
       
       // Guardar en caché el dashboard consultado
       saveDashboardCache(result as DashboardData);
-    } catch {
-      setDashboardData(null);
-    } finally {
-      fetchingDashboardRef.current = false;
-      if (!isBackgroundRefresh) {
-        setDashboardLoading(false);
+      setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
+    } catch (err) {
+      if (!isLatestRequest() || currentToken() !== token) return;
+      if (isBackgroundRefresh && !isAccessDenied(err)) {
+        // Falla solo la actualizacion: los datos guardados se conservan, con el aviso.
+        setLoadFailures((f) => withLoadFailure(f, DASHBOARD_LOAD));
+      } else {
+        // Sin cifras: las del rango anterior bajo las fechas nuevas serian falsas.
+        setDashboardData(null);
+        // Tambien con un 403: sin datos ni error, la pantalla quedaria en esqueleto para siempre.
+        setDashboardFailed(true);
+        setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
       }
     }
   }, []);
@@ -202,11 +238,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchSales = useCallback(async () => {
     setSalesLoading(true);
     try {
-      const res = await api.listSales({ perPage: 5000 }).catch(falloAlCargar('las ventas'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('las ventas', api.listSales({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       const freshSales = res.data || [];
       setData(prev => {
-        saveSalesAndClientsCache(freshSales, prev.clients);
+        // El updater puede correr despues; la cache tambien se escribe con la sesion de ahora.
+        if (currentToken() !== token) return prev;
+        saveSalesCache(freshSales);
         return { ...prev, sales: freshSales };
       });
     } catch {
@@ -217,11 +256,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchClients = useCallback(async () => {
     try {
-      const res = await api.listClients({ perPage: 5000 }).catch(falloAlCargar('los clientes'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('los clientes', api.listClients({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       const freshClients = res.data || [];
       setData(prev => {
-        saveSalesAndClientsCache(prev.sales, freshClients);
+        if (currentToken() !== token) return prev;
+        saveClientsCache(freshClients);
         return { ...prev, clients: freshClients };
       });
     } catch {}
@@ -229,8 +270,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchResponsables = useCallback(async () => {
     try {
-      const res = await api.listResponsables({ perPage: 5000 }).catch(falloAlCargar('los responsables'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('los responsables', api.listResponsables({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       const freshResponsables = res.data || [];
       setData(prev => ({ ...prev, responsables: freshResponsables }));
     } catch {}
@@ -238,8 +280,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await api.listUsers({ perPage: 5000 }).catch(falloAlCargar('los usuarios'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('los usuarios', api.listUsers({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       const freshUsers = res.data || [];
       saveUsersCache(freshUsers);
       setData(prev => ({ ...prev, users: freshUsers }));
@@ -248,7 +291,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchConfig = useCallback(async () => {
     try {
-      const configAll = await api.getAllConfig().catch(() => ({}));
+      const token = currentToken();
+      // Si falla, se conserva lo que habia: antes los catalogos se reemplazaban por listas vacias.
+      const configAll = await trackLoad('los catálogos de configuración', api.getAllConfig());
+      if (!configAll || currentToken() !== token) return;
       if (configAll && Object.keys(configAll).length > 0) {
         saveConfigCache({
           cards: configAll.cards || [],
@@ -285,11 +331,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const fetchRolePermissions = useCallback(async () => {
     // Leer los permisos de un rol es solo del admin (requireAdmin en el backend).
     if (user?.role !== 'admin') return;
+    const token = currentToken();
     try {
       const [asesorPerms, freelancerPerms] = await Promise.all([
         api.getRolePermissions('asesor'),
         api.getRolePermissions('freelancer'),
       ]);
+      if (currentToken() !== token) return;
       setData(prev => ({
         ...prev,
         config: {
@@ -307,8 +355,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchFlights = useCallback(async () => {
     try {
-      const res = await api.listFlights({ perPage: 5000 }).catch(falloAlCargar('los itinerarios'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('los itinerarios', api.listFlights({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, flights: res.data || [] }));
     } catch (err) {
       console.warn('[DataContext] Error fetching flights:', err);
@@ -317,8 +366,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const fetchCommissionAgents = useCallback(async () => {
     try {
-      const res = await api.listCommissionAgents({ perPage: 5000 }).catch(falloAlCargar('los comisionistas'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('los comisionistas', api.listCommissionAgents({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionAgents: res.data || [] }));
     } catch {}
   }, []);
@@ -327,16 +377,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // muestre solo los propios (decision 16 del diseno de permisos).
   const fetchCommissionAgentsForSale = useCallback(async () => {
     try {
-      const res = await api.listCommissionAgents({ para: 'venta' }).catch(falloAlCargar('los comisionistas'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('los comisionistas del asistente de ventas', api.listCommissionAgents({ para: 'venta' }));
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionAgentsForSale: res.data || [] }));
     } catch {}
   }, []);
 
   const fetchSettlements = useCallback(async () => {
     try {
-      const res = await api.listSettlements({ perPage: 5000 }).catch(falloAlCargar('las liquidaciones'));
-      if (!res) return;
+      const token = currentToken();
+      const res = await trackLoad('las liquidaciones', api.listSettlements({ perPage: 5000 }));
+      if (!res || currentToken() !== token) return;
       setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
     } catch {}
   }, []);
@@ -360,7 +412,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       config: { ...emptyData.config, ...(cachedConfig || {}) },
     }));
     setDashboardData(loadDashboardCache());
-    setDashboardLoading(!loadDashboardCache());
     setSalesLoading(!loadSalesCache());
 
     // Los permisos de rol se piden SIEMPRE. La cache de configuracion los excluye a
@@ -377,7 +428,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user?.id, fetchConfig, fetchRolePermissions]);
 
   const refreshData = () => { 
-    // Compatibilidad para el botón refrescar del usuario
+    // El Dashboard y Estadisticas consultan con sus propios filtros: este contador se los pide.
+    // Antes los datos quedaban en null sin volver a pedirse y la pantalla salia toda en $0.
+    setDashboardRefreshCount((c) => c + 1);
     setDashboardData(null);
     invalidateDashboardCache();
     fetchSales();
@@ -415,6 +468,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const addClient = async (client: Omit<Client, 'id'>): Promise<Client> => {
     const created = await api.createClient(client as any);
     setData(prev => ({ ...prev, clients: [...prev.clients, created] }));
+    invalidateSalesCache();
     return created;
   };
 
@@ -424,6 +478,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, ...clientUpdate } : c)
     }));
+    invalidateSalesCache();
   };
 
   // Esto solo recargaba la lista y nunca llamaba a la API: desde junio el toast decia
@@ -435,6 +490,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...prev,
       clients: prev.clients.map(c => c.id === id ? { ...c, status } : c)
     }));
+    invalidateSalesCache();
     return status;
   };
 
@@ -514,6 +570,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         payments: [...(s.payments || []), result.payment]
       } : s)
     }));
+    invalidateSalesCache();
     setDashboardData(null);
     invalidateDashboardCache();
     return result;
@@ -535,6 +592,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         payments: (s.payments || []).filter((p: any) => p.id !== paymentId)
       } : s)
     }));
+    invalidateSalesCache();
     setDashboardData(null);
     invalidateDashboardCache();
   };
@@ -548,11 +606,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const settleCommissions = async (agentId: number, settlement: any) => {
-    const salesIds = data.sales
-      .filter(s => comisionPendiente(s, agentId))
-      .map(s => s.id);
-
+  // Se liquidan las ventas que el servidor devolvio como pendientes al cargar la lista, las que
+  // la persona vio en pantalla. Antes salian de data.sales, que la pantalla de comisiones no
+  // carga. Una venta que entre mientras tanto queda para la siguiente liquidacion.
+  const settleCommissions = async (agentId: number, settlement: any, salesIds: number[]) => {
     const created = await api.createSettlement({ ...settlement, agentId, salesIds });
     setData(prev => ({
       ...prev,
@@ -563,11 +620,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
           : s
       ),
     }));
+    // Sin esto, la cache de ventas devolvia estas ventas como no liquidadas al recargar
+    // (parte del hallazgo 7), y la lista mostraba el acumulado de antes de liquidar.
+    invalidateSalesCache();
+    await fetchCommissionAgents();
   };
 
   const refreshSettlements = async () => {
-    const res = await api.listSettlements({ perPage: 100 }).catch(falloAlCargar('las liquidaciones'));
-    if (!res) return;
+    const token = currentToken();
+    const res = await trackLoad('las liquidaciones', api.listSettlements({ perPage: 100 }));
+    if (!res || currentToken() !== token) return;
     setData(prev => ({ ...prev, commissionSettlements: res.data || [] }));
   };
 
@@ -670,7 +732,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const addCommissionAgent = async (agent: any) => {
     const created = await api.createCommissionAgent(agent);
-    setData(prev => ({ ...prev, commissionAgents: [...prev.commissionAgents, created] }));
+    // Se recarga la lista en vez de agregar la respuesta: crear puede reactivar a uno que ya
+    // estaba (quedaba duplicado) y la respuesta no trae pendingSaleIds para liquidar.
+    await fetchCommissionAgents();
     return created;
   };
 
@@ -709,9 +773,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider value={{
       data,
       dashboardData,
-      dashboardLoading,
+      dashboardRefreshCount,
       salesLoading,
-      errorDeCarga,
+      loadError,
+      dashboardFailed,
       fetchDashboard,
       fetchSales,
       fetchClients,

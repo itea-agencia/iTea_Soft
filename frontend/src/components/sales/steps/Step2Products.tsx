@@ -3,6 +3,7 @@ import { ShoppingBag, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { Button } from "../../ui/Button";
 import * as LuIcons from "react-icons/lu";
 import { SALE_PRODUCTS, SaleProductId } from "../../../types";
+import { findClientById } from "../../../utils/clientOptions";
 import { 
   PRODUCT_IMAGES, 
   INITIAL_TICKET, 
@@ -37,7 +38,7 @@ export function Step2Products({ form, set, data, errors, toggleProduct, actions 
     openForm
   } = actions;
 
-  const client = data.clients.find((c: any) => c.name === form.clientId);
+  const client = findClientById(data.clients, form.clientId);
 
   const mainProducts = SALE_PRODUCTS.filter((p) =>
     ["tiqueteria", "hoteleria", "seguros_viaje", "planes"].includes(p.id)

@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { clientOption, findClientById } from "../../../utils/clientOptions";
 import { AlertCircle, Users, Briefcase, Trash2, PlusCircle } from "lucide-react";
 import { FormField, Input, Select, CurrencyInput, Combobox } from "../../ui/Form";
 import { Button } from "../../ui/Button";
@@ -98,12 +99,10 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
               <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
                 <Combobox
                   value={member.name}
-                  onChange={(val) => {
-                    const client = (data?.clients || []).find(
-                      (c: any) =>
-                        (c.name === val || `${c.firstName} ${c.lastName || ""}`.trim() === val) &&
-                        c.status === "active"
-                    );
+                  onChange={(val, picked) => {
+                    // Por id y solo si se eligio de la lista: por nombre, con homonimos se copiaban los
+                    // documentos del primero (hallazgo 4). Lo escrito queda como nombre libre.
+                    const client = picked ? findClientById(data?.clients || [], val) : undefined;
                     if (client) {
                       updateMember(mIdx, {
                         name: client.name || `${client.firstName} ${client.lastName || ""}`.trim(),
@@ -116,10 +115,7 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
                   }}
                   options={(data?.clients || [])
                     .filter((c: any) => c.status === "active" && String(c.id) !== String(client?.id))
-                    .map((c: any) => ({
-                      value: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
-                      label: c.name || `${c.firstName} ${c.lastName || ""}`.trim(),
-                    }))}
+                    .map(clientOption)}
                   placeholder="Nombre completo"
                 />
                 <Select
