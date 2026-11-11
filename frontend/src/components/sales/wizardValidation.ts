@@ -2,6 +2,8 @@ import { AppData } from "../../types";
 import { WizardFormData, estadoDeVenta } from "./wizardData";
 import { getDaysUntilDue } from "../../utils/creditUtils";
 import { findClientById } from "../../utils/clientOptions";
+import { validatePerson } from "../../utils/docNumber";
+import { PRODUCTOS } from "./wizardData";
 
 // Las reglas de cada paso del asistente, sin React, para poder probarlas (hallazgo 16 de la
 // auditoria del frontend). El mensaje es el ultimo que se haya levantado, como cuando se
@@ -9,7 +11,7 @@ import { findClientById } from "../../utils/clientOptions";
 export function validateWizardStep(
   s: number,
   form: WizardFormData,
-  data: Pick<AppData, "clients" | "commissionAgentsForSale">,
+  data: Pick<AppData, "clients" | "commissionAgentsForSale" | "config">,
   asesores: { id: number }[],
 ): { errors: Record<string, string>; message: string | null } {
   let message = null as string | null;
@@ -37,6 +39,14 @@ export function validateWizardStep(
     }
   }
   if (s === 2) {
+    // Los pasajeros se revisan antes que el resto: el servidor rechaza la venta con la misma
+    // regla (passengerError en sales.controller.js).
+    const passengerMessage = passengerError(form, (data.config?.documentTypes ?? []).map((d) => d.abreviatura));
+    if (passengerMessage) {
+      triggerError(passengerMessage);
+      errs.passengers = "invalid";
+      return { errors: errs, message };
+    }
     if (form.selectedProducts.length === 0) {
       errs.products = "Debes seleccionar al menos un producto";
     } else if (form.selectedProducts.includes("tiqueteria")) {
@@ -261,21 +271,9 @@ export function validateWizardStep(
               }
             }
 
-            // Integrantes: opcionales si se ingresan datos
+            // Nombre y documento de cada integrante: passengerError, al inicio del paso.
             if (plan.guests && plan.guests.length > 0) {
               plan.guests.forEach((g, gIdx) => {
-                if (g.name || g.docNumber) {
-                  if (g.name && (g.name.trim().length < 3 || g.name.trim().length > 70)) {
-                    errors.push(`Integrante #${gIdx + 1}: Nombre Completo (3-70 caracteres)`);
-                  } else if (g.name && /[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/.test(g.name)) {
-                    errors.push(`Integrante #${gIdx + 1}: Nombre Completo solo permite letras y espacios`);
-                  }
-                  if (g.docNumber && (g.docNumber.trim().length < 5 || g.docNumber.trim().length > 20)) {
-                    errors.push(`Integrante #${gIdx + 1}: Número de Documento (5-20 caracteres)`);
-                  } else if (g.docNumber && /[^a-zA-Z0-9]/.test(g.docNumber)) {
-                    errors.push(`Integrante #${gIdx + 1}: Número de Documento debe ser alfanumérico`);
-                  }
-                }
                 // Booking y tiquete son opcionales: llegan dias despues de vender. Solo
                 // se valida el formato si el campo viene lleno.
                 if (g.nroReserva && !/^[A-Z0-9_-]{1,20}$/.test(g.nroReserva)) {
@@ -309,9 +307,6 @@ export function validateWizardStep(
           const errors: string[] = [];
           if (!check) errors.push("Check-in inválido");
           else {
-            if (!check.passengerName || check.passengerName.trim().length === 0) errors.push("Nombre del pasajero (requerido)");
-            if (!check.docType || check.docType.trim().length === 0) errors.push("Tipo de Doc (requerido)");
-            if (!check.docNumber || check.docNumber.trim().length === 0) errors.push("Nº de Doc (requerido)");
             if (!check.flightOrReservation || check.flightOrReservation.trim().length < 3 || check.flightOrReservation.trim().length > 8) errors.push("Vuelo o Reserva (3-8 chars)");
             if (!check.travelDate) errors.push("Fecha de viaje (requerido)");
             if (check.seat && check.seat.trim().length > 10) errors.push("Silla Preferida (máx 10 chars)");
@@ -339,10 +334,7 @@ export function validateWizardStep(
           const errors: string[] = [];
           if (!mig) errors.push("Documento inválido");
           else {
-            if (!mig.passengerName || mig.passengerName.trim().length === 0) errors.push("Nombre del pasajero (requerido)");
             if (!mig.nationality || mig.nationality.trim().length === 0 || mig.nationality.length > 30) errors.push("Nacionalidad (1-30 chars)");
-            if (!mig.docType) errors.push("Tipo de Documento (requerido)");
-            if (!mig.docNumber || mig.docNumber.trim().length < 5 || mig.docNumber.length > 20) errors.push("Número de Documento (5-20 chars)");
             if (mig.docType === "Pasaporte" && !mig.passportExpiry) errors.push("Vencimiento de Documento (requerido)");
             if (!mig.destinationCountry || mig.destinationCountry.trim().length === 0) errors.push("País de Destino (requerido)");
             if (!mig.requestedDocType || mig.requestedDocType.trim().length === 0) errors.push("Trámite (requerido)");
@@ -621,7 +613,6 @@ export function validateWizardStep(
           const errors: string[] = [];
           if (!visa) errors.push("Visa inválida");
           else {
-            if (!visa.fullName || visa.fullName.trim().length === 0) errors.push("Nombre Completo (requerido)");
             
             if (!visa.birthDate) {
               errors.push("Fecha de Nacimiento (requerida)");
@@ -639,13 +630,6 @@ export function validateWizardStep(
               errors.push("Nacionalidad solo permite letras");
             }
 
-            if (!visa.docType) errors.push("Tipo de Documento (requerido)");
-
-            if (!visa.docNumber || visa.docNumber.trim().length < 5 || visa.docNumber.length > 20) {
-              errors.push("Número de Documento (5-20 chars)");
-            } else if (/[^a-zA-Z0-9]/.test(visa.docNumber)) {
-              errors.push("Número de Documento debe ser alfanumérico");
-            }
 
             if (visa.docType === "Pasaporte" && !visa.passportExpiration) {
               errors.push("Vencimiento de Documento (requerido)");
@@ -837,4 +821,40 @@ export function validateWizardStep(
     }
   }
   return { errors: errs, message };
+}
+
+type PersonInput = { name?: string; docType?: string; docNumber?: string };
+
+// De donde sale cada pasajero en cada categoria: una lista, o el propio item cuando el
+// producto es de un solo pasajero. Vehiculos, equipaje y mascotas no van: su pasajero es el
+// cliente (CATEGORIAS_PASAJERO_ES_CLIENTE en el backend).
+const PASSENGERS_OF: Record<string, (item: any) => { persons: PersonInput[]; single: boolean }> = {
+  tiqueteria: (t) => ({ persons: t.passengers || (t.passengerInfo ? [t.passengerInfo] : []), single: false }),
+  hoteleria: (h) => ({ persons: h.guests || [], single: false }),
+  seguros_viaje: (s) => ({ persons: s.members || [], single: false }),
+  planes: (p) => ({ persons: p.guests || [], single: false }),
+  tours: (t) => ({ persons: t.guests || [], single: false }),
+  viajes_terrestres: (v) => ({ persons: v.passengers || [], single: false }),
+  checkin: (c) => ({ persons: [{ name: c.passengerName, docType: c.docType, docNumber: c.docNumber }], single: true }),
+  documentacion_migratoria: (m) => ({ persons: [{ name: m.passengerName, docType: m.docType, docNumber: m.docNumber }], single: true }),
+  simcard: (s) => ({ persons: [{ name: s.passengerName, docType: s.docType, docNumber: s.docNumber }], single: true }),
+  visa: (v) => ({ persons: [{ name: v.fullName, docType: v.docType, docNumber: v.docNumber }], single: true }),
+};
+
+// Primer pasajero que no cumple la regla, como "Hotelería #1, pasajero 2: <motivo>".
+function passengerError(form: WizardFormData, docTypes: string[]): string | null {
+  for (const [category, passengersOf] of Object.entries(PASSENGERS_OF)) {
+    if (!form.selectedProducts?.includes(category as any)) continue;
+    const { key, label } = PRODUCTOS[category];
+    const items: any[] = (form as any)[key] || [];
+    for (const [i, item] of items.entries()) {
+      if (!item) continue;
+      const { persons, single } = passengersOf(item);
+      for (const [j, person] of persons.entries()) {
+        const error = validatePerson(person, docTypes);
+        if (error) return single ? `${label} #${i + 1}: ${error}` : `${label} #${i + 1}, pasajero ${j + 1}: ${error}`;
+      }
+    }
+  }
+  return null;
 }

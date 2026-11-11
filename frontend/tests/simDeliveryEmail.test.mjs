@@ -6,10 +6,10 @@ const { validateWizardStep } = await bundleTs('components/sales/wizardValidation
 
 // El correo de entrega de la eSIM es evidencia: se valida entero y no se recorta.
 const sim = (extra) => ({
-  destinationCountry: 'USA', arrivalDate: '2099-01-01', tripDuration: '8', passengerName: 'Ana',
+  destinationCountry: 'USA', arrivalDate: '2099-01-01', tripDuration: '8', passengerName: 'Ana Pérez', docType: 'CC', docNumber: '1234567',
   simType: 'eSIM', deliveryMethod: 'Correo Electrónico', ...extra,
 });
-const validate = (s) => validateWizardStep(2, { selectedProducts: ['simcard'], simCards: [s] }, { clients: [], commissionAgentsForSale: [] }, []);
+const validate = (s) => validateWizardStep(2, { selectedProducts: ['simcard'], simCards: [s] }, { clients: [], commissionAgentsForSale: [], config: { documentTypes: [{ abreviatura: 'CC' }] } }, []);
 const longEmail = `${'a'.repeat(160)}@empresa.com`; // 171 caracteres, el caso de la revision
 
 test('sim: un correo de 171 caracteres es valido y no se rechaza', () => {
