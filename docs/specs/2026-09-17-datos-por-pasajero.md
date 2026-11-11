@@ -60,9 +60,17 @@ valor heredado.
 
 ### Quién es el pasajero en vehículos y equipaje
 
-En `renta_vehiculos` y `equipaje` el pasajero es siempre el cliente titular de la venta (`CATEGORIAS_PASAJERO_ES_CLIENTE`). El nombre que se escribe en el formulario no crea ni busca una persona: el conductor y su licencia quedan en `prod_autos` (`conductor_nombre`, `licencia_nro`) y el pasajero del equipaje en `prod_equipajes.pasajero_nombre`.
+En `renta_vehiculos`, `equipaje` y `servicio_mascotas` el pasajero es siempre el cliente titular de la venta (`CATEGORIAS_PASAJERO_ES_CLIENTE`). El nombre que se escribe en el formulario no crea ni busca una persona: el conductor y su licencia quedan en `prod_autos` (`conductor_nombre`, `licencia_nro`) y el pasajero del equipaje en `prod_equipajes.pasajero_nombre`.
 
 Antes `findOrCreatePersona` buscaba por documento y, sin documento, creaba una persona nueva. En vehículos el documento era el número de licencia, que el formulario deja vacío por defecto; en equipaje nunca hay documento. Cada venta dejaba un duplicado del cliente en `personas` (la venta local 154 creó dos; producción tiene uno, de una venta de equipaje). Decisión del usuario, 2026-11-11.
+
+### Todo pasajero tiene nombre y documento
+
+Ningún pasajero entra a una venta sin nombre completo (al menos dos palabras), tipo del catálogo `tipos_documento` y documento con el formato de clientes (6 a 15 caracteres; CC solo números; NIT con guion opcional; pasaporte alfanumérico). Una fila de pasajero vacía se rechaza: no se convierte en el cliente. Lo validan el servidor (`passengerError` en `create`, con las reglas de `backend/src/utils/persons.js`) y el asistente (`passengerError` en `wizardValidation.ts`, con `frontend/src/utils/docNumber.ts`), con la misma regla.
+
+Excepciones: el titular implícito de check-in, migración, SIM y las demás de `CATEGORIAS_CON_PASAJERO_IMPLICITO`, cuando el ítem no trae ni nombre ni documento, sigue siendo el cliente; y en `CATEGORIAS_PASAJERO_ES_CLIENTE` (vehículos, equipaje y servicio de mascotas) el pasajero es siempre el cliente.
+
+Antes, un pasajero sin documento creaba una persona nueva en cada venta, imposible de reconocer después. En producción había uno, de una venta de equipaje (sigue ahí: deuda técnica). Decisión del usuario, 2026-11-11; diseño `docs/designs/pasajeros-con-documento-2026-11.md`.
 
 ### Un solo titular
 
@@ -104,6 +112,5 @@ SELECT id, asiento FROM pasajeros_detalle WHERE asiento LIKE '%-%' OR asiento LI
 - **`esTitular: p.esTitular ?? true`** en los caminos de escritura sigue marcando titular a
   todos cuando el producto no envía el dato. Afecta a las categorías que aún no capturan
   titular.
-- **Pasajeros con nombre y sin documento** en las demás categorías siguen creando una persona nueva sin documento en cada venta. No se cambió a "usar al cliente" porque un acompañante sin documento pasaría a ser el cliente; tampoco se reusa por nombre, porque uniría a dos personas que se llamen igual (decisión del usuario, 2026-11-11).
 - **Migración con pasaporte**: si el asesor cambia el documento del cliente por su pasaporte, se crea otra persona con el pasaporte como documento. Una persona tiene un solo `documento`.
 - **La persona sin documento que dejó la venta de equipaje en producción** no se limpió: el código ya no crea más, y limpiarla queda para decidir.

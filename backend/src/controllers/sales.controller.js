@@ -10,6 +10,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
 const { auditar } = require('../utils/auditoria');
+const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
 const { ASESOR_ACTIVO } = require('../utils/asesores');
 const siigoService = require('../services/siigo.service');
@@ -1493,7 +1494,7 @@ const CATEGORIAS_CON_PASAJERO_IMPLICITO = [
 // (prod_autos.conductor_nombre, prod_equipajes.pasajero_nombre). Buscarlo por documento
 // dejaba un duplicado del cliente por venta: vehiculos usaba la licencia como documento y
 // equipaje no manda ninguno. Spec datos-por-pasajero.
-const CATEGORIAS_PASAJERO_ES_CLIENTE = ['renta_vehiculos', 'equipaje'];
+const CATEGORIAS_PASAJERO_ES_CLIENTE = ['renta_vehiculos', 'equipaje', 'servicio_mascotas'];
 
 // El correo de entrega de la eSIM es evidencia de a donde se envio: se exige entero y valido
 // con entrega por correo. Antes se recortaba a 150 en silencio y se guardaba otra direccion,
@@ -1504,6 +1505,49 @@ function simDeliveryEmailError(items) {
     const email = String(sim.deliveryEmail || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return `SIM Card #${i + 1}: el correo de entrega es obligatorio y debe ser válido`;
     if (email.length > 254) return `SIM Card #${i + 1}: el correo de entrega admite máximo 254 caracteres`;
+  }
+  return null;
+}
+
+/**
+ * Primer pasajero de la venta que no tiene nombre, tipo o documento validos, o null.
+ * Spec datos-por-pasajero ("Todo pasajero tiene nombre y documento"). Antes un pasajero sin
+ * documento creaba una persona nueva en cada venta. El asistente aplica la misma regla
+ * (passengerError en wizardValidation.ts).
+ *
+ * Sigue la misma logica que arma pasajerosDetalle en create, para que no se separen: una
+ * lista explicita se valida fila por fila (una fila vacia se rechaza); sin lista, el titular
+ * implicito se valida solo si el item trae nombre o documento; si no trae nada es el cliente.
+ */
+function passengerError(data, docTypes) {
+  for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
+    if (CATEGORIAS_PASAJERO_ES_CLIENTE.includes(handler.category)) continue;
+    const items = Array.isArray(data[field]) ? data[field] : [];
+    for (const [i, item] of items.entries()) {
+      if (!item || Object.keys(item).length === 0) continue;
+      const list = getPassengerList(item);
+      let persons;
+      if (list) {
+        persons = list.map(p => ({ name: (p || {}).name || (p || {}).passengerName || (p || {}).fullName, docType: (p || {}).docType, docNumber: (p || {}).docNumber }));
+      } else {
+        const implicit = item.passengerName || item.ownerName || CATEGORIAS_CON_PASAJERO_IMPLICITO.includes(handler.category);
+        const person = { name: item.passengerName || item.ownerName, docType: item.docType, docNumber: item.docNumber };
+        if (!implicit || (!String(person.name || '').trim() && !String(person.docNumber || '').trim())) continue;
+        persons = [person];
+      }
+      for (const [j, p] of persons.entries()) {
+        const where = list ? `${handler.nombreServicio} #${i + 1}, pasajero ${j + 1}` : `${handler.nombreServicio} #${i + 1}`;
+        const name = String(p.name || '').trim();
+        const docNumber = String(p.docNumber || '').trim();
+        let reason = null;
+        if (!name && !docNumber) reason = 'Faltan el nombre y el documento';
+        else reason = fullNameError(name)
+          || (!p.docType ? 'Seleccione un tipo de documento' : null)
+          || (!docTypes.has(p.docType) ? `El tipo de documento ${p.docType} no existe` : null)
+          || docNumberError(p.docType, docNumber);
+        if (reason) return `${where}: ${reason}`;
+      }
+    }
   }
   return null;
 }
@@ -1736,6 +1780,11 @@ exports.create = async (req, res, next) => {
     // vacia con el total que dijera el cliente, y con total 0 el estado derivado es `pagado`.
     if (totales.items === 0) {
       return error(res, 'Una venta necesita al menos un producto', 400, 'VALIDATION_ERROR');
+    }
+    const docTypes = new Set((await prisma.tiposDocumento.findMany({ select: { abreviatura: true } })).map(t => t.abreviatura));
+    const passengerMessage = passengerError(data, docTypes);
+    if (passengerMessage) {
+      return error(res, passengerMessage, 400, 'VALIDATION_ERROR');
     }
     const simEmailError = simDeliveryEmailError(data.simCardData);
     if (simEmailError) {
