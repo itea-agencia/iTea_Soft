@@ -71,12 +71,13 @@ Pedir permiso al usuario antes de cada paso que escribe o levanta algo.
 - [x] Con permiso: reconstruir backend y frontend (`docker compose up -d --build backend frontend`).
 - [x] Con permiso: en la base local, un usuario de prueba con un rol cuyo `sales.view` sea `own`, y al menos una venta suya y varias ajenas. Si hace falta un script, va en `backend/db-manual/` y su estado en el README de esa carpeta.
 - [x] Con permiso: entrar con ese usuario por la API (`curl` con su token) y comprobar que `GET /sales` con página, búsqueda, `onCredit` y fechas solo devuelve sus ventas, y que `meta.total` coincide con un conteo SQL de sus ventas.
-- [x] Anotar el resultado en el diseño. Borrar o dejar el usuario de prueba según diga el usuario.
+- [x] Anotar el resultado en el diseño.
+- [x] Borrar o dejar el usuario de prueba según diga el usuario: se deja (2026-11-11).
 
 ### Tarea 7: cierre
 
-- [ ] Quitar el alias sin uso `currentSales = sales` de `SalesTable.tsx` y corregir en `ventas-paginacion-servidor-2026-11.md` el nombre `useSalesList` por `useSalesQuery`.
-- [ ] Chequeo completo: `tsc`, `npm test`, `vite build`, `node --check` del controlador.
-- [ ] Diseño: estado "implementado", "Lo que queda abierto" al día (Siigo sin recargar la tabla; sin pruebas de `useSalesQuery` ni del controlador).
-- [ ] Commit y push de la rama.
+- [x] Quitar el alias sin uso `currentSales = sales` de `SalesTable.tsx` y corregir en `ventas-paginacion-servidor-2026-11.md` el nombre `useSalesList` por `useSalesQuery`.
+- [x] Chequeo completo: `tsc`, `npm test`, `vite build`, `node --check` del controlador.
+- [x] Diseño: estado "implementado", "Lo que queda abierto" al día (Siigo sin recargar la tabla; sin pruebas de `useSalesQuery` ni del controlador).
+- [x] Commit y push de la rama.
 - [ ] Lista para el usuario de lo que tiene que probar en pantalla (los puntos de revisión 3 a 8) y recordatorio de la prueba de las 17 categorías antes del merge. Al desplegar, el backend va antes que el frontend.

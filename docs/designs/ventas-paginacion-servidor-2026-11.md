@@ -43,7 +43,7 @@ Al entrar, la app descarga la lista completa de ventas (hasta 5.000, y las sigui
 
 **Frontend:**
 
-- Un hook `useSalesList` con la página, los filtros, las filas, el total, y los estados de carga y error. Si llegan dos respuestas, gana la última (`latestRequests`).
+- Un hook `useSalesQuery` con la página, los filtros, las filas, el total, y los estados de carga y error. Si llegan dos respuestas, gana la última (`latestRequests`).
 - `SalesTable` recibe la página y el total, y deja de cortar la lista. Siguen siendo 10 filas por página. Al cambiar un filtro se vuelve a la página 1.
 - Crear, anular, marcar como facturada y registrar o borrar un pago recargan la página actual.
 - `data.sales`, `fetchSales` y la caché de ventas se quitan. Refrescar vuelve a pedir la página con los filtros actuales.

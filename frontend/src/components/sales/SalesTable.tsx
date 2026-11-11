@@ -97,7 +97,6 @@ export default function SalesTable({
   const { puede } = usePermissions();
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
 
-  const currentSales = sales;
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,7 +113,7 @@ export default function SalesTable({
         <span className="block text-right">Acciones</span>,
       ]}
     >
-      {currentSales.map((sale) => {
+      {sales.map((sale) => {
         const client = clients.find(c => c.id === sale.clientId);
         const asesor = users.find(u => u.id === sale.asesorId);
 

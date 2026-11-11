@@ -1,6 +1,6 @@
 # Correcciones de la auditoría de la paginación de Ventas
 
-Estado: **aprobado, con plan** en `correcciones-auditoria-paginacion-2026-11-plan.md`. Las preguntas se respondieron el 2026-11-11 (ver "Decisiones del usuario"). No se tocó código.
+Estado: **implementado** (2026-11-11), según `correcciones-auditoria-paginacion-2026-11-plan.md`: `6579705` (comodines), `204489d` (fechas), `9edf428` y `288ecf7` (página y panel de créditos, con pruebas de la lógica de `Sales.tsx`), `16d7470` (detalle) y `65d245e` (alcance "propios"). Falta que el usuario lo pruebe en pantalla y la prueba de las 17 categorías del hallazgo 16 antes del merge.
 
 Sale de la auditoría del 2026-11-10 sobre los commits `c2c4077` y `30388fd` de
 `feat/hallazgo-16-carga-y-mantenimiento` (ver `ventas-paginacion-servidor-2026-11.md`).
@@ -91,7 +91,6 @@ Con login real y `auth` incluido, por la API local:
 ## Lo que queda abierto
 
 - Factura Siigo sin recargar la tabla (decidido no entrar ahora).
-- Ninguna prueba cubre `useSalesQuery`, la lógica de páginas ni el controlador.
-- El diseño de la paginación nombra `useSalesList`; el código usa `useSalesQuery`. Queda en
-  `SalesTable` el alias sin uso `currentSales = sales`.
+- Sin pruebas automáticas: `useSalesQuery` (es un hook de React) y el controlador. La lógica de página, el panel de créditos y el detalle sí las tienen, como funciones puras en `salesQuery.ts`; lo que `Sales.tsx` hace con ellas se mira en pantalla.
+- El usuario de prueba de "propios" (id 14, rol `prueba_propios`) queda en la base local por decisión del usuario, para volver a probar. Las ventas 101, 104 y 3 locales figuran a su nombre; sus asesores originales (usuario 4) están en la tabla local `_prueba_propios_ventas`.
 - El merge a `main` lo hace el usuario, no el agente.
