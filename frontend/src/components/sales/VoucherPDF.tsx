@@ -799,7 +799,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Check-Out" value={finca.checkOutDate ? formatDate(finca.checkOutDate) : null} />
                   <DataCell label="Adultos" value={finca.adultsCount?.toString()} />
                   <DataCell label="Niños" value={finca.childrenCount?.toString()} />
-                  <DataCell label="Mascotas" value={finca.hasPets ? `Sí — ${finca.petType}` : 'No'} />
+                  <DataCell label="Mascotas" value={finca.hasPets ? (finca.petType ? `Sí — ${finca.petType}` : 'Sí') : 'No'} />
                 </div>
               </React.Fragment>
             ))}

@@ -108,13 +108,21 @@ export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, 
               type="checkbox"
               id="has-pets"
               checked={finca.hasPets}
-              onChange={(e) => onChange({ hasPets: e.target.checked })}
+              // Al desmarcar se borra el tipo: si no, el voucher seguia mostrando una mascota.
+              onChange={(e) => onChange({ hasPets: e.target.checked, petType: e.target.checked ? finca.petType : "" })}
               className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
             <label htmlFor="has-pets" className="text-sm font-medium text-gray-700">
               Tiene mascotas
             </label>
           </div>
+          {/* La columna tipo_mascota y el voucher ya lo esperaban; el formulario nunca lo pedia
+              y el voucher salia con "Sí — null". Opcional. */}
+          {finca.hasPets && (
+            <FormField label="Tipo de mascota (Opcional)">
+              <Input value={finca.petType || ""} maxLength={30} onChange={(e) => onChange({ petType: e.target.value })} placeholder="Ej. Perro" />
+            </FormField>
+          )}
           <FormField label="Teléfono">
             <Input value={finca.phone} onChange={(e) => onChange({ phone: e.target.value })} placeholder="+57 300 123 4567" />
           </FormField>
@@ -153,4 +161,4 @@ export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, 
       />
     </div>
   );
-}
+}
