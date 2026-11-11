@@ -100,7 +100,7 @@ export function SimCardForm({ sim, client, suppliers, paymentMethods, onChange, 
               <Input
                 type="email"
                 value={sim.deliveryEmail || ""}
-                maxLength={150}
+                maxLength={254}
                 onChange={(e) => onChange({ deliveryEmail: e.target.value.trim() })}
                 placeholder="ejemplo@correo.com"
               />

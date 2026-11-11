@@ -1301,8 +1301,9 @@ const PRODUCT_HANDLERS = {
       metodoEntrega: d.deliveryMethod || null,
       // Queda como evidencia de a donde se envio la eSIM. Con otro metodo de entrega no
       // aplica: se descarta aunque el formulario conserve lo que se habia escrito.
+      // Ya validado en create (simDeliveryEmailError): no se recorta.
       emailEntrega: d.deliveryMethod === 'Correo Electrónico'
-        ? (String(d.deliveryEmail || '').trim().slice(0, 150) || null)
+        ? String(d.deliveryEmail || '').trim()
         : null
     })
   },
@@ -1493,6 +1494,19 @@ const CATEGORIAS_CON_PASAJERO_IMPLICITO = [
 // dejaba un duplicado del cliente por venta: vehiculos usaba la licencia como documento y
 // equipaje no manda ninguno. Spec datos-por-pasajero.
 const CATEGORIAS_PASAJERO_ES_CLIENTE = ['renta_vehiculos', 'equipaje'];
+
+// El correo de entrega de la eSIM es evidencia de a donde se envio: se exige entero y valido
+// con entrega por correo. Antes se recortaba a 150 en silencio y se guardaba otra direccion,
+// y un correo vacio o invalido pasaba. Misma regla que wizardValidation.ts.
+function simDeliveryEmailError(items) {
+  for (const [i, sim] of (Array.isArray(items) ? items : []).entries()) {
+    if (!sim || sim.deliveryMethod !== 'Correo Electrónico') continue;
+    const email = String(sim.deliveryEmail || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return `SIM Card #${i + 1}: el correo de entrega es obligatorio y debe ser válido`;
+    if (email.length > 254) return `SIM Card #${i + 1}: el correo de entrega admite máximo 254 caracteres`;
+  }
+  return null;
+}
 
 // Devuelve la lista de pasajeros del item, o null si no trae ninguna.
 // Un array vacio cuenta como ausencia: `item.passengers || ...` lo tomaba como
@@ -1722,6 +1736,10 @@ exports.create = async (req, res, next) => {
     // vacia con el total que dijera el cliente, y con total 0 el estado derivado es `pagado`.
     if (totales.items === 0) {
       return error(res, 'Una venta necesita al menos un producto', 400, 'VALIDATION_ERROR');
+    }
+    const simEmailError = simDeliveryEmailError(data.simCardData);
+    if (simEmailError) {
+      return error(res, simEmailError, 400, 'VALIDATION_ERROR');
     }
     const pagos = Array.isArray(data.payments) ? data.payments : [];
     if (pagos.some(p => !(Number(p.amount) > 0))) {

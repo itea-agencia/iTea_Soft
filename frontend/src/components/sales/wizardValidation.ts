@@ -372,7 +372,13 @@ export function validateWizardStep(
             if (!sim.destinationCountry || sim.destinationCountry.trim().length === 0) errors.push("País de Destino (requerido)");
             if (!sim.arrivalDate) errors.push("Fecha de Llegada (requerida)");
             if (!sim.tripDuration || isNaN(Number(sim.tripDuration)) || Number(sim.tripDuration) <= 0) errors.push("Duración del Viaje (mayor a 0)");
-            if (sim.deliveryMethod === "Correo Electrónico" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sim.deliveryEmail || "")) errors.push("Correo de entrega (requerido y válido)");
+            if (sim.deliveryMethod === "Correo Electrónico") {
+              // Es la evidencia de a donde se envio la eSIM: el servidor aplica la misma regla
+              // y rechaza en vez de recortar, para que lo guardado sea lo que se escribio.
+              const email = (sim.deliveryEmail || "").trim();
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("Correo de entrega (requerido y válido)");
+              else if (email.length > 254) errors.push("Correo de entrega (máximo 254 caracteres)");
+            }
 
             const now = new Date();
             now.setHours(0, 0, 0, 0);
