@@ -25,6 +25,7 @@ import {
   invalidateConfigCache,
 } from '../utils/configCache';
 import { isAccessDenied, loadErrorMessage, withLoadFailure, withoutLoadFailure } from '../utils/loadFailures';
+import { createLatestRequests } from '../utils/latestRequests';
 
 // Limpiar caché de permisos de rol si quedó de versiones anteriores
 try { localStorage.removeItem('itea_role_permissions_cache'); } catch {}
@@ -67,7 +68,7 @@ interface DashboardData {
 interface DataContextType {
   data: AppData;
   dashboardData: DashboardData | null;
-  dashboardLoading: boolean;
+  dashboardRefreshCount: number;
   salesLoading: boolean;
   loadError: string | null;
   dashboardFailed: boolean;
@@ -155,7 +156,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return emptyData;
   });
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(() => loadDashboardCache());
-  const [dashboardLoading, setDashboardLoading] = useState<boolean>(() => !loadDashboardCache());
+  const [dashboardRefreshCount, setDashboardRefreshCount] = useState(0);
   // salesLoading = true sólo cuando NO hay caché y se está haciendo el primer fetch
   const [salesLoading, setSalesLoading] = useState<boolean>(() => {
     const hasCachedSales = loadSalesCache() !== null;
@@ -199,40 +200,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const currentToken = () => localStorage.getItem('itea_token');
 
   const backgroundLoadingRef = useRef(false);
-  const fetchingDashboardRef = useRef(false);
+  const dashboardRequests = useRef(createLatestRequests()).current;
 
   const fetchDashboard = useCallback(async (params: Record<string, unknown> = {}, isBackgroundRefresh = false) => {
-    if (fetchingDashboardRef.current) return;
-    fetchingDashboardRef.current = true;
+    const isLatestRequest = dashboardRequests.begin();
     
     if (!isBackgroundRefresh) {
-      setDashboardLoading(true);
+      // Sin datos y sin error es "cargando": se ve el esqueleto, no cifras de otro rango.
+      setDashboardData(null);
       setDashboardFailed(false);
     }
     const token = currentToken();
     try {
       const result = await api.getDashboard(params);
-      if (currentToken() !== token) return;
+      if (!isLatestRequest() || currentToken() !== token) return;
       setDashboardData(result as DashboardData);
       
       // Guardar en caché el dashboard consultado
       saveDashboardCache(result as DashboardData);
       setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
     } catch (err) {
-      if (currentToken() !== token) return;
+      if (!isLatestRequest() || currentToken() !== token) return;
       if (isBackgroundRefresh && !isAccessDenied(err)) {
         // Falla solo la actualizacion: los datos guardados se conservan, con el aviso.
         setLoadFailures((f) => withLoadFailure(f, DASHBOARD_LOAD));
       } else {
         // Sin cifras: las del rango anterior bajo las fechas nuevas serian falsas.
         setDashboardData(null);
-        setDashboardFailed(!isAccessDenied(err));
+        // Tambien con un 403: sin datos ni error, la pantalla quedaria en esqueleto para siempre.
+        setDashboardFailed(true);
         setLoadFailures((f) => withoutLoadFailure(f, DASHBOARD_LOAD));
-      }
-    } finally {
-      fetchingDashboardRef.current = false;
-      if (!isBackgroundRefresh) {
-        setDashboardLoading(false);
       }
     }
   }, []);
@@ -414,7 +411,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       config: { ...emptyData.config, ...(cachedConfig || {}) },
     }));
     setDashboardData(loadDashboardCache());
-    setDashboardLoading(!loadDashboardCache());
     setSalesLoading(!loadSalesCache());
 
     // Los permisos de rol se piden SIEMPRE. La cache de configuracion los excluye a
@@ -431,7 +427,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [user?.id, fetchConfig, fetchRolePermissions]);
 
   const refreshData = () => { 
-    // Compatibilidad para el botón refrescar del usuario
+    // El Dashboard y Estadisticas consultan con sus propios filtros: este contador se los pide.
+    // Antes los datos quedaban en null sin volver a pedirse y la pantalla salia toda en $0.
+    setDashboardRefreshCount((c) => c + 1);
     setDashboardData(null);
     invalidateDashboardCache();
     fetchSales();
@@ -769,7 +767,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider value={{
       data,
       dashboardData,
-      dashboardLoading,
+      dashboardRefreshCount,
       salesLoading,
       loadError,
       dashboardFailed,

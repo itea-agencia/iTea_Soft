@@ -15,7 +15,8 @@ import {
   Pie,
 } from "recharts";
 import { formatCurrency } from "../utils/formatters";
-import { Users, Award, PieChart as PieChartIcon, Loader2 } from "lucide-react";
+import { Users, Award, PieChart as PieChartIcon } from "lucide-react";
+import { useData } from "../context/DataContext";
 import { getTopClients, getAsesorPerformance, getCategoryDistribution } from "../api/stats";
 import { LoadFailed } from "../components/ui/LoadFailed";
 import { isAccessDenied } from "../utils/loadFailures";
@@ -85,6 +86,7 @@ function getDashboardDateParams() {
 
 // Un grafico que no carga decia "No hay ... registradas", igual que uno sin datos (hallazgo 9).
 function useStatsLoad<T>(load: () => Promise<T[]>) {
+  const { dashboardRefreshCount } = useData();
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -99,10 +101,12 @@ function useStatsLoad<T>(load: () => Promise<T[]>) {
       .catch((err) => { if (!cancelled && !isAccessDenied(err)) setFailed(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [retryCount]);
+  }, [retryCount, dashboardRefreshCount]);
 
   return { data, loading, failed, retry: () => setRetryCount((c) => c + 1) };
 }
+
+const ChartSkeleton = () => <div className="w-full h-full bg-gray-100 dark:bg-slate-700 rounded-xl animate-pulse" />;
 
 function TopClients() {
   const { data, loading, failed, retry } = useStatsLoad<{ name: string; total: number }>(() =>
@@ -117,9 +121,7 @@ function TopClients() {
   return (
     <div className="h-[300px] w-full mt-2">
       {loading ? (
-        <div className="h-full flex items-center justify-center text-blue-500">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
+        <ChartSkeleton />
       ) : failed ? (
         <LoadFailed message="No se pudo cargar este gráfico." onRetry={retry} />
       ) : data.length === 0 ? (
@@ -187,9 +189,7 @@ function TopAsesores() {
   return (
     <div className="h-[340px] w-full mt-4">
       {loading ? (
-        <div className="h-full flex items-center justify-center text-amber-500">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
+        <ChartSkeleton />
       ) : failed ? (
         <LoadFailed message="No se pudo cargar este gráfico." onRetry={retry} />
       ) : data.length === 0 ? (
@@ -238,9 +238,7 @@ function CategoryDistribution() {
   return (
     <div className="h-[300px] w-full mt-2">
       {loading ? (
-        <div className="h-full flex items-center justify-center text-emerald-500">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
+        <ChartSkeleton />
       ) : failed ? (
         <LoadFailed message="No se pudo cargar este gráfico." onRetry={retry} />
       ) : data.length === 0 ? (

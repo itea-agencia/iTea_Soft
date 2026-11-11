@@ -13,7 +13,7 @@ Checklist para llevar a producción lo que se corrigió de `docs/auditoria-front
 
 **Migraciones:** ninguna. **Scripts de `db-manual/`:** ninguno. No se escribe en producción.
 
-**Frontend** (GoDaddy, a mano): hallazgos 1, 2, 4, 5, 6, 9, 12 y parte del 7 y del 14; la tabla de ventas con "Vencida"; la modal de liquidación rediseñada. El hallazgo 9 es posterior a la prueba en pantalla de `4fe8403`: **falta mirarlo con la API apagada antes de publicar**.
+**Frontend** (GoDaddy, a mano): hallazgos 1, 2, 4, 5, 6, 8, 9, 12 y parte del 7 y del 14; la tabla de ventas con "Vencida"; la modal de liquidación rediseñada. Los hallazgos 8 y 9 son posteriores a la prueba en pantalla de `4fe8403`: **falta mirarlos antes de publicar**, el 9 con la API apagada.
 
 ## Orden
 

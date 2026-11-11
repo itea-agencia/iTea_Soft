@@ -33,7 +33,6 @@ import { useData } from "../context/DataContext";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { AlertCircle } from "lucide-react";
-import LoadingScreen from "../components/ui/LoadingScreen";
 import { LoadFailed } from "../components/ui/LoadFailed";
 
 const getPath = (x: number, y: number, width: number, height: number) => {
@@ -49,7 +48,7 @@ const TriangleBar = (props: any) => {
 };
 
 export default function Dashboard() {
-  const { dashboardData, dashboardLoading, dashboardFailed, fetchDashboard } = useData();
+  const { dashboardData, dashboardFailed, dashboardRefreshCount, fetchDashboard } = useData();
   const { start, end } = getCurrentMonth();
   const [dateRange, setDateRange] = useState<any>(() => {
     const saved = localStorage.getItem('dashboardDateRange');
@@ -69,7 +68,7 @@ export default function Dashboard() {
   });
   const [isCreditModalOpen, setIsCreditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'asesores'>('general');
-  const isInitialMount = React.useRef(true);
+  const lastRequestKey = React.useRef<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
@@ -94,11 +93,14 @@ export default function Dashboard() {
       }
     }
     
-    const isBackground = isInitialMount.current && dashboardData !== null;
+    // Al entrar con datos guardados se actualizan sin esqueleto. Un filtro, Reintentar o Refrescar
+    // cambian la clave y cargan con esqueleto. Con clave y no con "primer render": StrictMode corre
+    // este efecto dos veces y la segunda borraria los datos guardados.
+    const requestKey = JSON.stringify([params, retryCount, dashboardRefreshCount]);
+    const isBackground = dashboardData !== null && (lastRequestKey.current === null || lastRequestKey.current === requestKey);
     fetchDashboard(params, isBackground);
-    
-    isInitialMount.current = false;
-  }, [dateRange, fetchDashboard, retryCount]);
+    lastRequestKey.current = requestKey;
+  }, [dateRange, fetchDashboard, retryCount, dashboardRefreshCount]);
 
   const stats = useMemo(() => {
     const d = dashboardData;
@@ -155,17 +157,8 @@ export default function Dashboard() {
     };
   }, [dashboardData]);
 
-  if (dashboardLoading && !dashboardData) {
-    return <LoadingScreen fullScreen={false} />;
-  }
-
-  if (dashboardFailed && !dashboardData) {
-    return (
-      <div className="py-24">
-        <LoadFailed message="No se pudieron cargar los datos del panel." onRetry={() => setRetryCount((c) => c + 1)} />
-      </div>
-    );
-  }
+  const isLoadingData = !dashboardData && !dashboardFailed;
+  const loadFailed = !dashboardData && dashboardFailed;
 
   const CARTERA_COLORS = ["#10b981", "#3b82f6", "#f59e0b"];
 
@@ -208,7 +201,14 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {loadFailed && (
+        <div className="py-24">
+          <LoadFailed message="No se pudieron cargar los datos del panel." onRetry={() => setRetryCount((c) => c + 1)} />
+        </div>
+      )}
+
       {/* Tabs de Navegación */}
+      {!loadFailed && (
       <div className="flex flex-wrap gap-2 border-b border-gray-200 dark:border-slate-700/60 pb-2">
         <button
           onClick={() => setActiveTab('general')}
@@ -231,14 +231,15 @@ export default function Dashboard() {
           Responsables y Comisionistas
         </button>
       </div>
+      )}
 
-      {activeTab === 'general' && (
+      {!loadFailed && activeTab === 'general' && (
         <div className="space-y-8">
       {/* Modern Glassmorphism KPIs */}
-      {dashboardLoading && !dashboardData ? (
+      {isLoadingData ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="bg-gray-100 rounded-2xl h-[140px]"></div>
+            <div key={i} className="bg-gray-100 dark:bg-slate-800 rounded-2xl h-[140px]"></div>
           ))}
         </div>
       ) : (
@@ -359,8 +360,8 @@ export default function Dashboard() {
           <div className="absolute -right-20 -top-20 w-40 h-40 bg-blue-50 dark:bg-blue-950/20 rounded-full blur-3xl"></div>
           <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Comparativa de ventas</h2>
           <div className="h-72 w-full">
-            {dashboardLoading && !dashboardData ? (
-              <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+            {isLoadingData ? (
+              <div className="w-full h-full bg-gray-50 dark:bg-slate-700 rounded-xl animate-pulse" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -406,8 +407,8 @@ export default function Dashboard() {
           <h2 className="text-lg font-black text-gray-800 mb-2">Estado de Cartera</h2>
           <div className="flex-grow flex flex-col justify-center">
             <div className="relative h-56 flex items-center justify-center">
-              {dashboardLoading && !dashboardData ? (
-                <div className="w-40 h-40 rounded-full border-[20px] border-gray-50 animate-pulse" />
+              {isLoadingData ? (
+                <div className="w-40 h-40 rounded-full border-[20px] border-gray-50 dark:border-slate-700 animate-pulse" />
               ) : (
                 <ResponsiveContainer width="99%" height="100%">
                   <PieChart>
@@ -424,7 +425,7 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               )}
-              {(!dashboardLoading || dashboardData) && (
+              {!isLoadingData && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none drop-shadow-sm">
                   <span className="text-[10px] uppercase font-extrabold text-gray-400 tracking-[0.2em] mb-1">Total ventas</span>
                   <span className="text-xl font-black text-gray-800 bg-clip-text text-transparent bg-gradient-to-br from-gray-800 to-gray-500">{formatCurrency(stats.totalVentas)}</span>
@@ -432,7 +433,7 @@ export default function Dashboard() {
               )}
             </div>
             <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
-              {dashboardLoading && !dashboardData ? (
+              {isLoadingData ? (
                 <></>
               ) : (
                 stats.carteraData.map((item: any, i: number) => (
@@ -467,7 +468,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-slate-700/40">
-              {dashboardLoading && !dashboardData ? (
+              {isLoadingData ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse bg-white dark:bg-slate-800">
                     <td className="px-6 py-5"><div className="h-4 bg-gray-100 dark:bg-slate-700 rounded-md w-3/4"></div></td>
@@ -509,14 +510,14 @@ export default function Dashboard() {
       </div>
       )}
 
-      {activeTab === 'asesores' && (
+      {!loadFailed && activeTab === 'asesores' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
           {/* Top Responsables (Ingresos) */}
           <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm p-4 sm:p-6">
             <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Top Responsables (por Ventas)</h2>
             <div className="h-80 w-full">
-              {dashboardLoading && !dashboardData ? (
-                <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+              {isLoadingData ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-slate-700 rounded-xl animate-pulse" />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.topResponsables} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
@@ -543,8 +544,8 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-slate-800/90 rounded-2xl border border-gray-100 dark:border-slate-700/60 shadow-sm p-4 sm:p-6">
             <h2 className="text-lg font-black text-gray-800 dark:text-white mb-6">Top Comisionistas</h2>
             <div className="h-80 w-full">
-              {dashboardLoading && !dashboardData ? (
-                <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+              {isLoadingData ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-slate-700 rounded-xl animate-pulse" />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.topComisionistas} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
@@ -579,8 +580,8 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="h-80 w-full">
-              {dashboardLoading && !dashboardData ? (
-                <div className="w-full h-full bg-gray-50 dark:bg-slate-800 rounded-xl animate-pulse" />
+              {isLoadingData ? (
+                <div className="w-full h-full bg-gray-50 dark:bg-slate-700 rounded-xl animate-pulse" />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={stats.ivaTrendData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
