@@ -15,6 +15,8 @@ import Config from './pages/Config';
 import CommissionAgents from './pages/CommissionAgents';
 
 import { LoadingScreen } from './components/ui/LoadingScreen';
+import { Button } from './components/ui/Button';
+import { firstAllowedRoute } from './utils/landingRoute';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -25,12 +27,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <PermissionsProvider user={user}>{children}</PermissionsProvider>;
 }
 
-// Usuarios dejo de ser solo del admin: se ve con `users.view` (decision 18 del diseno de
-// permisos). El panel de roles, dentro de esa pagina, sigue siendo del admin.
-function ConPermiso({ modulo, children }: { modulo: string; children: React.ReactNode }) {
+function NoScreensAssigned() {
+  const { logout } = useAuth();
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 h-[60vh] text-center text-gray-500 dark:text-slate-400">
+      <p className="text-lg font-medium">Tu usuario no tiene pantallas asignadas</p>
+      <p className="text-sm">Habla con el administrador.</p>
+      <Button variant="outline" onClick={logout}>Cerrar sesión</Button>
+    </div>
+  );
+}
+
+// El menu oculta lo que un rol no puede ver, pero escribiendo la URL se abria igual: un
+// freelancer veia los catalogos de /config (hallazgo 11 de la auditoria del frontend).
+function RequireView({ module, children }: { module: string; children: React.ReactNode }) {
   const { puede } = usePermissions();
-  if (!puede(modulo, 'view')) return <Navigate to="/" replace />;
-  return <>{children}</>;
+  if (puede(module, 'view')) return <>{children}</>;
+  const route = firstAllowedRoute((m) => puede(m, 'view'));
+  return route ? <Navigate to={route} replace /> : <NoScreensAssigned />;
 }
 
 function AppRoutes() {
@@ -40,15 +54,15 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<Dashboard />} />
-        <Route path="stats" element={<StatsView />} />
-        <Route path="sales" element={<Sales />} />
-        <Route path="clients" element={<Clients />} />
-        <Route path="responsables" element={<Responsables />} />
-        <Route path="itineraries" element={<Itineraries />} />
-        <Route path="users" element={<ConPermiso modulo="users"><Users /></ConPermiso>} />
-        <Route path="config" element={<Config />} />
-        <Route path="commissions" element={<CommissionAgents />} />
+        <Route index element={<RequireView module="dashboard"><Dashboard /></RequireView>} />
+        <Route path="stats" element={<RequireView module="dashboard"><StatsView /></RequireView>} />
+        <Route path="sales" element={<RequireView module="sales"><Sales /></RequireView>} />
+        <Route path="clients" element={<RequireView module="clients"><Clients /></RequireView>} />
+        <Route path="responsables" element={<RequireView module="responsables"><Responsables /></RequireView>} />
+        <Route path="itineraries" element={<RequireView module="itineraries"><Itineraries /></RequireView>} />
+        <Route path="users" element={<RequireView module="users"><Users /></RequireView>} />
+        <Route path="config" element={<RequireView module="config"><Config /></RequireView>} />
+        <Route path="commissions" element={<RequireView module="commissions"><CommissionAgents /></RequireView>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

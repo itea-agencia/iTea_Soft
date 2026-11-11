@@ -216,16 +216,6 @@ export default function Itineraries() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-  if (!puede('itineraries', 'view')) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-gray-500">
-        <AlertCircle size={48} className="mb-4 opacity-20" />
-        <p className="text-lg font-medium">Acceso Restringido</p>
-        <p className="text-sm">No tiene permisos para ver itinerarios.</p>
-      </div>
-    );
-  }
-
   if (isLoading && data.flights.length === 0) {
     return <LoadingScreen fullScreen={false} />;
   }

@@ -206,7 +206,7 @@ Prioridad media:
 - [x] 8. Dashboard descarta cambios de filtro; Refrescar no lo consulta. Corregido; diseño en `docs/designs/hallazgo-8-refrescar-y-filtros-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [x] 9. Errores de red presentados como ceros o listas vacías. Corregido; diseño en `docs/designs/hallazgo-9-errores-de-carga-2026-11.md`. Probado en pantalla por el usuario contra la app local.
 - [x] 10. Vouchers anunciados sin confirmación de envío. Corregido; diseño en `docs/designs/hallazgo-10-vouchers-2026-11.md`. Falta probarlo contra la app local.
-- [ ] 11. `/config` se abre sin `config.view`.
+- [x] 11. `/config` se abre sin `config.view`. Corregido en todas las rutas; diseño en `docs/designs/hallazgo-11-rutas-por-permiso-2026-11.md`. Falta probarlo con un usuario freelancer.
 - [x] 12. Datos en el navegador. Corregido: ya no se imprimen el formulario de venta ni los comisionistas, y el logout y el 401 borran las cachés. Sigue abierto: el JWT vive en `localStorage` (cambiarlo se diseña con el backend y CSRF).
 - [ ] 13. Adjuntos sin validar el límite anunciado.
 - [ ] 14. Paginación cortada en 5.000 y contador con `meta.totalItems`. Parcial: el contador ya lee `meta.total`; el tope de 5.000 filas sigue, fuera de alcance por ahora.
