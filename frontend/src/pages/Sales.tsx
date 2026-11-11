@@ -37,7 +37,7 @@ import { LoadFailed } from "../components/ui/LoadFailed";
 import { PageSkeleton } from "../components/ui/PageSkeleton";
 import { useSalesQuery } from "../hooks/useSalesQuery";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import { buildSalesParams, SALES_PAGE_SIZE } from "../utils/salesQuery";
+import { buildSalesParams, lastPage, SALES_PAGE_SIZE } from "../utils/salesQuery";
 
 export default function Sales() {
   const { data, addSale, voidSale, registerCreditPayment, deleteSalePayment, updateReviewStatus, fetchClients } = useData();
@@ -91,11 +91,22 @@ export default function Sales() {
   const filters = { search: debouncedSearch, status: statusFilter, startDate, endDate };
 
   // La pagina va atada a sus filtros: con un filtro nuevo se vuelve a la 1 sin pedir la anterior.
+  // Ademas se guarda la 1 con la clave nueva: si solo se derivaba, la pagina vieja seguia guardada
+  // y al limpiar el filtro volvia (auditoria de la paginacion). Es el reinicio de estado en el
+  // render que recomienda React, sin un efecto que pida antes la pagina vieja.
   const filtersKey = JSON.stringify(filters);
   const [pageState, setPageState] = useState({ filtersKey, page: 1 });
+  if (pageState.filtersKey !== filtersKey) setPageState({ filtersKey, page: 1 });
   const page = pageState.filtersKey === filtersKey ? pageState.page : 1;
 
   const listQuery = useSalesQuery(activeTab === 'list' ? buildSalesParams(filters, page) : null);
+  // Si la pagina actual quedo vacia (se anulo la unica venta de la ultima con un filtro de estado),
+  // se pasa a la ultima que existe. Con total 0 no hay a donde ir: "Venta no encontrada" es correcto.
+  const listLastPage = lastPage(listQuery.total, SALES_PAGE_SIZE);
+  if (!listQuery.loading && !listQuery.failed && listQuery.sales.length === 0 && listQuery.total > 0 && page > listLastPage) {
+    setPageState({ filtersKey, page: listLastPage });
+  }
+
   const creditQuery = useSalesQuery(activeTab === 'credit' ? { ...buildSalesParams(filters, 1, 5000), onCredit: 'true' } : null);
 
   // Lazy Load Fetch
@@ -648,7 +659,7 @@ export default function Sales() {
               <SalesTable
                 sales={listQuery.sales}
                 currentPage={page}
-                totalPages={Math.ceil(listQuery.total / SALES_PAGE_SIZE)}
+                totalPages={listLastPage}
                 onPageChange={(next) => setPageState({ filtersKey, page: next })}
                 clients={data.clients}
                 users={data.users}

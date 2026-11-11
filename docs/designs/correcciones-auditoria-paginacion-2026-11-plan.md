@@ -44,8 +44,8 @@
 - **Reaparece:** la página se guarda con la clave de sus filtros y, al volver a la misma clave, revive. Cuando la clave cambia, se guarda `{ filtersKey, page: 1 }` en el mismo render (patrón de React para reiniciar un estado cuando cambia una prop), así la página vieja no queda guardada.
 - **Huérfana:** una función pura `lastPage(total, pageSize)` en `salesQuery.ts` (mínimo 1). Si la consulta terminó, no falló, vino vacía con `total > 0` y la página actual pasa de la última, se guarda la última. No se toca el texto "Venta no encontrada": con `total = 0` sigue siendo lo correcto.
 
-- [ ] Pruebas de `lastPage` (0 ventas → 1; 161 con 10 por página → 17; 160 → 16). Verlas fallar, implementar, verlas pasar.
-- [ ] `tsc` y `npm test`. Commit.
+- [x] Pruebas de `lastPage` (0 ventas → 1; 161 con 10 por página → 17; 160 → 16). Verlas fallar, implementar, verlas pasar.
+- [x] `tsc` y `npm test`. Commit.
 
 ### Tarea 4: panel de créditos
 
