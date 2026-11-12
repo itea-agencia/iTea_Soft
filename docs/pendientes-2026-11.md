@@ -8,7 +8,8 @@ Lo que queda por hacer después de la rama `feat/hallazgo-16-carga-y-mantenimien
    - la paginación de Ventas y el panel de créditos (`correcciones-auditoria-paginacion-2026-11.md`, puntos de revisión 3 a 8);
    - la tarjeta del cliente en créditos, el tipo de mascota, los campos quitados de finca, migración y SIM, el correo de entrega de la eSIM y el voucher del tour vinculado;
    - pasajeros y personas (`pasajeros-con-documento-2026-11.md`): el error por pasajero en el asistente, el catálogo de tipos en check-in, migración, visa y SIM, el dueño de la mascota en solo lectura y el nombre de comisionistas.
-2. **Probar a mano la venta de las 17 categorías** (hallazgo 16).
+   - migración y visa (commits `a357200` y `4db83f9`): formulario, pestaña y PDF de la venta 201 deben decir "Trámite Migratorio", "Tipo de Documento", "Nro/N° Documento" y "Vencimiento de Documento", y el PDF de visa debe traer el vencimiento. El vencimiento es el del documento elegido, no siempre el del pasaporte (`2026-09-17-vocabulario.md`).
+2. **Probar a mano la venta de las 17 categorías** (hallazgo 16). Ya se cargó por API en local: la 201 es la completa, con proveedores y todos los campos; la 198 fue un primer intento con datos incompletos. Falta la revisión en pantalla.
 3. **Desplegar con el orden correcto.** El merge corre dos migraciones en producción: `20261111190000` borra 5 columnas vacías del tour y el seguro, y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
 4. **Comprobar después del despliegue**, en solo lectura, que los conteos de `pasajeros-con-documento-2026-11.md` siguen en cero. La única excepción es la persona del equipaje.
 
@@ -64,6 +65,8 @@ Quedan a propósito, para volver a probar:
 - las ventas 154 a 164;
 - un cliente, un responsable, un usuario y un comisionista de prueba, con documentos `9910000010` a `9910000040`;
 - un cliente con NIT `900123456` y otro con pasaporte `PA991234`;
+- el usuario administrador `prueba.gigante@local` (id 10), con su contraseña entregada en el chat;
+- las ventas 198 a 201: 198 con las 17 categorías, 199 a crédito con $80.000 de saldo para probar abonos, 200 anulada (rechaza pagos) y 201 completa;
 - la tabla auxiliar `_prueba_propios_ventas`.
 
 Esa tabla hace que `prisma migrate dev` pida resetear la base local. Mientras exista, las migraciones locales se aplican con `prisma migrate deploy`.
