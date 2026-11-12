@@ -56,8 +56,12 @@ compartido es que cada cosa se llame por su nombre, no que todo se llame igual.
 
 - **Migración y visa muestran el tipo de documento elegido y su número** en detalle y
   voucher (`docType`, `docNumber`). No se presenta una CC como pasaporte ni se pide un
-  pasaporte adicional. El vencimiento de pasaporte conserva su significado independiente.
-  Decisión del usuario, 2026-11-11.
+  pasaporte adicional. El vencimiento es el del documento elegido, no siempre el del
+  pasaporte, y se presenta como **Vencimiento de Documento**, igual que en los
+  formularios; los nombres internos `passportExpiry` y `passportExpiration` se conservan.
+  Decisión del usuario, 2026-11-11 (reemplaza la anterior del mismo día, que trataba el
+  vencimiento como del pasaporte aunque se registrara otro documento).
+
 - **El trámite y el documento de identidad son dos cosas.** En migración, `requestedDocType`
   se llama **Trámite Migratorio** en formulario, detalle y voucher; antes eran tres nombres
   ("Trámite Solicitado", "Documento Solicitado") y el segundo se confundía con el

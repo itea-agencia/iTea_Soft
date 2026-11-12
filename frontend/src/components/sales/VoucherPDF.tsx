@@ -683,7 +683,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Trámite Migratorio" value={mig.requestedDocType} />
                   <DataCell label="Tipo de Documento" value={mig.docType} />
                   <DataCell label="N° Documento" value={mig.docNumber} />
-                  <DataCell label="Vencimiento Pasaporte" value={mig.passportExpiry ? formatDate(mig.passportExpiry) : null} />
+                  <DataCell label="Vencimiento de Documento" value={mig.passportExpiry ? formatDate(mig.passportExpiry) : null} />
                   <DataCell label="País Destino" value={mig.destinationCountry} />
                 </div>
               </React.Fragment>
@@ -887,6 +887,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Nacionalidad" value={visa.nationality} />
                   <DataCell label="Tipo de Documento" value={visa.docType} />
                   <DataCell label="N° Documento" value={visa.docNumber} />
+                  <DataCell label="Vencimiento de Documento" value={visa.passportExpiration ? formatDate(visa.passportExpiration) : null} />
                   <DataCell label="País al que Aplica" value={visa.countryApplying} />
                   <DataCell label="Tipo de Visa" value={visa.visaType ? <span className="v-badge v-badge-accent">{visa.visaType}</span> : null} />
                   <DataCell label="Viaje Estimado" value={visa.estimatedTravelDate ? formatDate(visa.estimatedTravelDate) : null} />
