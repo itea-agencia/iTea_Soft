@@ -54,6 +54,15 @@ compartido es que cada cosa se llame por su nombre, no que todo se llame igual.
 
 ## Reglas de presentación que salieron de esto
 
+- **Migración y visa muestran el tipo de documento elegido y su número** en detalle y
+  voucher (`docType`, `docNumber`). No se presenta una CC como pasaporte ni se pide un
+  pasaporte adicional. El vencimiento de pasaporte conserva su significado independiente.
+  Decisión del usuario, 2026-11-11.
+- **El trámite y el documento de identidad son dos cosas.** En migración, `requestedDocType`
+  se llama **Trámite Migratorio** en formulario, detalle y voucher; antes eran tres nombres
+  ("Trámite Solicitado", "Documento Solicitado") y el segundo se confundía con el
+  **Tipo de Documento** que quedó al lado.
+
 - **El voucher no expone costos de proveedor.** Lo ve el cliente. Su proveedor no es el
   mayorista de la agencia sino el hotel y la aerolínea, que salen en sus bloques.
 - **Una columna vacía en todas las filas no se dibuja.** En papel, una columna entera de

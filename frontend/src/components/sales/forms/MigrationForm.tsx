@@ -91,7 +91,7 @@ export function MigrationForm({ migration, client, documentTypes, suppliers, pay
               placeholder="Ej: México" 
             />
           </FormField>
-          <FormField label="Trámite Solicitado">
+          <FormField label="Trámite Migratorio">
             <Combobox
               value={migration.requestedDocType}
               onChange={(val) => onChange({ requestedDocType: val })}

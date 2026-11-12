@@ -680,8 +680,9 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 <div className="v-data-grid">
                   <DataCell label="Pasajero" value={mig.passengerName} highlight />
                   <DataCell label="Nacionalidad" value={mig.nationality} />
-                  <DataCell label="Documento Solicitado" value={mig.requestedDocType} />
-                  <DataCell label="N° Pasaporte" value={mig.docNumber} />
+                  <DataCell label="Trámite Migratorio" value={mig.requestedDocType} />
+                  <DataCell label="Tipo de Documento" value={mig.docType} />
+                  <DataCell label="N° Documento" value={mig.docNumber} />
                   <DataCell label="Vencimiento Pasaporte" value={mig.passportExpiry ? formatDate(mig.passportExpiry) : null} />
                   <DataCell label="País Destino" value={mig.destinationCountry} />
                 </div>
@@ -884,7 +885,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 <div className="v-data-grid">
                   <DataCell label="Solicitante" value={visa.fullName} highlight />
                   <DataCell label="Nacionalidad" value={visa.nationality} />
-                  <DataCell label="N° Pasaporte" value={visa.docNumber} />
+                  <DataCell label="Tipo de Documento" value={visa.docType} />
+                  <DataCell label="N° Documento" value={visa.docNumber} />
                   <DataCell label="País al que Aplica" value={visa.countryApplying} />
                   <DataCell label="Tipo de Visa" value={visa.visaType ? <span className="v-badge v-badge-accent">{visa.visaType}</span> : null} />
                   <DataCell label="Viaje Estimado" value={visa.estimatedTravelDate ? formatDate(visa.estimatedTravelDate) : null} />
