@@ -9,6 +9,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // El nombre del cliente va dentro del HTML de los correos de voucher: sin escapar, un
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
+const { markHolder } = require('../utils/holder');
 const { auditar } = require('../utils/auditoria');
 const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
@@ -1937,20 +1938,23 @@ exports.create = async (req, res, next) => {
           const productData = await handler.transform(item, undefined, tx);
           delete productData.detalleVentaId; // Omit foreign key for nested create
 
-           const pasajerosDetalleData = [];
+          const passengerRows = [];
           if (personaId) {
             const passengers = resolvePassengers(item, handler.category);
 
             if (passengers) {
-              for (const { raw: p, name, docType, docNumber } of passengers) {
+              // Un titular por producto: el elegido o el primero (utils/holder.js).
+              const holders = markHolder(passengers.map(p => p.raw));
+              for (const [i, { raw: p, name, docType, docNumber }] of passengers.entries()) {
                 const pid = CATEGORIAS_PASAJERO_ES_CLIENTE.includes(handler.category) ? personaId : await findOrCreatePersona(tx, name, docType, docNumber, personaId);
-                pasajerosDetalleData.push({
+                passengerRows.push({
                   personaId: pid,
-                  esTitular: p.esTitular ?? true,
+                  esTitular: holders[i],
                   asiento: asientoDePasajero(p, item, handler.category),
                   asientoRegreso: p.asientoRegreso || null,
                   nroReserva: reservaDePasajero(p, item, handler.category),
-                  nroTiquete: p.nroTiquete || item.ticketNumber || null
+                  // Sin caer al tiquete del producto: copiarlo daria el mismo a todos.
+                  nroTiquete: p.nroTiquete || null
                 });
               }
             }
@@ -1975,9 +1979,9 @@ exports.create = async (req, res, next) => {
             }
           };
 
-          if (pasajerosDetalleData.length > 0) {
+          if (passengerRows.length > 0) {
             detalleObj.pasajerosDetalle = {
-              create: pasajerosDetalleData
+              create: passengerRows
             };
           }
 

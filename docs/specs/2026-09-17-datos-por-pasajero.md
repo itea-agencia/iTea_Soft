@@ -78,6 +78,8 @@ Antes, un pasajero sin documento creaba una persona nueva en cada venta, imposib
 `` name={`titular-${idx}`} ``, un grupo de radios por fila, así que se podían marcar
 **varios titulares a la vez**. Fue el último en corregirse.
 
+La regla vale en las seis listas: hotel, paquete, tiquete, terrestre, tour y seguro. Tours y seguros no tenían el radio y mandaban los pasajeros sin `esTitular`; `create` los guardaba con `esTitular: p.esTitular ?? true`, así que todos quedaban titulares (un tour del 2026-11-07 en producción). Desde el 2026-11-16 el servidor impone un titular por producto con `markHolder` (`utils/holder.js`): el primero marcado o, si nadie, el primero de la lista. Eso cubre también al frontend publicado antes del radio. Diseño `docs/designs/titular-por-producto-2026-11.md`.
+
 ### Nada de mutar el estado en el render
 
 `rawPax[0].esTitular = true` y `next[idx].asiento = valor` tras una copia superficial
@@ -109,8 +111,7 @@ SELECT id, asiento FROM pasajeros_detalle WHERE asiento LIKE '%-%' OR asiento LI
   único caso sin columna propia por pasajero, y de 117 tiquetes en producción solo 5 tienen
   más de dos tramos, 4 de ellos de un pasajero. Cerrarlo bien pide una tabla
   `pasajero × tramo`.
-- **`esTitular: p.esTitular ?? true`** en los caminos de escritura sigue marcando titular a
-  todos cuando el producto no envía el dato. Afecta a las categorías que aún no capturan
-  titular.
+- **El tour del 2026-11-07 con varios titulares** quedó como estaba: se guardó antes de `markHolder` y solo afecta a quién se muestra primero.
+- **20 filas en 10 tiquetes repiten `nro_tiquete` entre pasajeros** del mismo producto (julio a noviembre de 2026). No es herencia: ningún formulario llena el tiquete del producto, así que lo escribió el asesor. Puede ser un error de captura o un tiquete de grupo; no se tocó.
 - **Migración con pasaporte**: si el asesor cambia el documento del cliente por su pasaporte, se crea otra persona con el pasaporte como documento. Una persona tiene un solo `documento`.
 - **La persona sin documento que dejó la venta de equipaje en producción** no se limpió: el código ya no crea más, y limpiarla queda para decidir.
