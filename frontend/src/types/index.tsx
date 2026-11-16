@@ -807,6 +807,8 @@ export interface Sale {
   siigoInvoice?: SiigoInvoice | null;
   clientId: number;
   clientName: string;
+  clientDocType?: string | null;
+  clientDocNumber?: string | null;
   clientEmail?: string;
   asesorId: number;
   asesorName: string;

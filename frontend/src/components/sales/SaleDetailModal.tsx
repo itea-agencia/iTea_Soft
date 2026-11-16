@@ -1,25 +1,6 @@
 import { useState, useEffect } from "react";
 import { usePermissions } from "../../context/PermissionsContext";
-import {
-  Plane,
-  Building2,
-  ShieldCheck,
-  Package,
-  Luggage,
-  FileInput,
-  Smartphone,
-  Car,
-  TreePine,
-  Compass,
-  Music,
-  UtensilsCrossed,
-  FileText,
-  PawPrint,
-  ShoppingBag,
-  Loader2,
-  AlertCircle,
-  Receipt
-} from "lucide-react";
+import { ShieldCheck, Loader2, AlertCircle, Receipt } from "lucide-react";
 import * as api from "../../api";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
@@ -27,25 +8,8 @@ import { Badge } from "../ui/Badge";
 import { formatCurrency, formatDate, formatSaleId } from "../../utils/formatters";
 import { Sale, Client, Responsable, SiigoInvoice } from "../../types";
 import PaginatedProductTab from "./tabs/PaginatedProductTab";
-
-const PRODUCT_ICONS: Record<string, React.ReactNode> = {
-  Tiquetería: <Plane size={16}  />,
-  Hotelería: <Building2 size={16}  />,
-  Seguros: <ShieldCheck size={16}  />,
-  Planes: <Package size={16}  />,
-  CheckIn: <Luggage size={16}  />,
-  Migración: <FileInput size={16}  />,
-  SimCard: <Smartphone size={16}  />,
-  AlquilerAutos: <Car size={16}  />,
-  Finca: <TreePine size={16}  />,
-  Tour: <Compass size={16}  />,
-  Evento: <Music size={16}  />,
-  Restaurante: <UtensilsCrossed size={16}  />,
-  Visa: <FileText size={16}  />,
-  Pasaporte: <FileText size={16}  />,
-  Mascotas: <PawPrint size={16}  />,
-  Equipaje: <Luggage size={16}  />,
-};
+import { saleSections, SaleSectionLabel } from "./saleSections";
+import { saleParticipants } from "../../utils/saleParticipants";
 
 function getProductDetails(type: string, data: any[]): { label: string; count: number } {
   const arr = data || [];
@@ -234,25 +198,7 @@ export default function SaleDetailModal({
   // no mostrar dos mensajes sobre lo mismo.
   const sinMensajeReciente = !invoiceSuccess && !invoiceError;
 
-  const productSections = [
-    { key: "ticketData", label: "Tiquetería", summaryType: "tiqueteria" },
-    { key: "hotelData", label: "Hotelería", summaryType: "hoteleria" },
-    { key: "insuranceData", label: "Seguros", summaryType: "seguros_viaje" },
-    { key: "planData", label: "Planes", summaryType: "planes" },
-    { key: "checkInData", label: "CheckIn", summaryType: "checkin" },
-    { key: "migrationData", label: "Migración", summaryType: "documentacion_migratoria" },
-    { key: "simCardData", label: "SimCard", summaryType: "simcard" },
-    { key: "baggageData", label: "Equipaje", summaryType: "equipaje" },
-    { key: "carRentalData", label: "AlquilerAutos", summaryType: "renta_vehiculos" },
-    { key: "landTravelData", label: "ViajeTerrestre", summaryType: "viajes_terrestres" },
-    { key: "fincaData", label: "Finca", summaryType: "renta_fincas" },
-    { key: "tourData", label: "Tour", summaryType: "tours" },
-    { key: "conventionData", label: "Evento", summaryType: "centros_convencion" },
-    { key: "restaurantData", label: "Restaurante", summaryType: "restaurantes" },
-    { key: "visaData", label: "Visa", summaryType: "visa" },
-    { key: "passportData", label: "Pasaporte", summaryType: "pasaporte" },
-    { key: "petServiceData", label: "Mascotas", summaryType: "servicio_mascotas" },
-  ];
+  const productSections = saleSections;
 
   const suppliersList = (() => {
     const suppliers = new Set<string>();
@@ -384,7 +330,7 @@ export default function SaleDetailModal({
             onClick={() => setActiveTab(cat.summaryType)}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${activeTab === cat.summaryType ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
           >
-            {PRODUCT_ICONS[cat.label]} {cat.label}
+            <SaleSectionLabel section={cat} />
           </button>
         ))}
       </div>
@@ -564,75 +510,7 @@ export default function SaleDetailModal({
 
           {/* Lista de Clientes Registrados para la Venta */}
           {(() => {
-            const allClients: any[] = [];
-
-            // 1. Añadir al cliente titular de la venta
-            if (sale.clientName) {
-              allClients.push({
-                name: sale.clientName,
-                esTitular: true,
-                docType: (sale as any).clientDocType || '',
-                docNumber: (sale as any).clientDocNumber || ''
-              });
-            }
-
-            // 2. Extraer de los servicios resumidos o los objetos de producto
-            productSections.forEach(({ key }) => {
-              const items = (sale as any)[key];
-              if (Array.isArray(items)) {
-                items.forEach((item: any) => {
-                  const paxList = item.passengers || item.guests || item.members || 
-                    (item.passengerName ? [{ name: item.passengerName, docType: item.docType || item.tipoDocumento, docNumber: item.docNumber || item.nroDocumento }] : 
-                    (item.passengerInfo ? [item.passengerInfo] : []));
-
-                  if (Array.isArray(paxList)) {
-                    paxList.forEach((pax: any) => {
-                      const paxNameCandidate = pax?.name || pax?.passengerName || pax?.fullName || 
-                               (pax?.firstName ? `${pax.firstName} ${pax.lastName || ''}`.trim() : null) ||
-                               (pax?.nombres ? `${pax.nombres} ${pax.apellidos || ''}`.trim() : null) ||
-                               (pax?.persona?.nombres ? `${pax.persona.nombres} ${pax.persona.apellidos || ''}`.trim() : null);
-                      const name = typeof pax === 'string' ? pax : paxNameCandidate;
-                      
-                      if (name && name.trim() !== "" && !allClients.some(existing => existing.name?.toLowerCase().trim() === name.toLowerCase().trim())) {
-                        allClients.push({
-                          name: name.trim(),
-                          esTitular: typeof pax === 'object' ? (pax.esTitular || false) : false,
-                          docType: typeof pax === 'object' ? (pax.docType || pax.tipoDocumento || pax.documentType || '') : '',
-                          // Sin `|| pax.nroTiquete`: ahora los integrantes de un paquete traen tiquete, y un
-                          // integrante sin documento mostraria su numero de tiquete como si fuera la cedula.
-                          docNumber: typeof pax === 'object' ? (pax.docNumber || pax.nroDocumento || pax.documentNumber || '') : ''
-                        });
-                      }
-                    });
-                  }
-                });
-              }
-            });
-
-            // 3. Revisar también en servicesSummary si existen detalles
-            if (Array.isArray(sale.servicesSummary)) {
-              sale.servicesSummary.forEach((s: any) => {
-                if (s.detail) {
-                  // Los nombres suelen concatenarse con " · "
-                  const parts = s.detail.split(' · ');
-                  parts.forEach((p: string) => {
-                    const trimmed = p.trim();
-                    // Evitar rutas con flechas "Medellin→Bogota" o términos genéricos
-                    if (trimmed && !trimmed.includes('→') && !allClients.some(existing => existing.name?.toLowerCase().trim() === trimmed.toLowerCase())) {
-                      // Si tiene al menos dos palabras o pinta como nombre de persona
-                      if (trimmed.split(/\s+/).length >= 2) {
-                        allClients.push({
-                          name: trimmed,
-                          esTitular: false,
-                          docType: '',
-                          docNumber: ''
-                        });
-                      }
-                    }
-                  });
-                }
-              });
-            }
+            const allClients = saleParticipants(sale, client);
 
             if (allClients.length === 0) return null;
 
@@ -652,11 +530,9 @@ export default function SaleDetailModal({
                           </span>
                         )}
                       </div>
-                      {(c.docNumber || c.docType) && (
-                        <span className="text-gray-500 dark:text-slate-400 font-mono">
-                          {c.docType ? `${c.docType}: ` : ''}{c.docNumber}
-                        </span>
-                      )}
+                      <span className="text-gray-500 dark:text-slate-400 font-mono">
+                          {c.docNumber ? `${c.docType ? `${c.docType}: ` : ''}${c.docNumber}` : 'Sin documento registrado'}
+                      </span>
                     </div>
                   ))}
                 </div>

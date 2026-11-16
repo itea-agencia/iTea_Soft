@@ -198,12 +198,12 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
   }
 
   // Objeto product simulado para reusar el renderContent sin cambiar su estructura interna
-  const product = { type: tabLabel, data };
+  const product = { type: tabKey, data };
 
 
   const renderContent = () => {
     switch (product.type) {
-      case "Tiquetería":
+      case "tiqueteria":
         return product.data.map((ticket, idx) => {
           const passengers = ticket.passengers || (ticket.passengerInfo ? [ticket.passengerInfo] : []);
           const mainPassenger = passengers.find((p: any) => p.esTitular) || passengers[0];
@@ -388,7 +388,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           );
         });
 
-      case "Hotelería":
+      case "hoteleria":
         return product.data.map((hotel, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -412,7 +412,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Seguros":
+      case "seguros_viaje":
         return product.data.map((ins, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -433,7 +433,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Planes":
+      case "planes":
         return product.data.map((plan, idx) => {
           return (
             <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
@@ -545,13 +545,16 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           );
         });
 
-      case "CheckIn":
+      case "checkin":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
               <Luggage size={16} className="text-accent" /> Check-in #{idx + 1}
             </h4>
             {renderGrid([
+              { label: "Pasajero", value: item.passengerName },
+              { label: "Tipo de Documento", value: item.docType },
+              { label: "Nro Documento", value: item.docNumber || "Sin documento registrado" },
               { label: "Vuelo o Reserva", value: item.flightOrReservation },
               { label: "Fecha de Viaje", value: item.travelDate ? formatDate(item.travelDate) : "-" },
               { label: "Asiento", value: item.seat },
@@ -570,7 +573,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Migración":
+      case "documentacion_migratoria":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -589,13 +592,16 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "SimCard":
+      case "simcard":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
               <Smartphone size={16} className="text-accent" /> SIM Card #{idx + 1}
             </h4>
             {renderGrid([
+              { label: "Pasajero", value: item.passengerName },
+              { label: "Tipo de Documento", value: item.docType },
+              { label: "Nro Documento", value: item.docNumber || "Sin documento registrado" },
               { label: "País Destino", value: item.destinationCountry },
               { label: "Fecha de Llegada", value: item.arrivalDate ? formatDate(item.arrivalDate) : "-" },
               { label: "Duración Viaje", value: item.tripDuration },
@@ -609,7 +615,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "ViajeTerrestre":
+      case "viajes_terrestres":
         return product.data.map((lt: any, idx: number) => {
           const passengers = lt.passengers || (lt.passengerInfo ? [lt.passengerInfo] : []);
           return (
@@ -639,7 +645,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         );
       });
-      case "AlquilerAutos":
+      case "renta_vehiculos":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -661,7 +667,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Finca":
+      case "renta_fincas":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -688,7 +694,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Tour":
+      case "tours":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -723,7 +729,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Evento":
+      case "centros_convencion":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -752,7 +758,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Restaurante":
+      case "restaurantes":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -778,7 +784,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Visa":
+      case "visa":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -801,7 +807,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Pasaporte":
+      case "pasaporte":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -821,7 +827,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Mascotas":
+      case "servicio_mascotas":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">
@@ -849,7 +855,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
           </div>
         ));
 
-      case "Equipaje":
+      case "equipaje":
         return product.data.map((item, idx) => (
           <div key={idx} className="bg-white border border-gray-200 rounded-xl p-4 mb-4 shadow-sm">
             <h4 className="font-bold text-primary flex items-center gap-2 mb-3 pb-2 border-b">

@@ -11,6 +11,12 @@ no viajan en el mismo asiento.
 Corolario: **un pasajero sin dato queda sin dato.** Nunca se hereda el del producto para
 rellenar el hueco.
 
+El detalle de venta muestra el documento propio del titular y de los pasajeros que lo
+tienen guardado; las lecturas de SIM, check-in y dueño de mascota conservan tipo y número
+de la persona vinculada. Si un nombre solo existe como texto de un producto sin documento
+asociado (Beto Bodega en la venta de prueba 185), el resumen indica «Sin documento registrado»;
+no lo completa con el documento de otra persona ni con un tiquete, booking o licencia.
+
 ## Qué pasó sin él
 
 El mismo defecto apareció en las cuatro categorías que llevan pasajeros, una por una.

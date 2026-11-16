@@ -54,6 +54,10 @@ compartido es que cada cosa se llame por su nombre, no que todo se llame igual.
 
 ## Reglas de presentación que salieron de esto
 
+- Las pestañas del detalle muestran etiquetas legibles e iconos por categoría, incluyendo
+  «Check-in», «SIM Card», «Renta de Vehículos» y «Viajes Terrestres». La categoría interna
+  determina qué datos se cargan; una etiqueta visible nunca es una clave de despacho.
+
 - **Un dato de catálogo de la venta viaja por id y vuelve como par id y nombre**: `supplierId` y `supplier`, `agencyCardId` y `agencyCard`, `airlineId` y `airline`, `baggagePlanId` y `baggagePlan` ("Aerolínea - Tarifa"), `paymentMethodId`. Un mismo campo no lleva el id en una categoría y el nombre en otra, como pasaba con `airline`. El seguro del auto es `basic`/`all_risk` de ida y de vuelta. Diseño `docs/designs/catalogo-por-id-2026-11.md`.
 
 - **Migración y visa muestran el tipo de documento elegido y su número** en detalle y

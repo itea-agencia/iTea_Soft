@@ -11,6 +11,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
 const { markHolder } = require('../utils/holder');
+const { passengerDocument } = require('../utils/passengerDocument');
 const { resolvePlanLinks } = require('../utils/planLinks');
 const { findId, loadCatalog, planMatchesAirline, resolveSupplierPayment } = require('../utils/catalog');
 const { auditar } = require('../utils/auditoria');
@@ -646,8 +647,7 @@ const PRODUCT_TRANSFORMS = {
     target.push({
       id: c.id,
       passengerName: passengers.length > 0 ? passengers[0].nombreCompleto : null,
-      docType: passengers.length > 0 ? passengers[0].tipoDocumento : null,
-      docNumber: passengers.length > 0 ? passengers[0].nroDocumento : null,
+      ...passengerDocument(passengers),
       flightOrReservation: c.nroVueloReserva,
       travelDate: c.fechaViaje?.toISOString() || null,
       seat: c.asiento,
@@ -686,6 +686,7 @@ const PRODUCT_TRANSFORMS = {
     target.push({
       id: s.id,
       passengerName: passengers.length > 0 ? passengers[0].nombreCompleto : null,
+      ...passengerDocument(passengers),
       destinationCountry: s.paisDestino,
       arrivalDate: s.fechaLlegada?.toISOString() || null,
       tripDuration: s.duracionViaje,
@@ -867,6 +868,7 @@ const PRODUCT_TRANSFORMS = {
     target.push({
       id: m.id,
       ownerName: passengers.length > 0 ? passengers[0].nombreCompleto : null,
+      ...passengerDocument(passengers),
       petName: m.mascotaNombre,
       species: m.especie,
       breed: m.raza,
@@ -949,7 +951,7 @@ exports.getById = async (req, res, next) => {
       prisma.ventas.findUnique({
         where: { id },
         include: {
-          cliente: { include: { persona: true } },
+          cliente: { include: { persona: { include: { tipoDocumento: true } } } },
           usuario: { include: { persona: true } },
           comisionista: { include: { persona: true } },
           responsable: { include: { persona: true } },
@@ -1055,6 +1057,8 @@ exports.getById = async (req, res, next) => {
       id: venta.id,
       clientId: venta.clienteId,
       clientName: `${venta.cliente.persona.nombres} ${venta.cliente.persona.apellidos}`,
+      clientDocType: venta.cliente.persona.tipoDocumento?.abreviatura || null,
+      clientDocNumber: venta.cliente.persona.documento || null,
       asesorId: venta.usuarioId,
       asesorName: `${venta.usuario.persona.nombres} ${venta.usuario.persona.apellidos}`,
       responsableId: venta.responsableId || null,

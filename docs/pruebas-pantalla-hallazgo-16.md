@@ -94,13 +94,27 @@ El usuario realiza esta revisión desde su navegador. API/SQL ya verificadas. Re
 2. En las ventas **170 y 171**, comprobar que tiquete, check-in y tour pertenecen al segundo paquete, sin duplicados ni mezcla con el primero. Total **198.000**. La 171 se creó con una posición vacía intermedia: visualmente debe equivaler a la 170.
 3. Comparar con el detalle de cada producto: vuelos de ida/regreso/escalas, aeropuertos, fechas/horas, pasajeros, documentos, bookings, tiquetes, asientos de ida/regreso, datos de check-in y todos los campos del tour. No basta un resumen del nombre y la fecha.
 4. Generar y descargar el PDF con precio y sin precio. Debe respetar la opción; nunca mostrar costos de proveedor. Revisar todas las páginas: sin recortes, superposición o servicios duplicados; identificar el paquete cuando continúa en otra hoja.
-5. **Cobertura visual pendiente adicional:** en una venta nueva desde el asistente, vincular equipaje y las demás categorías al paquete. Comparar cada bloque con su versión independiente: hotelería, seguro, documentación migratoria, SIM, equipaje, viaje terrestre, auto, finca, convenciones, restaurante, visa, pasaporte y mascotas, además de los tres tipos cubiertos arriba. Las pruebas automáticas verifican contenido de las 16 categorías; las ventas 169–171 solo cubren visualmente tres vinculadas.
+5. **Cobertura visual adicional, validada por el usuario:** en una venta nueva desde el asistente, vincular equipaje y las demás categorías al paquete. Comparar cada bloque con su versión independiente: hotelería, seguro, documentación migratoria, SIM, equipaje, viaje terrestre, auto, finca, convenciones, restaurante, visa, pasaporte y mascotas, además de los tres tipos cubiertos arriba. Las pruebas automáticas verifican contenido de las 16 categorías; las ventas 169–171 solo cubren visualmente tres vinculadas.
 6. Probar un paquete con varios servicios, pasajeros y observaciones largas para forzar varias páginas. Debe conservarse el contenido y el contexto del paquete en continuaciones. El límite previo de una tabla individual más alta que una hoja no se resolvió en este arreglo: si aparece, registrar el caso y no darlo por aprobado.
 7. Registrar por caso venta, resultado observado y captura si falla. No enviar correos ni usar Siigo durante la revisión.
 
 ## 10. Datos de catálogo por id (2026-11-16)
 
 Diseño `docs/designs/catalogo-por-id-2026-11.md`. Recargar con Ctrl+F5 tras reconstruir el frontend.
+
+**Estado:** los siete puntos de esta sección fueron validados en pantalla por el usuario. Durante la revisión reportó documentos ausentes en el resumen y nombres/iconos de pestañas; esas incidencias se siguen en la sección 11 y no invalidan la aprobación del catálogo.
+
+**Preparación por API del 2026-11-16:** frontend local reconstruido a pedido del usuario; backend verificado por hashes de controlador y `catalog.js`. No se modificó código ni producción. Quedan listas estas ventas para su revisión visual:
+
+| Venta | Caso | Total |
+|---|---|---|
+| 185 | Las 17 categorías con ids; tiquete Copa Airlines / Copa Airlines - Basic; auto Todo Riesgo; paquete con pagos en PRECOMPRAS CLIC AIR y servicios vinculados pagados con Samtur Bancolombia Negocios | 187.000 |
+| 186 | Auto con seguro Básico | 11.000 |
+| 187 | Paquete terrestre con empresa escrita libremente y tres pagos a proveedores | 11.000 |
+
+GET completo y paginado coinciden en ids/nombres, tarjeta/método, seguro del auto y desglose del paquete. SQL confirmó totales iguales a la suma de detalles, tarjeta guardada y método sin copiar. Siete casos inválidos devolvieron 400 sin registros nuevos. Evidencia en `resultado-venta-completa-api-2026-11-16.md`.
+
+**Alcance de la API:** no verifica que el proveedor se vacíe al salir del campo, los desplegables de tarjetas, el filtrado de equipaje, el autocompletado ni el PDF; el usuario confirmó esos puntos en pantalla. Para el punto 6 existe el paquete de configuración **TEMPORADA ALTA ADZ** (id 1), con proveedor **VIAJES VIASSA** y aerolínea **AVIANCA**. El texto libre de la empresa terrestre permite guardar la venta, pero no se conserva al releerla: es el límite ya documentado en pendientes.
 
 1. En una venta nueva, en cualquier producto, escribir un proveedor que no está en la lista y salir del campo: debe quedar vacío. Elegirlo de la lista: debe quedar.
 2. El método de pago al proveedor muestra las tarjetas de la agencia y se guarda la elegida.
@@ -109,6 +123,18 @@ Diseño `docs/designs/catalogo-por-id-2026-11.md`. Recargar con Ctrl+F5 tras rec
 5. Guardar y abrir el detalle: proveedor, aerolínea y plan de equipaje con su nombre; en el desglose del paquete, cada línea con su tarjeta; renta de vehículo con "Básico" o "Todo Riesgo".
 6. Elegir un paquete de la configuración: el proveedor y la aerolínea se completan solos.
 7. Generar el voucher de esa venta: aerolíneas y planes de equipaje con su nombre, sin costos de proveedor.
+
+## 11. Documentos y pestañas del detalle de la venta 185
+
+Seguimiento solicitado por el usuario tras aprobar la sección 10. Diseño `docs/designs/documentos-y-pestanas-detalle-2026-11.md`.
+
+**Estado: validado y aprobado en pantalla por el usuario.** Código implementado y contenedores locales actualizados con autorización. Verificados la suite, el build y el GET real de la 185 contra SQL; el resumen calculado con esa respuesta conserva los documentos del titular y Sonia. Sin escrituras sobre ventas ni nuevas ventas de prueba. Casos comprobados:
+
+1. En el resumen de la 185, Prueba Regla debe mostrar el documento del cliente titular y Sonia Simcard debe mostrar CC 9930000701.
+2. Beto Bodega se envió como texto del equipaje sin documento; debe mostrar «Sin documento registrado», nunca el documento del titular, una reserva o un tiquete. No se modifican datos de esa venta.
+3. Las pestañas muestran «Renta de Vehículos», «Viajes Terrestres», «Check-in» y «SIM Card», con sus iconos. Todas las categorías tienen icono; terrestre usa autobús.
+4. Abrir cada pestaña tras corregir las etiquetas: debe seguir cargando la categoría correcta, sin «Detalles no disponibles». En check-in y SIM se muestran nombre, tipo y número de documento.
+5. Confirmar visualmente estos cambios tras actualizar los contenedores locales y recargar el navegador. El usuario confirmó la corrección y aprobó el cierre junto con la sección 10.
 
 ## Cierre
 
