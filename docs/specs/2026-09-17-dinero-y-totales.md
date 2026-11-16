@@ -108,7 +108,7 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
 
 ## Lo que queda abierto
 
-- **Servicios vinculados al paquete (2026-11-16):** código y API/SQL verificados en ventas locales 169–171; falta la revisión visual del usuario de voucher y PDF, incluidas las demás categorías vinculadas y saltos de página. No reconstruye vínculos perdidos en ventas viejas. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`; lista visual en la sección 9 de `docs/pruebas-pantalla-hallazgo-16.md`.
+- **Servicios vinculados al paquete (2026-11-16):** código y API/SQL verificados en ventas locales 169–174, y voucher y PDF validados en pantalla por el usuario el 2026-11-16. No reconstruye vínculos perdidos en ventas viejas. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`; lista visual en la sección 9 de `docs/pruebas-pantalla-hallazgo-16.md`.
 
 - **La columna `ventas.es_credito` queda desactualizada y sin uso en las respuestas.** Al 2026-11-10 había en producción 10 ventas `pagado` y 3 `anulado` con `es_credito = true`. Solo la lee `siigo.service.js` para elegir crédito o contado al facturar; Siigo se va a dejar de usar y no se corrige. Quitar la columna necesita una migración.
 

@@ -1,5 +1,7 @@
 # Pruebas de pantalla antes de integrar hallazgo 16
 
+**Estado: validadas por el usuario el 2026-11-16, secciones 1 a 9.**
+
 Ejecutar en el entorno local actualizado, con datos de prueba. Anotar por caso: resultado esperado, resultado observado, id de venta y captura si falla. Una prueba por API no sustituye estas comprobaciones del asistente y del PDF.
 
 ## Datos preparados por API el 2026-11-11

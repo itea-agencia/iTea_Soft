@@ -4,15 +4,9 @@ Lo que queda por hacer después de la rama `feat/hallazgo-16-carga-y-mantenimien
 
 ## Antes de mergear `feat-bayrol` a `main`
 
-1. **Probar en pantalla** lo de la rama, que no se pudo verificar visualmente. La lista está en cada diseño:
-   - la paginación de Ventas y el panel de créditos (`correcciones-auditoria-paginacion-2026-11.md`, puntos de revisión 3 a 8);
-   - la tarjeta del cliente en créditos, el tipo de mascota, los campos quitados de finca, migración y SIM, el correo de entrega de la eSIM y el voucher del tour vinculado;
-   - pasajeros y personas (`pasajeros-con-documento-2026-11.md`): el error por pasajero en el asistente, el catálogo de tipos en check-in, migración, visa y SIM, el dueño de la mascota en solo lectura y el nombre de comisionistas.
-   - titular en tours y seguros (`titular-por-producto-2026-11.md`): el radio, que el titular no se borre, y que detalle y voucher lo muestren primero (sección 8 de `pruebas-pantalla-hallazgo-16.md`);
-   - migración y visa (commits `a357200` y `4db83f9`): formulario, pestaña y PDF de la venta 201 deben decir "Trámite Migratorio", "Tipo de Documento", "Nro/N° Documento" y "Vencimiento de Documento", y el PDF de visa debe traer el vencimiento. El vencimiento es el del documento elegido, no siempre el del pasaporte (`2026-09-17-vocabulario.md`).
-2. **Probar a mano la venta de las 17 categorías** (hallazgo 16). Ya se cargó por API en local: la 201 es la completa, con proveedores y todos los campos; la 198 fue un primer intento con datos incompletos. Falta la revisión en pantalla, con la lista de `pruebas-pantalla-hallazgo-16.md`; lo verificado por API está en `resultado-venta-gigante-local-2026-11-11.md`. Por API tampoco se probaron el tour vinculado a un plan, las escalas, un rol con alcance propios ni el PDF final: esos quedan solo para la pantalla.
-3. **Desplegar con el orden correcto.** El merge corre dos migraciones en producción: `20261111190000` borra 5 columnas vacías del tour y el seguro (comprobado otra vez el 2026-11-16: 1 tour sin `tour_nombre` y 0 seguros; conviene repetir el conteo justo antes del merge, porque el borrado no se deshace), y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
-4. **Comprobar después del despliegue**, en solo lectura, que los conteos de `pasajeros-con-documento-2026-11.md` siguen en cero. La única excepción es la persona del equipaje.
+1. ~~**Probar en pantalla** lo de la rama~~ y ~~**la venta de las 17 categorías**~~: **validado en pantalla por el usuario el 2026-11-16**, con las secciones 1 a 9 de `pruebas-pantalla-hallazgo-16.md` (paginación y créditos, pasajeros y personas, migración y visa, titular en tours y seguros, servicios vinculados al paquete en voucher y PDF).
+2. **Desplegar con el orden correcto.** El merge corre dos migraciones en producción: `20261111190000` borra 5 columnas vacías del tour y el seguro (comprobado por última vez el 2026-11-16, justo antes del merge: 1 tour sin `tour_nombre` y 0 seguros, y las dos migraciones todavía sin aplicar en producción), y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
+3. **Comprobar después del despliegue**, en solo lectura, que los conteos de `pasajeros-con-documento-2026-11.md` siguen en cero. La única excepción es la persona del equipaje.
 
 ## Dinero (invariante 2)
 
@@ -42,7 +36,7 @@ Ventas y registros anteriores a los arreglos, que se dejan como están por decis
 
 Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
 
-- **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Pendientes la revisión visual del voucher/PDF por el usuario (sección 9 de `pruebas-pantalla-hallazgo-16.md`) y publicar frontend y backend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
+- **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Validado en pantalla por el usuario el 2026-11-16; falta publicar backend y frontend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
 - **Catálogo sin error:** un proveedor, aerolínea, método de pago o plan de equipaje que no existe se guarda vacío, y un aeropuerto desconocido descarta el tramo, todo sin avisar.
 - **Plan de equipaje:** no se valida que sea de la aerolínea del tiquete.
 - **Nombres de ida y vuelta (invariante 5):** `supplierName` entra y sale `supplier`; el seguro del auto entra `all_risk`/`basic` y sale `todo_riesgo`/`basico`.
