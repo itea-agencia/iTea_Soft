@@ -43,7 +43,6 @@ Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
 - **Datos que no se leen:** el método de pago al proveedor de cada producto no vuelve en la API; las fechas, origen y destino generales de `detalle_venta` se llenan dispares y nadie los lee.
 - **Visa y pasaporte:** el solicitante no queda como pasajero. Falta decidir si es a propósito.
 - **Desglose del paquete distinto según el endpoint:** `GET /sales/:id` llama a `agregarPorPadre` sin los `pagosProveedor`, así que el paquete sale como una sola línea (3 en la venta 172); `GET /sales/:id/details`, el que usa la pestaña, trae las 5. El total es el mismo (33.000). Hoy ninguna pantalla lee el desglose de `getById`.
-- **Etiqueta del total del paquete:** la tarjeta suma sus servicios vinculados y esos servicios vuelven a aparecer en su pestaña. Decidir con quien usa la pantalla si hace falta aclararlo ("incluye servicios vinculados").
 
 ## Auditoría del frontend
 
@@ -64,6 +63,7 @@ Detalle en `docs/specs/2026-09-21-autenticacion-y-autorizacion.md` y `2026-09-21
 
 ## Cerrado en esta revisión
 
+- **Etiqueta del total del paquete:** en la prueba de pantalla del 2026-11-16 se entendió que el total del paquete incluye sus servicios vinculados. No se cambia.
 - **`liberar_correos_de_eliminados`:** no tiene nada que hacer en producción. El 2026-11-16 había 0 candidatos (inactivos con la persona eliminada y sin `deleted_at`); el único usuario eliminado ya tiene el correo liberado. Queda 1 inactivo con la persona viva, que es un "Desactivar" normal o un caso a revisar a mano, no trabajo del script.
 
 ## Menores
