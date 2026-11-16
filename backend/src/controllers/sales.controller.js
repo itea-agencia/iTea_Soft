@@ -12,7 +12,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 const { escaparHtml } = require('../utils/stringUtils');
 const { markHolder } = require('../utils/holder');
 const { resolvePlanLinks } = require('../utils/planLinks');
-const { findId, loadCatalog, planMatchesAirline } = require('../utils/catalog');
+const { findId, loadCatalog, planMatchesAirline, resolveSupplierPayment } = require('../utils/catalog');
 const { auditar } = require('../utils/auditoria');
 const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
@@ -166,7 +166,7 @@ const PRODUCT_INCLUDES = {
           orderBy: { orden: 'asc' }
         },
         aerolinea: true,
-        planEquipaje: true
+        planEquipaje: { include: { aerolinea: true } }
       }
     }
   },
@@ -218,12 +218,14 @@ function construirTramoVuelo(leg, item, tipoTramo, orden, ctx) {
   const { catalog, where } = ctx;
   const originAirportId = refId(catalog.airports, leg.origin, where, 'el aeropuerto');
   const destAirportId = refId(catalog.airports, leg.destination, where, 'el aeropuerto');
-  const legAirlineId = refId(catalog.airlines, leg.airline || item.airline, where, 'la aerolínea');
+  const legAirline = firstValue(leg.airlineId, leg.airline, item.airlineId, item.airline);
+  const legAirlineId = refId(catalog.airlines, legAirline, where, 'la aerolínea');
   // El plan elegido para el tramo tiene que ser de su aerolinea. El del tiquete se hereda
   // solo si tambien lo es: en una conexion de otra aerolinea el asesor no lo eligio.
-  const ownPlanId = refId(catalog.baggagePlans, leg.baggagePlan, where, 'el plan de equipaje');
-  if (ownPlanId !== null) checkPlanAirline(catalog, ownPlanId, legAirlineId, leg.baggagePlan, leg.airline || item.airline, where);
-  const inheritedPlanId = ownPlanId === null ? refId(catalog.baggagePlans, item.baggagePlan, where, 'el plan de equipaje') : null;
+  const ownPlan = firstValue(leg.baggagePlanId, leg.baggagePlan);
+  const ownPlanId = refId(catalog.baggagePlans, ownPlan, where, 'el plan de equipaje');
+  if (ownPlanId !== null) checkPlanAirline(catalog, ownPlanId, legAirlineId, ownPlan, legAirline, where);
+  const inheritedPlanId = ownPlanId === null ? refId(catalog.baggagePlans, firstValue(item.baggagePlanId, item.baggagePlan), where, 'el plan de equipaje') : null;
   const legBaggagePlanId = ownPlanId ?? (planMatchesAirline(catalog, inheritedPlanId, legAirlineId) ? inheritedPlanId : null);
   return {
     aeropuertoOrigenId: originAirportId,
@@ -261,15 +263,16 @@ function armarPagosProveedor(item, ctx) {
     const costoProveedor = Number(pago.supplierCost) || 0;
     const ta = Number(pago.ta) || 0;
     const taCre = Number(pago.taCre) || 0;
-    if (costoProveedor === 0 && ta === 0 && taCre === 0 && !pago.supplier) continue;
+    const supplier = firstValue(pago.supplierId, pago.supplier);
+    if (costoProveedor === 0 && ta === 0 && taCre === 0 && !supplier) continue;
 
     out.push({
       concepto,
-      proveedorId: refId(ctx.catalog.suppliers, pago.supplier, ctx.where, 'el proveedor'),
+      proveedorId: refId(ctx.catalog.suppliers, supplier, ctx.where, 'el proveedor'),
       costoProveedor,
       ta,
       taCre,
-      metodoPagoProveedorId: refId(ctx.catalog.paymentMethods, pago.paymentMethod, ctx.where, 'el método de pago al proveedor'),
+      ...supplierPaymentRef(ctx.catalog, pago.agencyCardId, pago.paymentMethod, ctx.where),
       orden: i + 1,
     });
   }
@@ -307,6 +310,27 @@ const NOMBRE_CATEGORIA = {
 };
 
 /**
+ * Con que se le pago al proveedor: la tarjeta de la agencia y el metodo, que se deduce de la
+ * tarjeta si la hay (no se copia: corregir la tarjeta corrige sus ventas) y si no es el que se
+ * guardo antes de las tarjetas. Diseño catalogo-por-id-2026-11.
+ */
+function supplierPaymentOf(row) {
+  const card = row.tarjetaAgencia;
+  return {
+    agencyCardId: row.tarjetaAgenciaId ?? null,
+    agencyCard: card?.nombre || null,
+    supplierPaymentMethod: card ? (card.metodoPago?.nombre || null) : (row.metodoPagoProveedor?.nombre || null),
+  };
+}
+
+/** Proveedor de un detalle como par id y nombre, con su pago. */
+function supplierOf(d) {
+  return { supplierId: d.proveedorId ?? null, supplier: d.proveedor?.nombre || null, ...supplierPaymentOf(d) };
+}
+
+const CARD_SELECT = { select: { id: true, nombre: true, metodoPago: { select: { nombre: true } } } };
+
+/**
  * Total pagado a proveedores de cada servicio con hijos, tipicamente un paquete: su
  * propia fila mas todos los servicios vinculados por `parentDetalleId`.
  *
@@ -330,8 +354,11 @@ function agregarPorPadre(filas) {
     detalleVentaId: f.id,
     category: f.categoria,
     serviceName: f.nombreServicio || NOMBRE_CATEGORIA[f.categoria] || f.categoria,
+    supplierId: f.proveedorId ?? null,
     supplier: f.proveedor?.nombre || null,
-    paymentMethod: f.metodoPagoProveedor?.nombre || null,
+    agencyCardId: f.tarjetaAgenciaId ?? null,
+    agencyCard: f.tarjetaAgencia?.nombre || null,
+    paymentMethod: supplierPaymentOf(f).supplierPaymentMethod,
     supplierCost: Number(f.costoProveedor) || 0,
     ta: Number(f.ta) || 0,
     taCre: Number(f.taCre) || 0,
@@ -350,8 +377,11 @@ function agregarPorPadre(filas) {
       category: f.categoria,
       concept: p.concepto,
       serviceName: NOMBRE_CONCEPTO[p.concepto] || p.concepto,
+      supplierId: p.proveedorId ?? null,
       supplier: p.proveedor?.nombre || null,
-      paymentMethod: p.metodoPagoProveedor?.nombre || null,
+      agencyCardId: p.tarjetaAgenciaId ?? null,
+      agencyCard: p.tarjetaAgencia?.nombre || null,
+      paymentMethod: supplierPaymentOf(p).supplierPaymentMethod,
       supplierCost: Number(p.costoProveedor) || 0,
       ta: Number(p.ta) || 0,
       taCre: Number(p.taCre) || 0,
@@ -388,14 +418,16 @@ function agregarPorPadre(filas) {
 
 const SELECT_AGREGADO = {
   id: true, parentDetalleId: true, categoria: true, nombreServicio: true,
-  costoProveedor: true, ta: true, taCre: true,
+  costoProveedor: true, ta: true, taCre: true, proveedorId: true, tarjetaAgenciaId: true,
   proveedor: { select: { nombre: true } },
   metodoPagoProveedor: { select: { nombre: true } },
+  tarjetaAgencia: CARD_SELECT,
   pagosProveedor: {
     select: {
-      concepto: true, costoProveedor: true, ta: true, taCre: true, orden: true,
+      concepto: true, costoProveedor: true, ta: true, taCre: true, orden: true, proveedorId: true, tarjetaAgenciaId: true,
       proveedor: { select: { nombre: true } },
       metodoPagoProveedor: { select: { nombre: true } },
+      tarjetaAgencia: CARD_SELECT,
     },
     orderBy: { orden: 'asc' },
   },
@@ -450,7 +482,9 @@ function mapLegs(legs) {
       time: formatColombiaTime(l.salida),
       arrivalDate: formatColombiaDate(l.llegada),
       arrivalTime: formatColombiaTime(l.llegada),
+      airlineId: l.aerolineaId ?? null,
       airline: l.aerolinea?.nombre || null,
+      baggagePlanId: l.planEquipajeId ?? null,
       baggagePlan: l.planEquipaje ? `${l.planEquipaje.aerolinea?.nombre || l.aerolinea?.nombre || ''} - ${l.planEquipaje.tipoTarifa}` : null,
       orden: l.orden,
       tipoTramo: l.tipoTramo || null
@@ -465,8 +499,8 @@ const PRODUCT_TRANSFORMS = {
     const legs = mapLegs(t.tramosVuelo);
     target.push({
       id: t.id,
-      airline: String(t.aerolineaId || ''),
-      airlineName: t.aerolinea?.nombre || null,
+      airlineId: t.aerolineaId ?? null,
+      airline: t.aerolinea?.nombre || null,
       reservationNumber: t.nroReserva,
       flightNumber: t.nroVuelo,
       ticketNumber: t.nroTiquete,
@@ -475,13 +509,14 @@ const PRODUCT_TRANSFORMS = {
       // El wizard guarda el equipaje en cada tramo, no en el tiquete: en produccion las
       // ventas #160 a #168 tienen planEquipajeId nulo en prod_tiqueteria y el plan solo
       // en tramos_vuelo. Sin el respaldo al primer tramo, el "Equipaje" del detalle salia "-".
-      baggagePlan: t.planEquipaje ? `${t.planEquipaje.tipoTarifa}` : (legs[0]?.baggagePlan ?? null),
+      baggagePlanId: t.planEquipajeId ?? legs[0]?.baggagePlanId ?? null,
+      baggagePlan: t.planEquipaje ? `${String(t.planEquipaje.aerolinea?.nombre || '').trim()} - ${t.planEquipaje.tipoTarifa}` : (legs[0]?.baggagePlan ?? null),
       // `seatNumber` salia del PRIMER pasajero y se presentaba como el asiento del
       // tiquete entero; de ahi volvia a la escritura y se copiaba a todos. El asiento es
       // de cada pasajero y va en `passengers[]`. Se deja el campo para no romper lecturas
       // viejas de un solo pasajero, pero nadie lo hereda ya.
       seatNumber: passengers.length === 1 ? passengers[0].asiento : null,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -522,7 +557,7 @@ const PRODUCT_TRANSFORMS = {
         esTitular: p.esTitular === true,
         nroReserva: p.nroReserva || '',
       })),
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -539,7 +574,7 @@ const PRODUCT_TRANSFORMS = {
       phone: s.telefonoContacto,
       members: members.length > 0 ? members : (venta?.cliente?.persona ? [{ name: `${venta.cliente.persona.nombres} ${venta.cliente.persona.apellidos}`, docType: '', docNumber: venta.cliente.persona.documento || '' }] : [])
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -554,8 +589,8 @@ const PRODUCT_TRANSFORMS = {
       packageId: p.paqueteId,
       packageName: p.paquete?.nombre || null,
       hotelName: p.nombreHotel || null,
-      airline: String(p.aerolineaId || ''),
-      airlineName: p.aerolinea?.nombre || null,
+      airlineId: p.aerolineaId ?? null,
+      airline: p.aerolinea?.nombre || null,
       flightNumber: p.nroVuelo || null,
       flightReturnNumber: p.nroVueloRegreso || null,
       flightReservationNumber: p.nroReservaVuelo || null,
@@ -573,8 +608,11 @@ const PRODUCT_TRANSFORMS = {
       // uno con su proveedor y su metodo. Los importes del paquete son su suma.
       supplierPayments: (d.pagosProveedor || []).map(pg => ({
         concept: pg.concepto,
+        supplierId: pg.proveedorId ?? null,
         supplier: pg.proveedor?.nombre || '',
-        paymentMethod: pg.metodoPagoProveedor?.nombre || '',
+        agencyCardId: pg.tarjetaAgenciaId ?? null,
+        agencyCard: pg.tarjetaAgencia?.nombre || null,
+        paymentMethod: supplierPaymentOf(pg).supplierPaymentMethod || '',
         supplierCost: Number(pg.costoProveedor) || 0,
         ta: Number(pg.ta) || 0,
         taCre: Number(pg.taCre) || 0,
@@ -596,7 +634,7 @@ const PRODUCT_TRANSFORMS = {
       })),
       packageType: p.tipoPaquete || 'own',
       transportType: p.tipoTransporte || 'Aéreo',
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -618,7 +656,7 @@ const PRODUCT_TRANSFORMS = {
       specialNeeds: c.necesidadesEspeciales,
       needsWheelchair: c.usaSillaRuedas
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -636,7 +674,7 @@ const PRODUCT_TRANSFORMS = {
       docNumber: m.pasaporteNro,
       passportExpiry: m.pasaporteVence?.toISOString().split('T')[0] || null,
       destinationCountry: m.paisDestino,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -656,7 +694,7 @@ const PRODUCT_TRANSFORMS = {
       deliveryMethod: s.metodoEntrega,
       deliveryEmail: s.emailEntrega
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -674,10 +712,11 @@ const PRODUCT_TRANSFORMS = {
       pickupLocation: a.lugarRecogida,
       vehicleCategory: a.categoriaAuto,
       additionalDrivers: a.conductoresAdicionales,
-      insuranceType: a.tipoSeguro,
+      // Como lo manda el formulario (catalogo-por-id-2026-11); la base guarda basico/todo_riesgo.
+      insuranceType: a.tipoSeguro === 'todo_riesgo' ? 'all_risk' : (a.tipoSeguro === 'basico' ? 'basic' : null),
       guaranteeCreditCard: a.tarjetaGarantiaInfo
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -702,7 +741,7 @@ const PRODUCT_TRANSFORMS = {
       fincaCity: f.ciudadPueblo,
       observations: f.observaciones
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -729,7 +768,7 @@ const PRODUCT_TRANSFORMS = {
         docType: String(p.tipoDocumento || ''),
         docNumber: p.nroDocumento || ''
       })),
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -755,7 +794,7 @@ const PRODUCT_TRANSFORMS = {
       address: e.direccion || null,
       placeName: e.nombreLugar || null
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -775,7 +814,7 @@ const PRODUCT_TRANSFORMS = {
       specialOccasion: r.ocasionEspecial,
       phone: r.telefonoContacto
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -797,7 +836,7 @@ const PRODUCT_TRANSFORMS = {
       estimatedTravelDate: v.fechaEstimadaViaje?.toISOString() || null,
       email: v.emailContacto
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -816,7 +855,7 @@ const PRODUCT_TRANSFORMS = {
       estimatedTravelDate: p.fechaEstimadaViaje?.toISOString() || null,
       phone: p.telefonoContacto
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -841,7 +880,7 @@ const PRODUCT_TRANSFORMS = {
       transportCompany: m.empresaTransporte,
       observations: m.observaciones
     ,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -861,7 +900,7 @@ const PRODUCT_TRANSFORMS = {
       isRoundTrip: t.esIdaYVuelta,
       returnDate: t.fechaRegreso?.toISOString() || null,
       returnTime: t.horaRegreso,
-      supplierName: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -889,7 +928,7 @@ const PRODUCT_TRANSFORMS = {
       carryOn: b.equipajeMano,
       checkedBag: b.equipajeBodega,
       notes: b.observaciones,
-      supplier: d.proveedor?.nombre || null,
+      ...supplierOf(d),
       supplierCost: d.costoProveedor || 0,
       ta: d.ta || 0,
       taCre: d.taCre || 0,
@@ -939,8 +978,9 @@ exports.getById = async (req, res, next) => {
           // A cada proveedor se le paga aparte y con su propio metodo. Faltaba en el
           // include, asi que el metodo de pago del proveedor no llegaba al frontend.
           metodoPagoProveedor: { select: { nombre: true } },
+          tarjetaAgencia: CARD_SELECT,
           pagosProveedor: {
-            include: { proveedor: { select: { nombre: true } }, metodoPagoProveedor: { select: { nombre: true } } },
+            include: { proveedor: { select: { nombre: true } }, metodoPagoProveedor: { select: { nombre: true } }, tarjetaAgencia: CARD_SELECT },
             orderBy: { orden: 'asc' }
           }
         }
@@ -984,8 +1024,14 @@ exports.getById = async (req, res, next) => {
       costoProveedor: d.costoProveedor,
       ta: d.ta,
       taCre: d.taCre,
+      proveedorId: d.proveedorId,
       proveedor: d.proveedor,
       metodoPagoProveedor: d.metodoPagoProveedor,
+      tarjetaAgenciaId: d.tarjetaAgenciaId,
+      tarjetaAgencia: d.tarjetaAgencia,
+      // Sin los pagos, un paquete con varios proveedores salia como una sola linea aca y como
+      // varias en /details (pendientes, 2026-11-16).
+      pagosProveedor: d.pagosProveedor,
     })));
 
     const resultMap = {};
@@ -1131,8 +1177,9 @@ exports.getPaginatedDetails = async (req, res, next) => {
     const baseInclude = {
       proveedor: true,
       metodoPagoProveedor: { select: { nombre: true } },
+      tarjetaAgencia: CARD_SELECT,
       pagosProveedor: {
-        include: { proveedor: { select: { nombre: true } }, metodoPagoProveedor: { select: { nombre: true } } },
+        include: { proveedor: { select: { nombre: true } }, metodoPagoProveedor: { select: { nombre: true } }, tarjetaAgencia: CARD_SELECT },
         orderBy: { orden: 'asc' }
       },
       pasajerosDetalle: {
@@ -1196,9 +1243,11 @@ const PRODUCT_HANDLERS = {
     category: 'tiqueteria', table: 'prodTiqueteria',
     nombreServicio: 'Tiquetería',
     transform: (d, detalleId, tx, { catalog, where }) => {
-      const aerolineaId = refId(catalog.airlines, d.airline, where, 'la aerolínea');
-      const planEquipajeId = refId(catalog.baggagePlans, d.baggagePlan, where, 'el plan de equipaje');
-      checkPlanAirline(catalog, planEquipajeId, aerolineaId, d.baggagePlan, d.airline, where);
+      const airline = firstValue(d.airlineId, d.airline);
+      const baggagePlan = firstValue(d.baggagePlanId, d.baggagePlan);
+      const aerolineaId = refId(catalog.airlines, airline, where, 'la aerolínea');
+      const planEquipajeId = refId(catalog.baggagePlans, baggagePlan, where, 'el plan de equipaje');
+      checkPlanAirline(catalog, planEquipajeId, aerolineaId, baggagePlan, airline, where);
       return {
         detalleVentaId: detalleId,
         aerolineaId,
@@ -1238,7 +1287,10 @@ const PRODUCT_HANDLERS = {
     category: 'planes', table: 'prodPlanes',
     nombreServicio: 'Planes',
     transform: (d, detalleId, tx, { catalog, where }) => {
-      const aerolineaId = refId(catalog.airlines, d.airline, where, 'la aerolínea');
+      // En un paquete terrestre el campo es la empresa de transporte, texto libre que no es
+      // una aerolinea: buscarlo entre las aerolineas rechazaba el paquete. No hay columna para
+      // la empresa, asi que sigue sin guardarse, como antes (pendientes, 2026-11-16).
+      const aerolineaId = d.transportType === 'Terrestre' ? null : refId(catalog.airlines, firstValue(d.airlineId, d.airline), where, 'la aerolínea');
       return {
         detalleVentaId: detalleId,
         paqueteId: d.packageId ? (parseInt(d.packageId) || null) : null,
@@ -1457,7 +1509,7 @@ const PRODUCT_HANDLERS = {
     category: 'equipaje', table: 'prodEquipajes',
     nombreServicio: 'Equipaje',
     transform: (d, detalleId, tx, { catalog, where }) => {
-      const aerolineaId = refId(catalog.airlines, d.airline || d.airlineId, where, 'la aerolínea');
+      const aerolineaId = refId(catalog.airlines, firstValue(d.airlineId, d.airline), where, 'la aerolínea');
       return {
         detalleVentaId: detalleId,
         aerolineaId,
@@ -1718,6 +1770,23 @@ function checkPlanAirline(catalog, planId, airlineId, planValue, airlineValue, w
   throw Object.assign(new Error(`${where}: el plan de equipaje «${String(planValue).trim()}» no es de la aerolínea «${String(airlineValue).trim()}»`), { statusCode: 400, code: 'VALIDATION_ERROR' });
 }
 
+/**
+ * El primer valor con dato. Los campos de catalogo viajan por id (`supplierId`, `airlineId`...)
+ * y el nombre de antes es el respaldo para borradores y pestañas con el frontend anterior.
+ * Diseño catalogo-por-id-2026-11.
+ */
+const firstValue = (...values) => values.find(v => v !== undefined && v !== null && String(v).trim() !== '') ?? null;
+
+/** Tarjeta o metodo con que se le pago al proveedor, o un 400 si no existe. */
+function supplierPaymentRef(catalog, cardId, legacyName, where) {
+  const ref = resolveSupplierPayment(catalog, { cardId, legacyName });
+  if (ref === undefined) {
+    const what = firstValue(cardId) !== null ? 'la tarjeta' : 'el método de pago al proveedor';
+    throw Object.assign(new Error(`${where}: ${what} «${String(firstValue(cardId, legacyName)).trim()}» no existe`), { statusCode: 400, code: 'VALIDATION_ERROR' });
+  }
+  return ref || { tarjetaAgenciaId: null, metodoPagoProveedorId: null };
+}
+
 function refId(index, value, where, what) {
   const id = findId(index, value);
   if (id === undefined) {
@@ -1729,9 +1798,10 @@ function refId(index, value, where, what) {
 // El proveedor llega con dos nombres distintos segun el formulario: los cuatro que traen
 // su propio campo (tiqueteria, hoteleria, planes, seguros) mandan `supplier`, y los trece
 // que usan FinancialSection mandan `supplierName`. El backend solo leia `supplier`, asi que
-// esos trece guardaban el detalle sin proveedor.
+// esos trece guardaban el detalle sin proveedor. Desde catalogo-por-id-2026-11 viaja
+// `supplierId`; estos nombres son el respaldo para borradores y el frontend anterior.
 function nombreProveedorDe(item) {
-  return item.supplier || item.supplierName || item.supplierId || null;
+  return item.supplier || item.supplierName || null;
 }
 
 exports.create = async (req, res, next) => {
@@ -1801,7 +1871,7 @@ exports.create = async (req, res, next) => {
 
     // Los catalogos son chicos: se cargan una vez y cada nombre se resuelve en memoria.
     const catalog = await loadCatalog(prisma);
-    const paymentMethodIds = pagos.map((p, i) => refId(catalog.paymentMethods, p.method, `Pago #${i + 1}`, 'el método de pago'));
+    const paymentMethodIds = pagos.map((p, i) => refId(catalog.paymentMethods, firstValue(p.paymentMethodId, p.method), `Pago #${i + 1}`, 'el método de pago'));
     // El metodo principal se deriva de los pagos. El asistente manda un nombre ("Mixto" con
     // varios pagos, "Otro" si no reconoce el metodo) que no esta en el catalogo: validarlo
     // rechazaba toda venta con dos o mas pagos. Con varios o ninguno, queda vacio como antes.
@@ -1877,8 +1947,8 @@ exports.create = async (req, res, next) => {
 
           const fin = financierosDe(item);
           const ctx = { catalog, where: `${NOMBRE_CATEGORIA[handler.category] || handler.nombreServicio} #${itemIndex + 1}` };
-          const resolvedSupplierId = refId(catalog.suppliers, nombreProveedorDe(item), ctx.where, 'el proveedor');
-          const resolvedSupplierPaymentMethodId = refId(catalog.paymentMethods, item.supplierPaymentMethod, ctx.where, 'el método de pago al proveedor');
+          const resolvedSupplierId = refId(catalog.suppliers, firstValue(item.supplierId, nombreProveedorDe(item)), ctx.where, 'el proveedor');
+          const supplierPayment = supplierPaymentRef(catalog, item.agencyCardId, item.supplierPaymentMethod, ctx.where);
 
           const productData = await handler.transform(item, undefined, tx, ctx);
           delete productData.detalleVentaId; // Omit foreign key for nested create
@@ -1914,7 +1984,8 @@ exports.create = async (req, res, next) => {
             ta: fin.ta,
             taCre: fin.taCre,
             proveedorId: resolvedSupplierId,
-            metodoPagoProveedorId: resolvedSupplierPaymentMethodId,
+            metodoPagoProveedorId: supplierPayment.metodoPagoProveedorId,
+            tarjetaAgenciaId: supplierPayment.tarjetaAgenciaId,
             origen: item.legs?.[0]?.origin || item.pickupLocation || item.origin || null,
             destino: item.destination || item.destinationCountry || item.legs?.[0]?.destination || null,
             fechaInicioViaje: item.startDate ? new Date(item.startDate) : item.departureDate ? new Date(item.departureDate) : item.pickupDate ? new Date(item.pickupDate) : null,
@@ -2264,7 +2335,7 @@ function comisionDe(bruto, porcentajeRetencion) {
 exports.registerPayment = async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const { amount, isTotal, method, reference, currentPaidAmount, saleTotal } = req.body;
+    const { amount, isTotal, method, paymentMethodId, reference, currentPaidAmount, saleTotal } = req.body;
 
     // Lo abonado se suma desde `pagos_venta`, no de lo que diga el cliente.
     //
@@ -2289,7 +2360,7 @@ exports.registerPayment = async (req, res, next) => {
       return error(res, 'El monto del pago debe ser mayor a cero', 400, 'VALIDATION_ERROR');
     }
 
-    const metodoPagoId = refId((await loadCatalog(prisma)).paymentMethods, method, 'El pago', 'el método de pago');
+    const metodoPagoId = refId((await loadCatalog(prisma)).paymentMethods, firstValue(paymentMethodId, method), 'El pago', 'el método de pago');
     let newPaidAmount, newStatus, newPayment;
 
     await prisma.$transaction(async (tx) => {

@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 // Regla de backend/src/utils/catalog.js: un valor de catálogo que no existe no se pierde.
 // Diseño catalogo-sin-perdida-silenciosa-2026-11.
 const require = createRequire(import.meta.url);
-const { buildIndex, findId, planMatchesAirline } = require('../../backend/src/utils/catalog.js');
+const { buildIndex, findId, planMatchesAirline, resolveSupplierPayment } = require('../../backend/src/utils/catalog.js');
 
 const suppliers = buildIndex([
   { id: 1, keys: ['VIAJES COLOMBIA ONLINE'] },
@@ -56,4 +56,27 @@ test('el plan de equipaje tiene que ser de la aerolínea, si hay con qué compar
   assert.equal(planMatchesAirline(catalog, 37, 3), false);
   assert.equal(planMatchesAirline(catalog, null, 3), true);
   assert.equal(planMatchesAirline(catalog, 50, null), true);
+});
+
+// Diseño catalogo-por-id-2026-11: se guarda la tarjeta y el método se deduce de ella.
+const payCatalog = {
+  agencyCards: buildIndex([{ id: 1, keys: ['Samtur Bancolombia Negocios'] }, { id: 2, keys: ['PRECOMPRAS CLIC AIR'] }]),
+  paymentMethods: buildIndex([{ id: 2, keys: ['Transferencia'] }, { id: 13, keys: ['Tarjeta de Débito'] }]),
+};
+
+test('pago al proveedor por id de tarjeta: guarda la tarjeta y no el método', () => {
+  assert.deepEqual(resolveSupplierPayment(payCatalog, { cardId: 2 }), { tarjetaAgenciaId: 2, metodoPagoProveedorId: null });
+  assert.deepEqual(resolveSupplierPayment(payCatalog, { cardId: '1', legacyName: 'Transferencia' }), { tarjetaAgenciaId: 1, metodoPagoProveedorId: null });
+});
+
+test('respaldo por nombre: primero tarjeta, después método sin tarjeta', () => {
+  assert.deepEqual(resolveSupplierPayment(payCatalog, { legacyName: 'samtur bancolombia negocios' }), { tarjetaAgenciaId: 1, metodoPagoProveedorId: null });
+  assert.deepEqual(resolveSupplierPayment(payCatalog, { legacyName: 'Transferencia' }), { tarjetaAgenciaId: null, metodoPagoProveedorId: 2 });
+});
+
+test('pago al proveedor vacío es sin dato; lo que no existe es undefined', () => {
+  assert.equal(resolveSupplierPayment(payCatalog, {}), null);
+  assert.equal(resolveSupplierPayment(payCatalog, { cardId: '', legacyName: '' }), null);
+  assert.equal(resolveSupplierPayment(payCatalog, { cardId: 99 }), undefined);
+  assert.equal(resolveSupplierPayment(payCatalog, { legacyName: 'Bitcoin' }), undefined);
 });

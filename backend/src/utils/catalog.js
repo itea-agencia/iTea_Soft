@@ -43,7 +43,7 @@ async function loadCatalog(db) {
     db.proveedores.findMany({ select: { id: true, nombre: true } }),
     db.aerolineas.findMany({ select: { id: true, nombre: true } }),
     db.metodosPago.findMany({ select: { id: true, nombre: true } }),
-    db.tarjetasAgencia.findMany({ select: { nombre: true, metodoPagoId: true } }),
+    db.tarjetasAgencia.findMany({ select: { id: true, nombre: true, metodoPagoId: true } }),
     db.politicasEquipaje.findMany({ select: { id: true, tipoTarifa: true, aerolineaId: true, aerolinea: { select: { nombre: true } } } }),
     db.aeropuertos.findMany({ select: { id: true, codigoIata: true } }),
   ]);
@@ -60,6 +60,7 @@ async function loadCatalog(db) {
     }))),
     airports: buildIndex(airports.map(a => ({ id: a.id, keys: [a.codigoIata] }))),
     planAirline: new Map(plans.map(p => [p.id, p.aerolineaId])),
+    agencyCards: buildIndex(cards.map(c => ({ id: c.id, keys: [c.nombre] }))),
   };
 }
 
@@ -72,4 +73,23 @@ function planMatchesAirline(catalog, planId, airlineId) {
   return catalog.planAirline.get(planId) === airlineId;
 }
 
-module.exports = { buildIndex, findId, loadCatalog, planMatchesAirline };
+/**
+ * Con que se le pago al proveedor. Se guarda la tarjeta de la agencia y el metodo queda vacio:
+ * se deduce de la tarjeta al leer, para que corregir el metodo de una tarjeta corrija todas
+ * sus ventas. De respaldo (borradores y pestañas con el frontend anterior) llega un nombre:
+ * primero se busca como tarjeta y si no como metodo, que se guarda sin tarjeta como antes.
+ * Un numero de respaldo es un id de metodo, como lo trataba resolvePaymentMethodId.
+ * null si no hay dato; undefined si no existe. Diseño catalogo-por-id-2026-11.
+ */
+function resolveSupplierPayment(catalog, { cardId, legacyName } = {}) {
+  const card = findId(catalog.agencyCards, cardId);
+  if (card !== null) return card === undefined ? undefined : { tarjetaAgenciaId: card, metodoPagoProveedorId: null };
+  const numeric = legacyName !== undefined && legacyName !== null && /^\d+$/.test(String(legacyName).trim());
+  const byCard = numeric ? undefined : findId(catalog.agencyCards, legacyName);
+  if (byCard === null) return null;
+  if (byCard !== undefined) return { tarjetaAgenciaId: byCard, metodoPagoProveedorId: null };
+  const method = findId(catalog.paymentMethods, legacyName);
+  return method === undefined ? undefined : { tarjetaAgenciaId: null, metodoPagoProveedorId: method };
+}
+
+module.exports = { buildIndex, findId, loadCatalog, planMatchesAirline, resolveSupplierPayment };

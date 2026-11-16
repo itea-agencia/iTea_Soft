@@ -73,6 +73,8 @@ model TarjetasAgencia {
   status        UserStatus   @default(active)
   creadoAt      DateTime     @default(now()) @map("creado_at")
   metodoPago    MetodosPago? @relation(fields: [metodoPagoId], references: [id])
+  detalles      DetalleVenta[]   @relation("tarjeta_detalle")
+  pagosProveedor PagosProveedor[] @relation("tarjeta_pago_proveedor")
 
   @@map("tarjetas_agencia")
 }
@@ -352,6 +354,9 @@ model PagosProveedor {
   detalleVenta          DetalleVenta @relation(fields: [detalleVentaId], references: [id])
   proveedor             Proveedores? @relation("proveedor_pago", fields: [proveedorId], references: [id])
   metodoPagoProveedor   MetodosPago? @relation("metodo_pago_pago_proveedor", fields: [metodoPagoProveedorId], references: [id])
+  // La tarjeta de la agencia con que se pagó; el método se deduce de ella al leer.
+  tarjetaAgenciaId      Int?             @map("tarjeta_agencia_id")
+  tarjetaAgencia        TarjetasAgencia? @relation("tarjeta_pago_proveedor", fields: [tarjetaAgenciaId], references: [id])
 
   @@index([detalleVentaId])
   @@map("pagos_proveedor")
@@ -377,6 +382,9 @@ model DetalleVenta {
   taCre                 Float?             @default(0) @map("ta_cre")
   parentDetalleId       String?            @map("parent_detalle_id")
   metodoPagoProveedor   MetodosPago?       @relation("metodo_pago_proveedor", fields: [metodoPagoProveedorId], references: [id])
+  // La tarjeta de la agencia con que se pagó; el método se deduce de ella al leer.
+  tarjetaAgenciaId      Int?               @map("tarjeta_agencia_id")
+  tarjetaAgencia        TarjetasAgencia?   @relation("tarjeta_detalle", fields: [tarjetaAgenciaId], references: [id])
   parentDetalle         DetalleVenta?      @relation("DetalleVentaHierarchy", fields: [parentDetalleId], references: [id])
   childDetalles         DetalleVenta[]     @relation("DetalleVentaHierarchy")
   proveedor             Proveedores?       @relation("proveedor_detalle", fields: [proveedorId], references: [id])
