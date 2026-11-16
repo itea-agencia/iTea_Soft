@@ -1,5 +1,15 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
+
+// Las contraseñas de los usuarios del seed salen de backend/.env, que no va al repo. Antes
+// estaban escritas aca, y admin@itea.com con su contraseña coincidia con un admin real de
+// produccion. Sin la variable el seed se detiene en vez de inventar una.
+function seedPassword(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Falta ${name} en backend/.env (ver .env.example)`);
+  return value;
+}
 
 const prisma = new PrismaClient();
 
@@ -267,12 +277,12 @@ async function main() {
   // =========================================================
 
   const proveedoresData = [
-    { nombre: 'Decameron Hotels', tipo: 'Hotel', emailContacto: 'reservas@decameron.com', telefono: '+5712345678', web: 'https://www.decameron.com' },
-    { nombre: 'Dann Carlton', tipo: 'Hotel', emailContacto: 'reservas@danncarlton.com', telefono: '+5723456789', web: 'https://www.danncarlton.com' },
-    { nombre: 'Despegar', tipo: 'Proveedor', emailContacto: 'ventas@despegar.com', telefono: '+5734567890', web: 'https://www.despegar.com' },
-    { nombre: 'Hotel Estelar', tipo: 'Hotel', emailContacto: 'reservas@hotelestelar.com', telefono: '+5745678901', web: 'https://www.hotelestelar.com' },
-    { nombre: 'GHL Hotels', tipo: 'Hotel', emailContacto: 'reservas@ghlhoteles.com', telefono: '+5756789012', web: 'https://www.ghlhoteles.com' },
-    { nombre: 'Viajes Falabella', tipo: 'Proveedor', emailContacto: 'ventas@viajesfalabella.com', telefono: '+5767890123', web: 'https://www.viajesfalabella.com' },
+    { nombre: 'Decameron Hotels', tipo: 'Hotel', emailContacto: 'reservas.decameron@itea.test', telefono: '+5712345678', web: 'https://www.decameron.com' },
+    { nombre: 'Dann Carlton', tipo: 'Hotel', emailContacto: 'reservas.danncarlton@itea.test', telefono: '+5723456789', web: 'https://www.danncarlton.com' },
+    { nombre: 'Despegar', tipo: 'Proveedor', emailContacto: 'ventas.despegar@itea.test', telefono: '+5734567890', web: 'https://www.despegar.com' },
+    { nombre: 'Hotel Estelar', tipo: 'Hotel', emailContacto: 'reservas.hotelestelar@itea.test', telefono: '+5745678901', web: 'https://www.hotelestelar.com' },
+    { nombre: 'GHL Hotels', tipo: 'Hotel', emailContacto: 'reservas.ghlhoteles@itea.test', telefono: '+5756789012', web: 'https://www.ghlhoteles.com' },
+    { nombre: 'Viajes Falabella', tipo: 'Proveedor', emailContacto: 'ventas.viajesfalabella@itea.test', telefono: '+5767890123', web: 'https://www.viajesfalabella.com' },
   ];
   for (const p of proveedoresData) {
     await createIfNotExists('proveedores', { nombre: p.nombre }, p);
@@ -301,31 +311,31 @@ async function main() {
 
   const usuariosData = [
     {
-      nombres: 'Admin', apellidos: 'iTea', tipoDocumentoId: tipoCC.id, documento: '123456789',
-      email: 'admin@itea.com', telefono: '3001234567', birthDate: new Date('1990-01-15'),
-      role: 'admin', password: 'Admin123'
+      nombres: 'Admin', apellidos: 'iTea', tipoDocumentoId: tipoCC.id, documento: '9920000005',
+      email: 'admin@itea.test', telefono: '3001234567', birthDate: new Date('1990-01-15'),
+      role: 'admin', password: seedPassword('SEED_ADMIN_PASSWORD')
     },
     {
-      nombres: 'Juan', apellidos: 'Perez', tipoDocumentoId: tipoCC.id, documento: '987654321',
-      email: 'juan@itea.com', telefono: '3002345678', birthDate: new Date('1985-06-20'),
-      role: 'asesor', password: 'Vendor123'
+      nombres: 'Juan', apellidos: 'Perez', tipoDocumentoId: tipoCC.id, documento: '9920000019',
+      email: 'juan@itea.test', telefono: '3002345678', birthDate: new Date('1985-06-20'),
+      role: 'asesor', password: seedPassword('SEED_ADVISOR_PASSWORD')
     },
     {
-      nombres: 'Maria', apellidos: 'Garcia', tipoDocumentoId: tipoCE.id, documento: '5555555',
-      email: 'maria@itea.com', telefono: '3003456789', birthDate: new Date('1992-03-10'),
-      role: 'asesor', password: 'Vendor123'
+      nombres: 'Maria', apellidos: 'Garcia', tipoDocumentoId: tipoCE.id, documento: '9920000014',
+      email: 'maria@itea.test', telefono: '3003456789', birthDate: new Date('1992-03-10'),
+      role: 'asesor', password: seedPassword('SEED_ADVISOR_PASSWORD')
     },
     {
-      nombres: 'Carlos', apellidos: 'Lopez', tipoDocumentoId: tipoPasaporte.id, documento: 'XY789654',
-      email: 'carlos@itea.com', telefono: '3004567890', birthDate: new Date('1988-11-25'),
-      role: 'asesor', password: 'Vendor123', status: 'inactive'
+      nombres: 'Carlos', apellidos: 'Lopez', tipoDocumentoId: tipoPasaporte.id, documento: '9920000024',
+      email: 'carlos@itea.test', telefono: '3004567890', birthDate: new Date('1988-11-25'),
+      role: 'asesor', password: seedPassword('SEED_ADVISOR_PASSWORD'), status: 'inactive'
     },
     // Usuario para probar por la API local (curl), creado el 2026-11-16. El seed solo corre en
-    // local; en produccion no existe. Cumple passwordPolicy.js.
+    // local; en produccion no existe.
     {
       nombres: 'Pruebas', apellidos: 'Local', tipoDocumentoId: tipoCC.id, documento: '9910000099',
       email: 'pruebas@itea.test', telefono: '3009999999', birthDate: new Date('1990-01-01'),
-      role: 'admin', password: 'Pt2d0a43e83fc5!9a'
+      role: 'admin', password: seedPassword('SEED_TEST_PASSWORD')
     },
   ];
 
@@ -360,23 +370,23 @@ async function main() {
   // =========================================================
 
   const clientesData = [
-    { nombres: 'Ana Maria', apellidos: 'Torres', tipoDocumentoId: tipoCC.id, documento: '12345678', email: 'ana@email.com', telefono: '3001234567', birthDate: new Date('1992-05-15') },
-    { nombres: 'Roberto', apellidos: 'Sanchez', tipoDocumentoId: tipoCC.id, documento: '87654321', email: 'roberto@email.com', telefono: '3002345678', birthDate: new Date('1988-08-20') },
-    { nombres: 'Laura', apellidos: 'Martinez', tipoDocumentoId: tipoPasaporte.id, documento: 'AB123456', email: 'laura@email.com', telefono: '3003456789', birthDate: new Date('1995-03-10') },
-    { nombres: 'Miguel Angel', apellidos: 'Rodriguez', tipoDocumentoId: tipoCC.id, documento: '11223344', email: 'miguel@email.com', telefono: '3004567890', birthDate: new Date('1990-11-25') },
-    { nombres: 'Sofia', apellidos: 'Hernandez', tipoDocumentoId: tipoCE.id, documento: 'CE5555555', email: 'sofia@email.com', telefono: '3005678901', birthDate: new Date('1993-07-01') },
-    { nombres: 'Diego', apellidos: 'Fernandez', tipoDocumentoId: tipoCC.id, documento: '99887766', email: 'diego@email.com', telefono: '3006789012', birthDate: new Date('1987-04-15') },
-    { nombres: 'Carmen', apellidos: 'Lopez', tipoDocumentoId: tipoPasaporte.id, documento: 'PAS-XY789654', email: 'carmen@email.com', telefono: '3007890123', birthDate: new Date('1991-12-01') },
-    { nombres: 'Jose Manuel', apellidos: 'Gil', tipoDocumentoId: tipoCC.id, documento: '44556677', email: 'jose@email.com', telefono: '3008901234', birthDate: new Date('1989-09-20') },
-    { nombres: 'Isabella', apellidos: 'Diaz', tipoDocumentoId: tipoCC.id, documento: '66778899', email: 'isabella@email.com', telefono: '3009012345', birthDate: new Date('1994-06-05') },
-    { nombres: 'Fernando', apellidos: 'Morales', tipoDocumentoId: tipoCE.id, documento: '1234888', email: 'fernando@email.com', telefono: '3010123456', birthDate: new Date('1986-06-18') },
-    { nombres: 'Patricia', apellidos: 'Ruiz', tipoDocumentoId: tipoPasaporte.id, documento: 'ZZ555555', email: 'patricia@email.com', telefono: '3011234567', birthDate: new Date('1997-07-01') },
-    { nombres: 'Alejandro', apellidos: 'Castro', tipoDocumentoId: tipoCC.id, documento: '33445566', email: 'alejandro@email.com', telefono: '3012345678', birthDate: new Date('1991-07-15') },
-    { nombres: 'Carlos Eduardo', apellidos: 'Gomez', tipoDocumentoId: tipoCC.id, documento: '10101010', email: 'carlos.gomez@email.com', telefono: '3000000001', birthDate: new Date('1990-01-01') },
-    { nombres: 'Maria Fernanda', apellidos: 'Lopez', tipoDocumentoId: tipoCC.id, documento: '20202020', email: 'maria.lopez@email.com', telefono: '3000000002', birthDate: new Date('1990-02-02') },
-    { nombres: 'Pedro Antonio', apellidos: 'Ruiz', tipoDocumentoId: tipoCC.id, documento: '30303030', email: 'pedro.ruiz@email.com', telefono: '3000000003', birthDate: new Date('1990-03-03') },
-    { nombres: 'Lucia Daniela', apellidos: 'Peña', tipoDocumentoId: tipoCC.id, documento: '40404040', email: 'lucia.pena@email.com', telefono: '3000000004', birthDate: new Date('1990-04-04') },
-    { nombres: 'Andres Felipe', apellidos: 'Castro', tipoDocumentoId: tipoCC.id, documento: '50505050', email: 'andres.castro@email.com', telefono: '3000000005', birthDate: new Date('1990-05-05') },
+    { nombres: 'Ana Maria', apellidos: 'Torres', tipoDocumentoId: tipoCC.id, documento: '9920000004', email: 'ana@itea.test', telefono: '3001234567', birthDate: new Date('1992-05-15') },
+    { nombres: 'Roberto', apellidos: 'Sanchez', tipoDocumentoId: tipoCC.id, documento: '9920000016', email: 'roberto@itea.test', telefono: '3002345678', birthDate: new Date('1988-08-20') },
+    { nombres: 'Laura', apellidos: 'Martinez', tipoDocumentoId: tipoPasaporte.id, documento: '9920000021', email: 'laura@itea.test', telefono: '3003456789', birthDate: new Date('1995-03-10') },
+    { nombres: 'Miguel Angel', apellidos: 'Rodriguez', tipoDocumentoId: tipoCC.id, documento: '9920000003', email: 'miguel@itea.test', telefono: '3004567890', birthDate: new Date('1990-11-25') },
+    { nombres: 'Sofia', apellidos: 'Hernandez', tipoDocumentoId: tipoCE.id, documento: '9920000022', email: 'sofia@itea.test', telefono: '3005678901', birthDate: new Date('1993-07-01') },
+    { nombres: 'Diego', apellidos: 'Fernandez', tipoDocumentoId: tipoCC.id, documento: '9920000020', email: 'diego@itea.test', telefono: '3006789012', birthDate: new Date('1987-04-15') },
+    { nombres: 'Carmen', apellidos: 'Lopez', tipoDocumentoId: tipoPasaporte.id, documento: '9920000023', email: 'carmen@itea.test', telefono: '3007890123', birthDate: new Date('1991-12-01') },
+    { nombres: 'Jose Manuel', apellidos: 'Gil', tipoDocumentoId: tipoCC.id, documento: '9920000012', email: 'jose@itea.test', telefono: '3008901234', birthDate: new Date('1989-09-20') },
+    { nombres: 'Isabella', apellidos: 'Diaz', tipoDocumentoId: tipoCC.id, documento: '9920000015', email: 'isabella@itea.test', telefono: '3009012345', birthDate: new Date('1994-06-05') },
+    { nombres: 'Fernando', apellidos: 'Morales', tipoDocumentoId: tipoCE.id, documento: '9920000006', email: 'fernando@itea.test', telefono: '3010123456', birthDate: new Date('1986-06-18') },
+    { nombres: 'Patricia', apellidos: 'Ruiz', tipoDocumentoId: tipoPasaporte.id, documento: '9920000025', email: 'patricia@itea.test', telefono: '3011234567', birthDate: new Date('1997-07-01') },
+    { nombres: 'Alejandro', apellidos: 'Castro', tipoDocumentoId: tipoCC.id, documento: '9920000010', email: 'alejandro@itea.test', telefono: '3012345678', birthDate: new Date('1991-07-15') },
+    { nombres: 'Carlos Eduardo', apellidos: 'Gomez', tipoDocumentoId: tipoCC.id, documento: '9920000001', email: 'carlos.gomez@itea.test', telefono: '3000000001', birthDate: new Date('1990-01-01') },
+    { nombres: 'Maria Fernanda', apellidos: 'Lopez', tipoDocumentoId: tipoCC.id, documento: '9920000007', email: 'maria.lopez@itea.test', telefono: '3000000002', birthDate: new Date('1990-02-02') },
+    { nombres: 'Pedro Antonio', apellidos: 'Ruiz', tipoDocumentoId: tipoCC.id, documento: '9920000009', email: 'pedro.ruiz@itea.test', telefono: '3000000003', birthDate: new Date('1990-03-03') },
+    { nombres: 'Lucia Daniela', apellidos: 'Peña', tipoDocumentoId: tipoCC.id, documento: '9920000011', email: 'lucia.pena@itea.test', telefono: '3000000004', birthDate: new Date('1990-04-04') },
+    { nombres: 'Andres Felipe', apellidos: 'Castro', tipoDocumentoId: tipoCC.id, documento: '9920000013', email: 'andres.castro@itea.test', telefono: '3000000005', birthDate: new Date('1990-05-05') },
   ];
   const clientesMap = {};
   for (const c of clientesData) {
@@ -392,7 +402,7 @@ async function main() {
     const cliente = await upsertByUnique(
       'clientes',
       { personaId: persona.id },
-      { personaId: persona.id, creadoPorId: usuariosMap['admin@itea.com'].id }
+      { personaId: persona.id, creadoPorId: usuariosMap['admin@itea.test'].id }
     );
     clientesMap[`${c.nombres} ${c.apellidos}`] = cliente;
   }
@@ -403,10 +413,10 @@ async function main() {
   // =========================================================
 
   const comisionistasData = [
-    { nombres: 'Agencia', apellidos: 'Viajes Plus', tipoDocumentoId: tipoNIT.id, documento: '900123456', tipo: 'Agencia Externa' },
-    { nombres: 'Asesor', apellidos: 'Independiente', tipoDocumentoId: tipoCC.id, documento: '111111111', tipo: 'Comisionista' },
-    { nombres: 'Global Travel', apellidos: 'Solutions', tipoDocumentoId: tipoNIT.id, documento: '900789012', tipo: 'Empresa' },
-    { nombres: 'Beatriz', apellidos: 'Herrera', tipoDocumentoId: tipoCC.id, documento: '222222222', tipo: 'Comisionista' },
+    { nombres: 'Agencia', apellidos: 'Viajes Plus', tipoDocumentoId: tipoNIT.id, documento: '9920000017', tipo: 'Agencia Externa' },
+    { nombres: 'Asesor', apellidos: 'Independiente', tipoDocumentoId: tipoCC.id, documento: '9920000002', tipo: 'Comisionista' },
+    { nombres: 'Global Travel', apellidos: 'Solutions', tipoDocumentoId: tipoNIT.id, documento: '9920000018', tipo: 'Empresa' },
+    { nombres: 'Beatriz', apellidos: 'Herrera', tipoDocumentoId: tipoCC.id, documento: '9920000008', tipo: 'Comisionista' },
   ];
   const comisionistasMap = {};
   for (const c of comisionistasData) {
@@ -468,7 +478,7 @@ async function main() {
       {
         nombre: p.nombre, destino: p.destino, status: p.status,
         serviciosIncluidos: p.serviciosIncluidos, noIncluido: p.noIncluido,
-        creadoPorId: usuariosMap['admin@itea.com'].id
+        creadoPorId: usuariosMap['admin@itea.test'].id
       }
     );
     // Solo crear relaciones si el paquete es nuevo (no existía)
@@ -516,9 +526,9 @@ async function main() {
   // 12. VENTAS DE EJEMPLO
   // =========================================================
 
-  const adminUser = usuariosMap['admin@itea.com'];
-  const juanUser = usuariosMap['juan@itea.com'];
-  const mariaUser = usuariosMap['maria@itea.com'];
+  const adminUser = usuariosMap['admin@itea.test'];
+  const juanUser = usuariosMap['juan@itea.test'];
+  const mariaUser = usuariosMap['maria@itea.test'];
   const clientes = await prisma.clientes.findMany({ include: { persona: true } });
   const getCliente = (index) => clientes[index % clientes.length];
 
@@ -527,7 +537,7 @@ async function main() {
   const ventasEjemplo = [
     {
       clienteIndex: 0, asesorId: adminUser.id, montoTotal: 2500000, status: 'pagado',
-      metodoPagoId: mpTarjetaCredito.id, comisionistaDoc: '900123456',
+      metodoPagoId: mpTarjetaCredito.id, comisionistaDoc: '9920000017',
       montoComisionBruto: 150000, porcentajeRetencion: 0, montoComisionNeto: 150000,
       costoProveedor: 2100000, observaciones: 'Reserva de hotel en Santa Marta\n- 4 noches, 3 días\n- Incluye desayunos\n- Habitación con vista al mar.',
       categoria: 'hoteleria', hotelNombre: 'Decameron Santa Marta', destino: 'Santa Marta',
@@ -535,7 +545,7 @@ async function main() {
     },
     {
       clienteIndex: 1, asesorId: juanUser.id, montoTotal: 800000, status: 'credito',
-      metodoPagoId: mpTransferencia.id, comisionistaDoc: '111111111',
+      metodoPagoId: mpTransferencia.id, comisionistaDoc: '9920000002',
       montoComisionBruto: 20000, porcentajeRetencion: 0, montoComisionNeto: 20000,
       costoProveedor: 730000, observaciones: 'Vuelo redondo Bogotá - Medellín\n- Ida: 10AM (Avianca)\n- Regreso: 6PM (Avianca)\n- Equipaje de mano de 10kg.',
       categoria: 'tiqueteria',
@@ -543,7 +553,7 @@ async function main() {
     },
     {
       clienteIndex: 2, asesorId: adminUser.id, montoTotal: 4500000, status: 'abonado',
-      metodoPagoId: mpEfectivo.id, comisionistaDoc: '222222222',
+      metodoPagoId: mpEfectivo.id, comisionistaDoc: '9920000008',
       montoComisionBruto: 300000, porcentajeRetencion: 0, montoComisionNeto: 300000,
       costoProveedor: 3700000, observaciones: 'Paquete turístico a San Andrés (Vuelo + Hotel + Tours)\n- 5 Días / 4 Noches\n- Vuelo directo\n- Hotel All Inclusive\n- Tour Acuario y Jhonny Cay.',
       categoria: 'planes',
@@ -551,7 +561,7 @@ async function main() {
     },
     {
       clienteIndex: 3, asesorId: mariaUser.id, montoTotal: 1200000, status: 'pagado',
-      metodoPagoId: mpPSE.id, comisionistaDoc: '900789012',
+      metodoPagoId: mpPSE.id, comisionistaDoc: '9920000018',
       montoComisionBruto: 85000, porcentajeRetencion: 0, montoComisionNeto: 85000,
       costoProveedor: 950000, observaciones: 'Seguro de viaje internacional cobertura 100k USD.',
       categoria: 'seguros_viaje'

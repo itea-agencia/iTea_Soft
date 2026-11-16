@@ -75,7 +75,7 @@ Quedan a propósito, para volver a probar:
 - un cliente con NIT `900123456` y otro con pasaporte `PA991234`;
 - el usuario administrador `prueba.gigante@local` (id 10), con su contraseña entregada en el chat;
 - las ventas 198 a 201: 198 con las 17 categorías, 199 a crédito con $80.000 de saldo para probar abonos, 200 anulada (rechaza pagos) y 201 completa;
-- el usuario administrador `pruebas@itea.test` (id 17), con su contraseña en `backend/prisma/seed.js`, para probar por la API;
+- el usuario administrador `pruebas@itea.test` (id 17), con su contraseña en `SEED_TEST_PASSWORD` de `backend/.env` (no va al repo), para probar por la API;
 - las ventas 165 a 167 (titular en tours y seguros), con los pasajeros de documento `9910000101` y `9910000102`;
 - la tabla auxiliar `_prueba_propios_ventas`.
 
