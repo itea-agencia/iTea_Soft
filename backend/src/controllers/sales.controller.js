@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { randomUUID } = require('node:crypto');
 const prisma = require('../config/db');
 const { Prisma } = require('@prisma/client');
 const { success, error } = require('../utils/apiResponse');
@@ -10,6 +11,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
 const { markHolder } = require('../utils/holder');
+const { planLinkIndex } = require('../utils/planLinks');
 const { auditar } = require('../utils/auditoria');
 const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
@@ -1923,11 +1925,29 @@ exports.create = async (req, res, next) => {
       }
 
       const detalleVentasData = [];
+      const planDetailIds = [];
+      const childLinks = [];
+      const planCount = Array.isArray(data.planData) ? data.planData.length : 0;
 
       for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
         const items = Array.isArray(data[field]) ? data[field] : [];
-        for (const item of items) {
+        for (const [itemIndex, item] of items.entries()) {
           if (!item || Object.keys(item).length === 0) continue;
+
+          const label = `${handler.nombreServicio} #${itemIndex + 1}`;
+          let linkedPlanIndex;
+          try {
+            linkedPlanIndex = planLinkIndex(item.linkedToPlanIndex, planCount);
+            if (handler.category === 'planes' && linkedPlanIndex !== null) {
+              const err = new Error('Los paquetes no pueden vincularse entre sí');
+              err.statusCode = 400;
+              err.code = 'VALIDATION_ERROR';
+              throw err;
+            }
+          } catch (err) {
+            err.message = `${label}: ${err.message}`;
+            throw err;
+          }
 
           const fin = financierosDe(item);
           const [resolvedSupplierId, resolvedSupplierPaymentMethodId] = await Promise.all([
@@ -1961,6 +1981,7 @@ exports.create = async (req, res, next) => {
           }
 
           const detalleObj = {
+            id: randomUUID(),
             categoria: handler.category,
             nombreServicio: handler.nombreServicio,
             subtotal: fin.costoProveedor + fin.ta + fin.taCre,
@@ -2019,7 +2040,23 @@ exports.create = async (req, res, next) => {
           }
 
           detalleVentasData.push(detalleObj);
+          if (handler.category === 'planes') planDetailIds[itemIndex] = detalleObj.id;
+          if (linkedPlanIndex !== null) childLinks.push({ childId: detalleObj.id, planIndex: linkedPlanIndex, label });
         }
+      }
+
+      // Los tiquetes se preparan antes que los paquetes; resolver cuando el mapa esté completo.
+      const childrenByPlan = new Map();
+      for (const { childId, planIndex, label } of childLinks) {
+        const parentDetalleId = planDetailIds[planIndex];
+        if (!parentDetalleId) {
+          const err = new Error(`${label}: el paquete vinculado no existe`);
+          err.statusCode = 400;
+          err.code = 'VALIDATION_ERROR';
+          throw err;
+        }
+        if (!childrenByPlan.has(parentDetalleId)) childrenByPlan.set(parentDetalleId, []);
+        childrenByPlan.get(parentDetalleId).push(childId);
       }
 
       const metodoPagoId = await resolvePaymentMethodId(tx, data.paymentMethod, memCache);
@@ -2060,10 +2097,17 @@ exports.create = async (req, res, next) => {
         };
       }
 
-      // SINGLE NESTED WRITE
       const venta = await tx.ventas.create({
         data: ventaCreateData
       });
+
+      // La FK apunta a detalles ya creados, sin depender del orden del create anidado.
+      for (const [parentDetalleId, childIds] of childrenByPlan) {
+        await tx.detalleVenta.updateMany({
+          where: { ventaId: venta.id, id: { in: childIds } },
+          data: { parentDetalleId }
+        });
+      }
 
       return venta.id;
     }, {

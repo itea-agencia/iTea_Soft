@@ -75,7 +75,7 @@ sumaban **$8.165.000**.
 | Acumulado de un comisionista | Se deriva de sus ventas con el criterio `PENDING_COMMISSION_SALE` de `commissions.controller.js`, el mismo de `getPendingCommission()`: `comision_liquidada = false`, sin anuladas ni eliminadas. `listAgents`, `getAgent` y `createAgent` lo devuelven como `accumulated` y la pantalla no lo recalcula. La columna `comisionistas.acumulado` no la actualiza nadie después del alta y no se lee (invariante 3) |
 | Pagos al crear | `create` rechaza un pago que no sea mayor a cero (400) y pagos que superen el total (409 `SALDO_INSUFICIENTE`) |
 | Que lo pagado no supere el total | `registerPayment` calcula el saldo pendiente y rechaza (409) lo que lo exceda, o cualquier pago si el saldo ya es cero. `SELECT ... FOR UPDATE` sobre la venta serializa dos registros casi simultáneos del mismo pago |
-| Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda** |
+| Total de un paquete | `agregarPorPadre()` lo deriva de sus filas de pago y sus servicios vinculados. **No se guarda**. Al crear, `linkedToPlanIndex` vincula un servicio a un único paquete de la misma venta mediante `parent_detalle_id`; los paquetes no pueden vincularse entre sí. Un índice inválido o una posición sin paquete se rechaza con 400 `VALIDATION_ERROR`, identificando el servicio. El vínculo solo agrupa: los totales almacenados de venta y detalle no cambian |
 
 `detalle_venta.costo_proveedor`, `ta` y `ta_cre` de un paquete se mantienen **iguales a la
 suma de sus `pagos_proveedor`**. Eso es deliberado: deja intactos los totales de la venta,
@@ -107,6 +107,8 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
 `backend/db-manual/backfill_pagos_proveedor_paquetes.sql`, que aborta si algo no cuadra.
 
 ## Lo que queda abierto
+
+- **Servicios vinculados al paquete (2026-11-16):** código y API/SQL verificados en ventas locales 169–171; falta la revisión visual del usuario de voucher y PDF, incluidas las demás categorías vinculadas y saltos de página. No reconstruye vínculos perdidos en ventas viejas. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`; lista visual en la sección 9 de `docs/pruebas-pantalla-hallazgo-16.md`.
 
 - **La columna `ventas.es_credito` queda desactualizada y sin uso en las respuestas.** Al 2026-11-10 había en producción 10 ventas `pagado` y 3 `anulado` con `es_credito = true`. Solo la lee `siigo.service.js` para elegir crédito o contado al facturar; Siigo se va a dejar de usar y no se corrige. Quitar la columna necesita una migración.
 

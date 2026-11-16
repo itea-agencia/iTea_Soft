@@ -38,6 +38,17 @@ Ventas y registros anteriores a los arreglos, que se dejan como están por decis
 - **Venta 19:** dos pasajeros en el asiento `11A`.
 - **Persona sin documento en producción:** la que dejó la venta de equipaje.
 
+## Venta completa por la API (2026-11-16)
+
+Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
+
+- **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Pendientes la revisión visual del voucher/PDF por el usuario (sección 9 de `pruebas-pantalla-hallazgo-16.md`) y publicar frontend y backend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
+- **Catálogo sin error:** un proveedor, aerolínea, método de pago o plan de equipaje que no existe se guarda vacío, y un aeropuerto desconocido descarta el tramo, todo sin avisar.
+- **Plan de equipaje:** no se valida que sea de la aerolínea del tiquete.
+- **Nombres de ida y vuelta (invariante 5):** `supplierName` entra y sale `supplier`; el seguro del auto entra `all_risk`/`basic` y sale `todo_riesgo`/`basico`.
+- **Datos que no se leen:** el método de pago al proveedor de cada producto no vuelve en la API; las fechas, origen y destino generales de `detalle_venta` se llenan dispares y nadie los lee.
+- **Visa y pasaporte:** el solicitante no queda como pasajero. Falta decidir si es a propósito.
+
 ## Auditoría del frontend
 
 Detalle en `docs/auditoria-frontend-2026-11-08.md`, "Estado".
@@ -77,6 +88,8 @@ Quedan a propósito, para volver a probar:
 - las ventas 198 a 201: 198 con las 17 categorías, 199 a crédito con $80.000 de saldo para probar abonos, 200 anulada (rechaza pagos) y 201 completa;
 - el usuario administrador `pruebas@itea.test` (id 17), con su contraseña en `SEED_TEST_PASSWORD` de `backend/.env` (no va al repo), para probar por la API;
 - las ventas 165 a 167 (titular en tours y seguros), con los pasajeros de documento `9910000101` y `9910000102`;
+- la venta 168: las 17 categorías con todos los campos, creada por la API (pasajeros con documentos `99300001xx` a `99300012xx`);
+- las ventas 169–171: repetición de la 168 con vínculos guardados (169, total 187.000), dos paquetes con tiquete/check-in/tour vinculados al segundo (170, total 198.000) y el mismo caso con posición vacía intermedia en el request (171, total 198.000);
 - la tabla auxiliar `_prueba_propios_ventas`.
 
 Esa tabla hace que `prisma migrate dev` pida resetear la base local. Mientras exista, las migraciones locales se aplican con `prisma migrate deploy`.

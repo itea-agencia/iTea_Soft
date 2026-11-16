@@ -84,6 +84,18 @@ Diseño `docs/designs/titular-por-producto-2026-11.md`.
 2. Agregar dos pasajeros y marcar el segundo: la etiqueta "Titular" se mueve, el primero recupera su botón de eliminar y el segundo lo pierde.
 3. Guardar la venta y abrir el detalle y el voucher: el elegido aparece primero. Con SQL, cada producto tiene una sola fila `es_titular = true` en `pasajeros_detalle`.
 
+## 9. Servicios vinculados al paquete (2026-11-16)
+
+El usuario realiza esta revisión desde su navegador. API/SQL ya verificadas. Resultado comunicado: aprueba el resto y reporta fechas ausentes en los servicios vinculados al paquete dentro del PDF de la venta 169. Se identificó que el contenedor frontend todavía servía el resumen anterior; requiere revisar nuevamente con el build actualizado. Los payloads de check-in y tour enviados llevaban fecha (10/12/2026 y 02/12/2026 respectivamente), sin hora; los tramos de vuelo sí incluían fecha y hora. No dar este punto por cerrado hasta confirmar lo observado tras actualizar el frontend.
+
+1. Recargar el frontend local actualizado. En la venta **169**, comprobar que check-in y tour aparecen completos una sola vez dentro del paquete; total **187.000**. Los demás servicios siguen independientes. La 168 original conserva el fallo previo.
+2. En las ventas **170 y 171**, comprobar que tiquete, check-in y tour pertenecen al segundo paquete, sin duplicados ni mezcla con el primero. Total **198.000**. La 171 se creó con una posición vacía intermedia: visualmente debe equivaler a la 170.
+3. Comparar con el detalle de cada producto: vuelos de ida/regreso/escalas, aeropuertos, fechas/horas, pasajeros, documentos, bookings, tiquetes, asientos de ida/regreso, datos de check-in y todos los campos del tour. No basta un resumen del nombre y la fecha.
+4. Generar y descargar el PDF con precio y sin precio. Debe respetar la opción; nunca mostrar costos de proveedor. Revisar todas las páginas: sin recortes, superposición o servicios duplicados; identificar el paquete cuando continúa en otra hoja.
+5. **Cobertura visual pendiente adicional:** en una venta nueva desde el asistente, vincular equipaje y las demás categorías al paquete. Comparar cada bloque con su versión independiente: hotelería, seguro, documentación migratoria, SIM, equipaje, viaje terrestre, auto, finca, convenciones, restaurante, visa, pasaporte y mascotas, además de los tres tipos cubiertos arriba. Las pruebas automáticas verifican contenido de las 16 categorías; las ventas 169–171 solo cubren visualmente tres vinculadas.
+6. Probar un paquete con varios servicios, pasajeros y observaciones largas para forzar varias páginas. Debe conservarse el contenido y el contexto del paquete en continuaciones. El límite previo de una tabla individual más alta que una hoja no se resolvió en este arreglo: si aparece, registrar el caso y no darlo por aprobado.
+7. Registrar por caso venta, resultado observado y captura si falla. No enviar correos ni usar Siigo durante la revisión.
+
 ## Cierre
 
 La venta por endpoints verifica persistencia y reglas del servidor. El cierre del hallazgo requiere además completar el recorrido visual del asistente, la navegación y el PDF. Conservar los ids de prueba; no borrar ni anular registros reales para preparar casos.

@@ -10,7 +10,7 @@ export async function bundleTs(rutaDesdeSrc) {
     format: 'esm',
     platform: 'neutral',
     write: false,
-    loader: { '.jpg': 'empty', '.png': 'empty' },
+    loader: { '.jpg': 'empty', '.png': 'empty', '.css': 'empty' },
     logLevel: 'silent',
   });
   return import(`data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString('base64')}`);

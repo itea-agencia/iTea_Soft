@@ -53,7 +53,9 @@ function Observaciones({ texto }: { texto: string }) {
   );
 }
 
-function ProductCard({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) {
+function ProductCard({ emoji, title, children, embedded = false }: { emoji: string; title: string; children: React.ReactNode; embedded?: boolean }) {
+  // Hijos directos del paquete: el PDF puede cortar entre bloques sin perder campos.
+  if (embedded) return <><SubHead>{emoji}&nbsp;&nbsp;{title}</SubHead>{children}</>;
   return (
     <div className="v-product-block">
       <div className="v-product-label">{emoji}&nbsp;&nbsp;{title}</div>
@@ -205,7 +207,7 @@ function describirViajeros(adultos?: number, ninos?: number) {
   return partes.join(', ');
 }
 
-function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketData; idx: number; airportMap?: Record<string, AirportInfo>; baggageList?: any[] }) {
+function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }: { ticket: TicketData; idx: number; airportMap?: Record<string, AirportInfo>; baggageList?: any[]; embedded?: boolean }) {
   const mainLegs = ticket.legs && ticket.legs.length > 0 ? ticket.legs : [];
   const returnLeg = ticket.returnLeg ? [ticket.returnLeg] : [];
   const hasStopsField = (ticket.outboundStops && ticket.outboundStops.length > 0) || ticket.returnLeg || (ticket.returnStops && ticket.returnStops.length > 0);
@@ -239,9 +241,9 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
     return `${h.toString().padStart(2, '0')}:${minute} ${ampm}`;
   };
 
-  return (
-    <div className="v-flight-block">
-      <div className="v-flight-header">✈&nbsp;&nbsp;RECIBO DE TIQUETE ELECTRÓNICO</div>
+  const content = (
+    <>
+      <div className={embedded ? "v-sub-head" : "v-flight-header"}>✈&nbsp;&nbsp;RECIBO DE TIQUETE ELECTRÓNICO</div>
       <div className="v-flight-notice">Hemos realizado las reservas requeridas y ya se encuentran emitidas. Agradecemos la compra realizada.</div>
 
       {/* Flight table */}
@@ -349,8 +351,9 @@ function FlightBlock({ ticket, idx, airportMap, baggageList }: { ticket: TicketD
           { head: 'Asiento regreso', get: (p) => p.asientoRegreso },
         ]}
       />
-    </div>
+    </>
   );
+  return embedded ? content : <div className="v-flight-block">{content}</div>;
 }
 
 export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, airportMap, baggageList, showPrice = true }, ref) => {
@@ -362,108 +365,39 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
 
-  const tickets = (sale.ticketData || []).filter((t: any) => !t.parentDetalleId);
-  const hotels = (sale.hotelData || []).filter((h: any) => !h.parentDetalleId);
-  const insurances = (sale.insuranceData || []).filter((i: any) => !i.parentDetalleId);
-  const plans = (sale.planData || []).filter((p: any) => !p.parentDetalleId);
-  const checkIns = (sale.checkInData || []).filter((c: any) => !c.parentDetalleId);
-  const migrations = (sale.migrationData || []).filter((m: any) => !m.parentDetalleId);
-  const simCards = (sale.simCardData || []).filter((s: any) => !s.parentDetalleId);
-  const baggages = (sale.baggageData || []).filter((b: any) => !b.parentDetalleId);
-  const landTravels = (sale.landTravelData || []).filter((l: any) => !l.parentDetalleId);
-  const carRentals = (sale.carRentalData || []).filter((c: any) => !c.parentDetalleId);
-  const fincas = (sale.fincaData || []).filter((f: any) => !f.parentDetalleId);
-  const tours = (sale.tourData || []).filter((t: any) => !t.parentDetalleId);
-  const conventions = (sale.conventionData || []).filter((c: any) => !c.parentDetalleId);
-  const restaurants = (sale.restaurantData || []).filter((r: any) => !r.parentDetalleId);
-  const visas = (sale.visaData || []).filter((v: any) => !v.parentDetalleId);
-  const passports = (sale.passportData || []).filter((p: any) => !p.parentDetalleId);
-  const pets = (sale.petServiceData || []).filter((p: any) => !p.parentDetalleId);
+  const renderServices = (parentId: string | null = null): React.ReactNode => {
+    const belongsToGroup = (item: unknown) => {
+      const { parentDetalleId } = item as { parentDetalleId?: string | null };
+      return parentId === null ? !parentDetalleId : parentDetalleId === parentId;
+    };
+    const tickets = (sale.ticketData || []).filter(belongsToGroup);
+    const hotels = (sale.hotelData || []).filter(belongsToGroup);
+    const insurances = (sale.insuranceData || []).filter(belongsToGroup);
+    const plans = (parentId === null ? (sale.planData || []) : []).filter(belongsToGroup);
+    const checkIns = (sale.checkInData || []).filter(belongsToGroup);
+    const migrations = (sale.migrationData || []).filter(belongsToGroup);
+    const simCards = (sale.simCardData || []).filter(belongsToGroup);
+    const baggages = (sale.baggageData || []).filter(belongsToGroup);
+    const landTravels = (sale.landTravelData || []).filter(belongsToGroup);
+    const carRentals = (sale.carRentalData || []).filter(belongsToGroup);
+    const fincas = (sale.fincaData || []).filter(belongsToGroup);
+    const tours = (sale.tourData || []).filter(belongsToGroup);
+    const conventions = (sale.conventionData || []).filter(belongsToGroup);
+    const restaurants = (sale.restaurantData || []).filter(belongsToGroup);
+    const visas = (sale.visaData || []).filter(belongsToGroup);
+    const passports = (sale.passportData || []).filter(belongsToGroup);
+    const pets = (sale.petServiceData || []).filter(belongsToGroup);
 
-  const getChildrenForPlan = (planId: string) => {
-    if (!planId) return [];
-    return [
-      ...(sale.ticketData || []).map(item => ({ ...item, _type: 'ticket' })),
-      ...(sale.hotelData || []).map(item => ({ ...item, _type: 'hotel' })),
-      ...(sale.insuranceData || []).map(item => ({ ...item, _type: 'insurance' })),
-      ...(sale.checkInData || []).map(item => ({ ...item, _type: 'checkin' })),
-      ...(sale.migrationData || []).map(item => ({ ...item, _type: 'migration' })),
-      ...(sale.simCardData || []).map(item => ({ ...item, _type: 'simcard' })),
-      ...(sale.carRentalData || []).map(item => ({ ...item, _type: 'carRental' })),
-      ...(sale.landTravelData || []).map(item => ({ ...item, _type: 'landTravel' })),
-      ...(sale.fincaData || []).map(item => ({ ...item, _type: 'finca' })),
-      ...(sale.tourData || []).map(item => ({ ...item, _type: 'tour' })),
-      ...(sale.conventionData || []).map(item => ({ ...item, _type: 'convention' })),
-      ...(sale.restaurantData || []).map(item => ({ ...item, _type: 'restaurant' })),
-      ...(sale.visaData || []).map(item => ({ ...item, _type: 'visa' })),
-      ...(sale.passportData || []).map(item => ({ ...item, _type: 'passport' })),
-      ...(sale.petServiceData || []).map(item => ({ ...item, _type: 'pet' }))
-    ].filter((item: any) => item.parentDetalleId === planId);
-  };
+    const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, baggages, carRentals, landTravels, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
+    const hasAnyProduct = tickets.length > 0 || hasOtherProducts;
 
-  const hasOtherProducts = [hotels, insurances, plans, checkIns, migrations, simCards, baggages, carRentals, landTravels, fincas, tours, conventions, restaurants, visas, passports, pets].some(a => a.length > 0);
-  const hasAnyProduct = tickets.length > 0 || hasOtherProducts;
-
-  return (
-    <div className="itea-voucher">
-      <div className="v-page" ref={ref}>
-
-        {/* ══ HEADER ══════════════════════════════════════════════════ */}
-        <div className="v-header">
-          <div className="v-logo-block">
-            <img className="v-logo-img" src="/samtur_nuevo.png.png" alt="Samtur Logo" crossOrigin="anonymous" />
-          </div>
-          <div className="v-header-right">
-            <strong>Samtur Travel Agency</strong>
-            <br />
-            Nit 902062715-5<br />
-            RNT 295049<br />
-            Teléfono: 3126339919<br />
-            <strong>Fecha de Impresión:</strong> {currentDate}<br />
-            <strong>Fecha de Venta:</strong> {formatDate(sale.date)}
-          </div>
-        </div>
-
-        {/* ══ PASSENGER BAR ═══════════════════════════════════════════ */}
-        <div className="v-top-bar">
-          <div className="v-tb-item">
-            <span className="v-tb-label">PASAJERO</span>
-            <span className="v-tb-value">{sale.clientName}</span>
-          </div>
-          <div className="v-tb-item">
-            <span className="v-tb-label">FORMA DE PAGO</span>
-            <span className="v-tb-value">
-              {sale.paymentMethod
-                ? sale.paymentMethod
-                : (sale.payments && sale.payments.length > 0
-                  ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method)
-                  : '—')}
-            </span>
-          </div>
-          <div className="v-tb-item">
-            <span className="v-tb-label">ASESOR</span>
-            <span className="v-tb-value">{sale.asesorName}</span>
-          </div>
-          <div className="v-tb-item">
-            <span className="v-tb-label">ORDEN</span>
-            <span className="v-tb-value v-tb-order">
-              #{formatSaleId(sale.id)}
-              {sale.status === 'credito' ? (
-                <span className="v-badge-status v-status-credito">CRÉDITO</span>
-              ) : (
-                <span className={`v-badge-status v-status-${sale.status}`}>
-                  {sale.status?.toUpperCase()}
-                </span>
-              )}
-            </span>
-          </div>
-        </div>
-
+    return (
+      <>
         {/* ══ TIQUETERÍA ══════════════════════════════════════════════ */}
-        {tickets.map((ticket, i) => <FlightBlock key={`ticket-${i}`} ticket={ticket} idx={i} airportMap={airportMap} baggageList={baggageList} />)}
+        {tickets.map((ticket, i) => <FlightBlock key={`ticket-${i}`} ticket={ticket} idx={i} airportMap={airportMap} baggageList={baggageList} embedded={parentId !== null} />)}
 
         {/* ══ SECTION TITLE FOR OTHER PRODUCTS ════════════════════════ */}
-        {hasOtherProducts && (
+        {parentId === null && hasOtherProducts && (
           <>
             <div className="v-section-title">✈&nbsp;&nbsp;Otros Servicios Reservados</div>
             <div className="v-notice">A continuación se detallan los demás servicios incluidos en su compra.</div>
@@ -472,7 +406,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ HOTELERÍA ═══════════════════════════════════════════════ */}
         {hotels.length > 0 && (
-          <ProductCard emoji="🏨" title="Hotelería">
+          <ProductCard embedded={parentId !== null} emoji="🏨" title="Hotelería">
             {hotels.map((hotel, i) => (
               <React.Fragment key={`hotel-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -495,7 +429,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ SEGUROS DE VIAJE ════════════════════════════════════════ */}
         {insurances.length > 0 && (
-          <ProductCard emoji="🛡️" title="Seguros de Viaje">
+          <ProductCard embedded={parentId !== null} emoji="🛡️" title="Seguros de Viaje">
             {insurances.map((ins, i) => (
               <React.Fragment key={`ins-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -512,7 +446,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ PAQUETES ══════════════════════════════════════ */}
         {plans.length > 0 && (
-          <ProductCard emoji="📦" title="Paquetes">
+          <>
             {plans.map((plan, i) => {
               const esTerrestre = plan.transportType === 'Terrestre';
               const hayTransporte = Boolean(
@@ -520,8 +454,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 plan.flightReturnNumber || plan.flightDepartureDate || plan.flightReturnDate,
               );
               return (
-              <React.Fragment key={`plan-${i}`}>
-                {i > 0 && <div className="v-item-divider" />}
+              <ProductCard key={plan.detalleVentaId || i} emoji="📦" title={`Paquete: ${plan.planName || plan.packageName || (i + 1)}`}>
 
                 {/* Identidad del paquete: lo mismo para paquete propio y de proveedor. */}
                 <div className="v-data-grid">
@@ -584,75 +517,16 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
                 {plan.observations && <Observaciones texto={plan.observations} />}
 
-                {getChildrenForPlan(plan.detalleVentaId ?? '').length > 0 && (
-                  <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{color: '#3b82f6'}}>↳</span> SERVICIOS ADICIONALES VINCULADOS
-                    </div>
-                    {getChildrenForPlan(plan.detalleVentaId ?? '').map((child: any, cidx: number, arr: any[]) => {
-                      if (child._type === 'tour') {
-                        return (
-                          <div key={`child-${cidx}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '10px', padding: '8px 0', borderBottom: cidx < arr.length - 1 ? '1px dashed #cbd5e1' : 'none' }}>
-                            <div style={{ flex: '1 1 15%' }}>
-                              <strong style={{display: 'block', color: '#475569'}}>FECHA DEL TOUR</strong>
-                              <span style={{color: '#0f172a', fontWeight: 'bold'}}>{child.preferredDate ? formatDate(child.preferredDate) : '—'}</span>
-                            </div>
-                            <div style={{ flex: '1 1 20%' }}>
-                              <strong style={{display: 'block', color: '#475569'}}>PASAJEROS</strong>
-                              <span style={{color: '#0f172a'}}>
-                                {child.guests?.length > 0 ? child.guests.map((g: any) => g.name).join(', ') : (child.passengerName || '—')}
-                              </span>
-                            </div>
-                            <div style={{ flex: '1 1 12%' }}>
-                              <strong style={{display: 'block', color: '#475569'}}>IDIOMA GUÍA</strong>
-                              <span style={{color: '#0f172a'}}>{child.guideLanguage || '—'}</span>
-                            </div>
-                            <div style={{ flex: '1 1 20%' }}>
-                              <strong style={{display: 'block', color: '#475569'}}>PUNTO DE ENCUENTRO</strong>
-                              <span style={{color: '#0f172a'}}>{child.pickupPoint || '—'}</span>
-                            </div>
-                            <div style={{ flex: '1 1 20%' }}>
-                              <strong style={{display: 'block', color: '#475569'}}>OBSERVACIONES</strong>
-                              <span style={{color: '#0f172a'}}>{child.observations || '—'}</span>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div key={`child-${cidx}`} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '10px', padding: '8px 0', borderBottom: cidx < arr.length - 1 ? '1px dashed #cbd5e1' : 'none' }}>
-                          <div style={{ flex: '1 1 20%' }}>
-                            <strong style={{display: 'block', color: '#475569'}}>SERVICIO</strong>
-                            <span style={{color: '#0f172a', fontWeight: 'bold'}}>
-                              {child.hotelName || child.airlineName || child.vehicleCategory || child.insuranceType || child.tipoTramiteMigratorio || child.planDatos || child.fincaName || child.reservationName || child._type.toUpperCase() || 'Servicio Extra'}
-                            </span>
-                          </div>
-                          <div style={{ flex: '1 1 20%' }}>
-                            <strong style={{display: 'block', color: '#475569'}}>PROVEEDOR</strong>
-                            <span style={{color: '#0f172a'}}>{child.supplier || '—'}</span>
-                          </div>
-                          <div style={{ flex: '1 1 20%' }}>
-                            <strong style={{display: 'block', color: '#475569'}}>FECHA</strong>
-                            <span style={{color: '#0f172a'}}>{child.preferredDate || child.startDate || child.checkInDate || child.date ? formatDate(child.preferredDate || child.startDate || child.checkInDate || child.date) : '—'}</span>
-                          </div>
-                          <div style={{ flex: '1 1 20%' }}>
-                            <strong style={{display: 'block', color: '#475569'}}>RESERVA / LOCALIZADOR</strong>
-                            <span style={{color: '#0f172a'}}>{child.reservationNumber || child.ticketNumber || '—'}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </React.Fragment>
+                {plan.detalleVentaId && renderServices(plan.detalleVentaId)}
+              </ProductCard>
               );
             })}
-          </ProductCard>
+          </>
         )}
 
         {/* ══ CHECK-IN ════════════════════════════════════════════════ */}
         {checkIns.length > 0 && (
-          <ProductCard emoji="✅" title="Check-In">
+          <ProductCard embedded={parentId !== null} emoji="✅" title="Check-In">
             {checkIns.map((ci, i) => (
               <React.Fragment key={`ci-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -673,7 +547,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ DOCUMENTACIÓN MIGRATORIA ════════════════════════════════ */}
         {migrations.length > 0 && (
-          <ProductCard emoji="📋" title="Documentación Migratoria">
+          <ProductCard embedded={parentId !== null} emoji="📋" title="Documentación Migratoria">
             {migrations.map((mig, i) => (
               <React.Fragment key={`mig-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -693,7 +567,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ SIM CARD ════════════════════════════════════════════════ */}
         {simCards.length > 0 && (
-          <ProductCard emoji="📱" title="SIM Card">
+          <ProductCard embedded={parentId !== null} emoji="📱" title="SIM Card">
             {simCards.map((sim, i) => (
               <React.Fragment key={`sim-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -713,9 +587,9 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         
         {/* ══ EQUIPAJE ══════════════════════════════════════════════════ */}
-        {(sale.baggageData || []).length > 0 && (
-          <ProductCard emoji="🧳" title="Equipaje">
-            {(sale.baggageData || []).map((bag: any, i: number) => (
+        {baggages.length > 0 && (
+          <ProductCard embedded={parentId !== null} emoji="🧳" title="Equipaje">
+            {baggages.map((bag: any, i: number) => (
               <React.Fragment key={`bag-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
                 <div className="v-data-grid">
@@ -736,7 +610,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
         {/* ══ RENTA DE VEHÍCULOS ══════════════════════════════════════ */}
 
         {landTravels.length > 0 && (
-          <ProductCard emoji="🚌" title="Viajes Terrestres">
+          <ProductCard embedded={parentId !== null} emoji="🚌" title="Viajes Terrestres">
             {landTravels.map((lt, i) => (
               <React.Fragment key={`lt-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -768,7 +642,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
         )}
 
         {carRentals.length > 0 && (
-          <ProductCard emoji="🚗" title="Renta de Vehículos">
+          <ProductCard embedded={parentId !== null} emoji="🚗" title="Renta de Vehículos">
             {carRentals.map((car, i) => (
               <React.Fragment key={`car-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -790,7 +664,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ RENTA DE FINCAS ═════════════════════════════════════════ */}
         {fincas.length > 0 && (
-          <ProductCard emoji="🏡" title="Renta de Fincas">
+          <ProductCard embedded={parentId !== null} emoji="🏡" title="Renta de Fincas">
             {fincas.map((finca, i) => (
               <React.Fragment key={`finca-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -810,7 +684,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ TOURS ═══════════════════════════════════════════════════ */}
         {tours.length > 0 && (
-          <ProductCard emoji="🧭" title="Tours">
+          <ProductCard embedded={parentId !== null} emoji="🧭" title="Tours">
             {tours.map((tour, i) => (
               <React.Fragment key={`tour-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -837,7 +711,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ CENTROS DE CONVENCIÓN ═══════════════════════════════════ */}
         {conventions.length > 0 && (
-          <ProductCard emoji="🏛️" title="Centro de Convención">
+          <ProductCard embedded={parentId !== null} emoji="🏛️" title="Centro de Convención">
             {conventions.map((conv, i) => (
               <React.Fragment key={`conv-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -858,7 +732,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ RESTAURANTES ════════════════════════════════════════════ */}
         {restaurants.length > 0 && (
-          <ProductCard emoji="🍽️" title="Restaurantes">
+          <ProductCard embedded={parentId !== null} emoji="🍽️" title="Restaurantes">
             {restaurants.map((rest, i) => (
               <React.Fragment key={`rest-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -878,7 +752,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ VISAS ═══════════════════════════════════════════════════ */}
         {visas.length > 0 && (
-          <ProductCard emoji="🪪" title="Trámite de Visa">
+          <ProductCard embedded={parentId !== null} emoji="🪪" title="Trámite de Visa">
             {visas.map((visa, i) => (
               <React.Fragment key={`visa-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -899,7 +773,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ PASAPORTES ══════════════════════════════════════════════ */}
         {passports.length > 0 && (
-          <ProductCard emoji="📘" title="Trámite de Pasaporte">
+          <ProductCard embedded={parentId !== null} emoji="📘" title="Trámite de Pasaporte">
             {passports.map((passport, i) => (
               <React.Fragment key={`passport-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -918,7 +792,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
 
         {/* ══ TRANSPORTE DE MASCOTAS ═══════════════════════════════════ */}
         {pets.length > 0 && (
-          <ProductCard emoji="🐾" title="Transporte de Mascotas">
+          <ProductCard embedded={parentId !== null} emoji="🐾" title="Transporte de Mascotas">
             {pets.map((pet, i) => (
               <React.Fragment key={`pet-${i}`}>
                 {i > 0 && <div className="v-item-divider" />}
@@ -937,11 +811,72 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
         )}
 
         {/* Sin productos */}
-        {!hasAnyProduct && (
+        {parentId === null && !hasAnyProduct && (
           <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: '11px', fontStyle: 'italic' }}>
             Esta venta no tiene servicios detallados disponibles para mostrar.
           </div>
         )}
+
+      </>
+    );
+  };
+
+  return (
+    <div className="itea-voucher">
+      <div className="v-page" ref={ref}>
+
+        {/* ══ HEADER ══════════════════════════════════════════════════ */}
+        <div className="v-header">
+          <div className="v-logo-block">
+            <img className="v-logo-img" src="/samtur_nuevo.png.png" alt="Samtur Logo" crossOrigin="anonymous" />
+          </div>
+          <div className="v-header-right">
+            <strong>Samtur Travel Agency</strong>
+            <br />
+            Nit 902062715-5<br />
+            RNT 295049<br />
+            Teléfono: 3126339919<br />
+            <strong>Fecha de Impresión:</strong> {currentDate}<br />
+            <strong>Fecha de Venta:</strong> {formatDate(sale.date)}
+          </div>
+        </div>
+
+        {/* ══ PASSENGER BAR ═══════════════════════════════════════════ */}
+        <div className="v-top-bar">
+          <div className="v-tb-item">
+            <span className="v-tb-label">PASAJERO</span>
+            <span className="v-tb-value">{sale.clientName}</span>
+          </div>
+          <div className="v-tb-item">
+            <span className="v-tb-label">FORMA DE PAGO</span>
+            <span className="v-tb-value">
+              {sale.paymentMethod
+                ? sale.paymentMethod
+                : (sale.payments && sale.payments.length > 0
+                  ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method)
+                  : '—')}
+            </span>
+          </div>
+          <div className="v-tb-item">
+            <span className="v-tb-label">ASESOR</span>
+            <span className="v-tb-value">{sale.asesorName}</span>
+          </div>
+          <div className="v-tb-item">
+            <span className="v-tb-label">ORDEN</span>
+            <span className="v-tb-value v-tb-order">
+              #{formatSaleId(sale.id)}
+              {sale.status === 'credito' ? (
+                <span className="v-badge-status v-status-credito">CRÉDITO</span>
+              ) : (
+                <span className={`v-badge-status v-status-${sale.status}`}>
+                  {sale.status?.toUpperCase()}
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+
+        {renderServices()}
 
         {/* ══ FOOTNOTES ═══════════════════════════════════════════════ */}
         <div className="v-footnotes">
