@@ -136,6 +136,14 @@ Seguimiento solicitado por el usuario tras aprobar la sección 10. Diseño `docs
 4. Abrir cada pestaña tras corregir las etiquetas: debe seguir cargando la categoría correcta, sin «Detalles no disponibles». En check-in y SIM se muestran nombre, tipo y número de documento.
 5. Confirmar visualmente estos cambios tras actualizar los contenedores locales y recargar el navegador. El usuario confirmó la corrección y aprobó el cierre junto con la sección 10.
 
+## 12. Nombres de categoría y «Titular» en el detalle
+
+Revisión del commit de la sección 11. **Estado: pendiente de revisión en pantalla**; código verificado con `npm test`, `tsc` y build. El backend necesita reconstruirse para ver el resumen nuevo.
+
+1. Las pestañas del detalle se llaman como el selector de productos del asistente: «Paquetes» (antes «Planes»), «Seguros de Viaje», «Documentación Migratoria», «Renta de Fincas», «Tours», «Centros de Convención», «Restaurantes» y «Servicio de Mascotas». Cada una sigue cargando su categoría.
+2. En «Editar venta», los servicios usan el nombre del asistente: «Paquete», «Renta de Vehículo», «Centro de Convención», «Servicio de Mascotas» (antes «Plan», «Renta de Auto», «Evento», «Mascota»).
+3. En el resumen de personas de una venta con tour o seguro, «Titular» aparece solo junto al cliente de la venta, no junto al titular de cada producto.
+
 ## Cierre
 
 La venta por endpoints verifica persistencia y reglas del servidor. El cierre del hallazgo requiere además completar el recorrido visual del asistente, la navegación y el PDF. Conservar los ids de prueba; no borrar ni anular registros reales para preparar casos.

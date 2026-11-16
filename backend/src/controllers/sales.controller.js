@@ -1069,28 +1069,9 @@ exports.getById = async (req, res, next) => {
       status: venta.status,
       servicesSummary: (detalleVentas || []).map(d => {
         const tipo = d.categoria;
-        let label = tipo;
-        const labelMap = {
-          tiqueteria: 'Tiquetería',
-          hoteleria: 'Hotelería',
-          seguros_viaje: 'Seguro',
-          planes: 'Plan',
-          checkin: 'Check-in',
-          documentacion_migratoria: 'Migración',
-          simcard: 'SIM Card',
-          renta_vehiculos: 'Renta de Auto',
-          viajes_terrestres: 'Viaje Terrestre',
-          renta_fincas: 'Finca',
-          tours: 'Tour',
-          centros_convencion: 'Evento',
-          restaurantes: 'Restaurante',
-          visa: 'Visa',
-          pasaporte: 'Pasaporte',
-          servicio_mascotas: 'Mascota'
-        };
-        if (labelMap[tipo]) {
-          label = labelMap[tipo];
-        }
+        // Mismo nombre que el asistente y los mensajes de error: este mapa tenia uno propio
+        // ("Renta de Auto", "Plan", "Evento") y la misma venta se leia distinto segun la pantalla.
+        const label = NOMBRE_CATEGORIA[tipo] || tipo;
         // Include all passenger names (not just the first one)
         const route = (d.origen && d.destino) ? `${d.origen}→${d.destino}` : null;
         const paxNames = (d.pasajerosDetalle || [])

@@ -16,6 +16,8 @@ tienen guardado; las lecturas de SIM, check-in y dueño de mascota conservan tip
 de la persona vinculada. Si un nombre solo existe como texto de un producto sin documento
 asociado (Beto Bodega en la venta de prueba 185), el resumen indica «Sin documento registrado»;
 no lo completa con el documento de otra persona ni con un tiquete, booking o licencia.
+En ese resumen, «Titular» marca solo al cliente de la venta: el titular de cada producto se
+ve en la pestaña de su producto.
 
 ## Qué pasó sin él
 

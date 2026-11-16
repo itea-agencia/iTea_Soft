@@ -25,6 +25,25 @@ test('una respuesta anterior usa el documento del cliente cargado, sin usar lice
   assert.equal(result[0].docNumber, 'DOC_CLIENTE');
 });
 
+test('«Titular» es solo el cliente de la venta, no el titular de cada producto', () => {
+  const result = saleParticipants({
+    clientName: 'Prueba Regla',
+    tourData: [{ passengers: [{ name: 'Tina Tour', esTitular: true }] }],
+    insuranceData: [{ passengers: [{ name: 'Sergio Seguro', esTitular: true }] }],
+  });
+  assert.deepEqual(result.map(({ name, esTitular }) => ({ name, esTitular })), [
+    { name: 'Prueba Regla', esTitular: true },
+    { name: 'Tina Tour', esTitular: false },
+    { name: 'Sergio Seguro', esTitular: false },
+  ]);
+});
+
+test('las pestañas se llaman como el selector de productos', () => {
+  const label = (category) => saleSections.find((s) => s.summaryType === category).label;
+  assert.equal(label('planes'), 'Paquetes');
+  assert.equal(label('centros_convencion'), 'Centros de Convención');
+});
+
 test('las pestañas muestran nombres legibles e iconos para autos y terrestre', () => {
   for (const [category, label, icon] of [
     ['renta_vehiculos', 'Renta de Vehículos', 'lucide-car'],

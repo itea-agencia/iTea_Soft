@@ -68,10 +68,6 @@ export default function Sales() {
     setTimeout(() => setShowError(false), 5000);
   };
   const [activeTab, setActiveTab] = useState<'list' | 'credit'>('list');
-  const [detailedProduct, setDetailedProduct] = useState<{
-    type: string;
-    data: any[];
-  } | null>(null);
   const [voidConfirm, setVoidConfirm] = useState<Sale | null>(null);
   const [voidReason, setVoidReason] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
@@ -778,7 +774,6 @@ export default function Sales() {
         selectedSale={salesDetails[selectedSale?.id || 0] || selectedSale}
         clients={data.clients}
         responsables={responsables}
-        onViewProductDetails={setDetailedProduct}
       />
 
       

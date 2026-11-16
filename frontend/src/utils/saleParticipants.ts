@@ -9,7 +9,7 @@ interface SaleParticipant {
 
 export function saleParticipants(sale: Sale, client?: Pick<Client, 'docType' | 'docNumber'>): SaleParticipant[] {
   const participants: SaleParticipant[] = [];
-  const add = (person: any) => {
+  const add = (person: any, esTitular = false) => {
     if (!person) return;
     const name = typeof person === 'string' ? person : person.name || person.passengerName || person.fullName
       || (person.firstName ? `${person.firstName} ${person.lastName || ''}`.trim() : '')
@@ -18,7 +18,9 @@ export function saleParticipants(sale: Sale, client?: Pick<Client, 'docType' | '
     if (!name?.trim() || participants.some((p) => p.name.toLowerCase() === name.trim().toLowerCase())) return;
     participants.push({
       name: name.trim(),
-      esTitular: person.esTitular === true,
+      // Solo el cliente de la venta: cada producto tiene su titular, y marcarlos a todos
+      // dejaba varios «Titular» en el resumen sin decir de qué.
+      esTitular,
       docType: person.docType || person.tipoDocumento || person.documentType || '',
       // Booking, tiquete y licencia no identifican el documento de la persona.
       docNumber: person.docNumber || person.nroDocumento || person.documentNumber || '',
@@ -26,17 +28,17 @@ export function saleParticipants(sale: Sale, client?: Pick<Client, 'docType' | '
   };
 
   if (sale.clientName) add({
-    name: sale.clientName, esTitular: true,
+    name: sale.clientName,
     docType: sale.clientDocType || client?.docType || '',
     docNumber: sale.clientDocNumber || client?.docNumber || '',
-  });
+  }, true);
 
   for (const [key, items] of Object.entries(sale)) {
     if (!key.endsWith('Data') || !Array.isArray(items)) continue;
     for (const item of items) {
       if (!item) continue;
       const list = [item.passengers, item.guests, item.members].find((value) => Array.isArray(value) && value.length > 0);
-      if (list) list.forEach(add);
+      if (list) list.forEach((person: any) => add(person));
       else if (item.passengerInfo) add(item.passengerInfo);
       else add({
         name: item.passengerName || item.ownerName || item.fullName,

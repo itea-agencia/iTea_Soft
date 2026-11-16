@@ -11,18 +11,12 @@ import PaginatedProductTab from "./tabs/PaginatedProductTab";
 import { saleSections, SaleSectionLabel } from "./saleSections";
 import { saleParticipants } from "../../utils/saleParticipants";
 
-function getProductDetails(type: string, data: any[]): { label: string; count: number } {
-  const arr = data || [];
-  return { label: type, count: arr.length };
-}
-
 interface SaleDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedSale: Sale | null;
   clients: Client[];
   responsables: Responsable[];
-  onViewProductDetails: (product: { type: string; data: any[] }) => void;
 }
 
 const isAlreadyFull = (sale: Sale | null): boolean => {
@@ -58,14 +52,12 @@ export default function SaleDetailModal({
   selectedSale,
   clients,
   responsables,
-  onViewProductDetails,
 }: SaleDetailModalProps) {
   const { puede } = usePermissions();
   const [activeTab, setActiveTab] = useState("summary");
   const [fullSale, setFullSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pendingProductView, setPendingProductView] = useState<{ key: string; label: string } | null>(null);
   
   // Siigo Integration State
   const [isInvoicing, setIsInvoicing] = useState(false);
@@ -112,17 +104,8 @@ export default function SaleDetailModal({
       }
     } else {
       setFullSale(null);
-      setPendingProductView(null);
     }
   }, [isOpen, selectedSale]);
-
-  useEffect(() => {
-    if (fullSale && isAlreadyFull(fullSale) && pendingProductView) {
-      const data = (fullSale as any)[pendingProductView.key] || [];
-      onViewProductDetails({ type: pendingProductView.label, data });
-      setPendingProductView(null);
-    }
-  }, [fullSale, pendingProductView]);
 
   const handleGenerateInvoice = async () => {
     if (!sale) return;
@@ -235,15 +218,6 @@ export default function SaleDetailModal({
       return "";
     }
     return txt;
-  };
-
-  const onViewProductClick = (key: string, label: string) => {
-    if (fullSale && isAlreadyFull(fullSale)) {
-      const data = (fullSale as any)[key] || [];
-      onViewProductDetails({ type: label, data });
-    } else {
-      setPendingProductView({ key, label });
-    }
   };
 
   const activeCategories = productSections.filter(({ key, summaryType }) => {
