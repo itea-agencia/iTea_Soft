@@ -192,6 +192,7 @@ export interface GuestInfo {
   name: string;
   docType: string;
   docNumber: string;
+  esTitular?: boolean;
 }
 
 /**

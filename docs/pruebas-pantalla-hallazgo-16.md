@@ -76,6 +76,14 @@ Ejecutar en el entorno local actualizado, con datos de prueba. Anotar por caso: 
 4. Repetir con el archivo requerido para el PDF. La recarga puede perder cambios de un formulario abierto; hacer esta prueba sin trabajo pendiente.
 5. Para almacenamiento bloqueado o archivo reemplazado durante publicación, usar un entorno de prueba controlado y registrar el caso como pendiente si no se reprodujo. No darlo por aprobado solo porque las pruebas unitarias pasen.
 
+## 8. Titular en tours y seguros
+
+Diseño `docs/designs/titular-por-producto-2026-11.md`.
+
+1. En un tour y en un seguro nuevos, el primer pasajero aparece como "Titular" y no tiene botón de eliminar.
+2. Agregar dos pasajeros y marcar el segundo: la etiqueta "Titular" se mueve, el primero recupera su botón de eliminar y el segundo lo pierde.
+3. Guardar la venta y abrir el detalle y el voucher: el elegido aparece primero. Con SQL, cada producto tiene una sola fila `es_titular = true` en `pasajeros_detalle`.
+
 ## Cierre
 
 La venta por endpoints verifica persistencia y reglas del servidor. El cierre del hallazgo requiere además completar el recorrido visual del asistente, la navegación y el PDF. Conservar los ids de prueba; no borrar ni anular registros reales para preparar casos.

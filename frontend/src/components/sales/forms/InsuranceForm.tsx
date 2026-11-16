@@ -1,9 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useId } from "react";
 import { clientOption, findClientById } from "../../../utils/clientOptions";
 import { AlertCircle, Users, Briefcase, Trash2, PlusCircle } from "lucide-react";
 import { FormField, Input, Select, CurrencyInput, Combobox } from "../../ui/Form";
 import { Button } from "../../ui/Button";
 import { InsuranceData, GuestInfo } from "../../../types";
+import { setTitular, hayTitular } from "./passengerHelpers";
 
 interface InsuranceFormProps {
   insurance: InsuranceData;
@@ -18,8 +19,11 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
       onChange({ phone: client.phone });
     }
   }, [client?.phone, insurance.phone]);
+  const holderGroup = useId();
+  const hasHolder = hayTitular(insurance.members);
+
   const addMember = () => {
-    onChange({ members: [...insurance.members, { name: "", docType: "CC", docNumber: "" }] });
+    onChange({ members: [...insurance.members, { name: "", docType: "CC", docNumber: "", esTitular: false }] });
   };
 
   const removeMember = (mIdx: number) => {
@@ -94,8 +98,24 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
           </Button>
         </div>
         <div className="space-y-3">
-          {insurance.members.map((member, mIdx) => (
+          {insurance.members.map((member, mIdx) => {
+            // Si nadie esta marcado se muestra el primero, que es el que el servidor guarda
+            // como titular (markHolder en backend/src/utils/holder.js).
+            const isHolder = member.esTitular === true || (!hasHolder && mIdx === 0);
+            return (
             <div key={mIdx} className="flex gap-2 items-start">
+              <label className="flex items-center gap-1 cursor-pointer shrink-0 pt-2" title="Titular de la póliza">
+                <input
+                  type="radio"
+                  name={holderGroup}
+                  checked={isHolder}
+                  onChange={() => onChange({ members: setTitular(insurance.members, mIdx) })}
+                  className="w-3 h-3 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase">
+                  {isHolder ? "Titular" : "Es Titular"}
+                </span>
+              </label>
               <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
                 <Combobox
                   value={member.name}
@@ -132,13 +152,15 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
                   placeholder="Número de documento"
                 />
               </div>
-              {insurance.members.length > 1 && (
+              {/* El titular no se borra: asi siempre queda uno, como en hotel. */}
+              {insurance.members.length > 1 && !isHolder && (
                 <Button type="button" variant="outline" size="sm" onClick={() => removeMember(mIdx)}>
                   <Trash2 size={14} className="text-rose-500" />
                 </Button>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

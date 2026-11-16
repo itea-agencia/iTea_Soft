@@ -161,11 +161,13 @@ export const INITIAL_INSURANCE = (client?: any): InsuranceData => ({
   ta: 0,
   taCre: 0,
   supplierPaymentMethod: "",
+  // El titular se siembra marcado, igual que en hotel y paquetes.
   members: [
     {
       name: client?.name || "",
       docType: client?.docType || "",
       docNumber: client?.docNumber || "",
+      esTitular: true,
     },
   ],
 });
@@ -372,7 +374,7 @@ export const INITIAL_TOUR = (client?: any): TourData => ({
   supplierCost: 0,
   ta: 0,
   taCre: 0,
-  guests: [{ name: client?.name || "", docType: client?.docType || "CC", docNumber: client?.docNumber || "" }],
+  guests: [{ name: client?.name || "", docType: client?.docType || "CC", docNumber: client?.docNumber || "", esTitular: true }],
   vouchers: [],
 });
 

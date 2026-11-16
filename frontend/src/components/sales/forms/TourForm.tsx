@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { clientOption, findClientById } from "../../../utils/clientOptions";
 import { LuMap, LuFileText, LuUpload, LuFileCheck, LuX, LuSend } from "react-icons/lu";
 import { Users, Trash2, PlusCircle } from "lucide-react";
@@ -7,6 +7,7 @@ import { Button } from "../../ui/Button";
 import { TourData, GuestInfo } from "../../../types";
 import { ClientInfoSection, FinancialSection } from "./VoucherField";
 import { DatePicker } from "./TicketForm";
+import { setTitular, hayTitular } from "./passengerHelpers";
 
 interface TourFormProps {
   tour: TourData;
@@ -18,9 +19,12 @@ interface TourFormProps {
 
 export function TourForm({ tour, mainClient, data, onChange, triggerError, showErrors }: TourFormProps & { showErrors?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const holderGroup = useId();
+  const guests = tour.guests || [];
+  const hasHolder = hayTitular(guests);
 
   const addGuest = () => {
-    onChange({ guests: [...(tour.guests || []), { name: "", docType: "CC", docNumber: "" }] });
+    onChange({ guests: [...(tour.guests || []), { name: "", docType: "CC", docNumber: "", esTitular: false }] });
   };
 
   const removeGuest = (gIdx: number) => {
@@ -179,8 +183,24 @@ export function TourForm({ tour, mainClient, data, onChange, triggerError, showE
           </Button>
         </div>
         <div className="space-y-3">
-          {(tour.guests || []).map((guest, gIdx) => (
+          {guests.map((guest, gIdx) => {
+            // Si nadie esta marcado se muestra el primero, que es el que el servidor guarda
+            // como titular (markHolder en backend/src/utils/holder.js).
+            const isHolder = guest.esTitular === true || (!hasHolder && gIdx === 0);
+            return (
             <div key={gIdx} className="flex gap-2 items-start">
+              <label className="flex items-center gap-1 cursor-pointer shrink-0 pt-2" title="Titular de la reserva">
+                <input
+                  type="radio"
+                  name={holderGroup}
+                  checked={isHolder}
+                  onChange={() => onChange({ guests: setTitular(guests, gIdx) })}
+                  className="w-3 h-3 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase">
+                  {isHolder ? "Titular" : "Es Titular"}
+                </span>
+              </label>
               <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
                 <Combobox
                   value={guest.name}
@@ -223,13 +243,15 @@ export function TourForm({ tour, mainClient, data, onChange, triggerError, showE
                   maxLength={20}
                 />
               </div>
-              {(tour.guests || []).length > 1 && (
+              {/* El titular no se borra: asi siempre queda uno, como en hotel. */}
+              {guests.length > 1 && !isHolder && (
                 <Button type="button" variant="outline" size="sm" onClick={() => removeGuest(gIdx)}>
                   <Trash2 size={14} className="text-red-500" />
                 </Button>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
