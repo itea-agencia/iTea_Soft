@@ -256,9 +256,9 @@ export function TourForm({ tour, mainClient, data, onChange, triggerError, showE
       </div>
 
       <FinancialSection 
-        supplierName={tour.supplierName}
+        supplierId={tour.supplierId}
         supplierCost={tour.supplierCost}
-        supplierPaymentMethod={tour.supplierPaymentMethod}
+        agencyCardId={tour.agencyCardId}
         isPaymentMethodRequired={true}
         showErrors={showErrors}
         paymentMethods={data.config.cards}

@@ -119,7 +119,7 @@ export function ActiveProductForm({ activeForm, activeIdx, closeActiveForm, data
               // descubrirlo al facturar.
               pagosDelPlan.forEach((pg, i) => {
                 const monto = (Number(pg.supplierCost) || 0) + (Number(pg.ta) || 0) + (Number(pg.taCre) || 0);
-                if (monto > 0 && !pg.supplier?.trim()) {
+                if (monto > 0 && !pg.supplierId) {
                   errors.push(`Pago a proveedor #${i + 1}: falta el proveedor`);
                 }
                 if ((Number(pg.supplierCost) || 0) < 0 || (Number(pg.ta) || 0) < 0 || (Number(pg.taCre) || 0) < 0) {

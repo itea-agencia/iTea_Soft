@@ -30,8 +30,7 @@ export function BaggageForm({ baggage, client, suppliers, paymentMethods, airlin
               value={baggage.airlineId ? String(baggage.airlineId) : ""}
               onChange={(val) => {
                 const id = parseInt(val, 10);
-                const airline = airlines?.find(a => a.id === id);
-                onChange({ airlineId: isNaN(id) ? undefined : id, airline: airline?.name || "" });
+                onChange({ airlineId: isNaN(id) ? undefined : id });
               }}
               options={airlineOptions}
               placeholder="Seleccionar aerolínea..."
@@ -62,9 +61,9 @@ export function BaggageForm({ baggage, client, suppliers, paymentMethods, airlin
       </div>
 
       <FinancialSection 
-        supplierName={baggage.supplierName || ""} 
+        supplierId={baggage.supplierId} 
         supplierCost={baggage.supplierCost}
-        supplierPaymentMethod={baggage.supplierPaymentMethod || ""} 
+        agencyCardId={baggage.agencyCardId} 
         isPaymentMethodRequired={false}
         paymentMethods={paymentMethods}
         ta={baggage.ta}

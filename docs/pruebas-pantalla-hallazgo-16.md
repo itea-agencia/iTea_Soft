@@ -98,6 +98,18 @@ El usuario realiza esta revisión desde su navegador. API/SQL ya verificadas. Re
 6. Probar un paquete con varios servicios, pasajeros y observaciones largas para forzar varias páginas. Debe conservarse el contenido y el contexto del paquete en continuaciones. El límite previo de una tabla individual más alta que una hoja no se resolvió en este arreglo: si aparece, registrar el caso y no darlo por aprobado.
 7. Registrar por caso venta, resultado observado y captura si falla. No enviar correos ni usar Siigo durante la revisión.
 
+## 10. Datos de catálogo por id (2026-11-16)
+
+Diseño `docs/designs/catalogo-por-id-2026-11.md`. Recargar con Ctrl+F5 tras reconstruir el frontend.
+
+1. En una venta nueva, en cualquier producto, escribir un proveedor que no está en la lista y salir del campo: debe quedar vacío. Elegirlo de la lista: debe quedar.
+2. El método de pago al proveedor muestra las tarjetas de la agencia y se guarda la elegida.
+3. Tiquete: elegir aerolínea en el tiquete y en un tramo; el plan de equipaje solo ofrece los de esa aerolínea. Paquete aéreo: aerolínea de la lista. Paquete terrestre: la empresa de transporte se escribe libre y la venta se guarda.
+4. Paquete con pagos a proveedores: cada fila elige proveedor y tarjeta de la lista.
+5. Guardar y abrir el detalle: proveedor, aerolínea y plan de equipaje con su nombre; en el desglose del paquete, cada línea con su tarjeta; renta de vehículo con "Básico" o "Todo Riesgo".
+6. Elegir un paquete de la configuración: el proveedor y la aerolínea se completan solos.
+7. Generar el voucher de esa venta: aerolíneas y planes de equipaje con su nombre, sin costos de proveedor.
+
 ## Cierre
 
 La venta por endpoints verifica persistencia y reglas del servidor. El cierre del hallazgo requiere además completar el recorrido visual del asistente, la navegación y el PDF. Conservar los ids de prueba; no borrar ni anular registros reales para preparar casos.

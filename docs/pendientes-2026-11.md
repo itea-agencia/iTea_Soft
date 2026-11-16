@@ -5,8 +5,10 @@ Lo que queda por hacer después de la rama `feat/hallazgo-16-carga-y-mantenimien
 ## Antes de mergear `feat-bayrol` a `main`
 
 1. ~~**Probar en pantalla** lo de la rama~~ y ~~**la venta de las 17 categorías**~~: **validado en pantalla por el usuario el 2026-11-16**, con las secciones 1 a 9 de `pruebas-pantalla-hallazgo-16.md` (paginación y créditos, pasajeros y personas, migración y visa, titular en tours y seguros, servicios vinculados al paquete en voucher y PDF).
-2. **Desplegar con el orden correcto.** El merge corre dos migraciones en producción: `20261111190000` borra 5 columnas vacías del tour y el seguro (comprobado por última vez el 2026-11-16, justo antes del merge: 1 tour sin `tour_nombre` y 0 seguros, y las dos migraciones todavía sin aplicar en producción), y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
-3. **Comprobar después del despliegue**, en solo lectura, que los conteos de `pasajeros-con-documento-2026-11.md` siguen en cero. La única excepción es la persona del equipaje.
+2. **Probar en pantalla los datos de catálogo por id** (sección 10 de `pruebas-pantalla-hallazgo-16.md`): proveedor solo de la lista, tarjetas, aerolínea y plan de equipaje, y el detalle. Es lo único de la rama sin revisión visual.
+3. **Desplegar con el orden correcto.** El merge corre tres migraciones en producción: `20261116120000` agrega `tarjeta_agencia_id` (aditiva), y `20261111190000` borra 5 columnas vacías del tour y el seguro (comprobado por última vez el 2026-11-16, justo antes del merge: 1 tour sin `tour_nombre` y 0 seguros, y las dos migraciones todavía sin aplicar en producción), y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
+4. **Después del despliegue:** con tu confirmación, correr `backend/db-manual/asignar_tarjeta_pagos_proveedor.sh` (asigna la tarjeta a 45 + 130 + 2 pagos viejos; criterios verificados en producción el 2026-11-16), y corregir el método de cada tarjeta en Configuración → Tarjetas (hoy Samtur figura como "Transferencia" y PRECOMPRAS como "Tarjeta de Débito").
+5. **Comprobar después del despliegue**, en solo lectura, que los conteos de `pasajeros-con-documento-2026-11.md` siguen en cero. La única excepción es la persona del equipaje.
 
 ## Dinero (invariante 2)
 
@@ -38,10 +40,11 @@ Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
 
 - **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Validado en pantalla por el usuario el 2026-11-16; falta publicar backend y frontend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
 - **Tramo a medio llenar:** un tramo con origen y sin destino (o al revés) se sigue omitiendo sin aviso, como antes del arreglo del catálogo. El formulario pide los dos.
-- **Nombres de ida y vuelta (invariante 5):** `supplierName` entra y sale `supplier`; el seguro del auto entra `all_risk`/`basic` y sale `todo_riesgo`/`basico`.
+- **Respaldo por nombre en el servidor:** acepta `supplier`, `supplierName`, `supplierPaymentMethod`, `airline`, `baggagePlan` y `method` además de los ids, por las pestañas abiertas y los borradores guardados durante el despliegue. Quitarlo unas semanas después del merge (`firstValue` y `nombreProveedorDe` en `sales.controller.js`).
+- **Empresa de transporte del paquete terrestre:** es texto libre y no se guarda (no hay columna); el servidor ya no la busca entre las aerolíneas. Hoy no hay paquetes terrestres en producción.
+- **La tarjeta no se ve en la pestaña de cada producto:** se muestra en el desglose del paquete; en el resto de las pestañas tampoco se mostraba el método. Agregarla si quien concilia la necesita ahí.
 - **Datos que no se leen:** el método de pago al proveedor de cada producto no vuelve en la API; las fechas, origen y destino generales de `detalle_venta` se llenan dispares y nadie los lee.
 - **Visa y pasaporte:** el solicitante no queda como pasajero. Falta decidir si es a propósito.
-- **Desglose del paquete distinto según el endpoint:** `GET /sales/:id` llama a `agregarPorPadre` sin los `pagosProveedor`, así que el paquete sale como una sola línea (3 en la venta 172); `GET /sales/:id/details`, el que usa la pestaña, trae las 5. El total es el mismo (33.000). Hoy ninguna pantalla lee el desglose de `getById`.
 
 ## Auditoría del frontend
 
@@ -62,6 +65,7 @@ Detalle en `docs/specs/2026-09-21-autenticacion-y-autorizacion.md` y `2026-09-21
 
 ## Cerrado en esta revisión
 
+- **Datos de catálogo por id (hallazgo 4 de la venta por API, ampliado):** proveedor, tarjeta de la agencia, aerolínea, plan de equipaje y método de pago viajan por id y vuelven como par id y nombre; el pago al proveedor guarda la tarjeta y deduce el método; viaje terrestre ya no devuelve `supplierName` ni tiquete y paquete `airlineName`. Con esto `GET /sales/:id` y `/details` dan el mismo desglose del paquete. Diseño `docs/designs/catalogo-por-id-2026-11.md`.
 - **Plan de equipaje de otra aerolínea (hallazgo 3 de la venta por API):** el plan elegido para un tiquete o un tramo tiene que ser de su aerolínea, o es un 400; un tramo sin plan propio hereda el del tiquete solo si es de su misma aerolínea. Diseño `docs/designs/plan-equipaje-de-su-aerolinea-2026-11.md`.
 - **Catálogo sin error (hallazgo 2 de la venta por API):** un proveedor, método de pago, aerolínea, plan de equipaje o aeropuerto escrito que no existe ahora es un 400 que nombra el servicio y el valor, en ventas y abonos; los nombres se encuentran aunque cambien mayúsculas o espacios. Diseño `docs/designs/catalogo-sin-perdida-silenciosa-2026-11.md`. Los 7 productos de junio a agosto sin proveedor quedan como están.
 - **Etiqueta del total del paquete:** en la prueba de pantalla del 2026-11-16 se entendió que el total del paquete incluye sus servicios vinculados. No se cambia.
@@ -88,6 +92,7 @@ Quedan a propósito, para volver a probar:
 - la venta 168: las 17 categorías con todos los campos, creada por la API (pasajeros con documentos `99300001xx` a `99300012xx`);
 - las ventas 169–171: repetición de la 168 con vínculos guardados (169, total 187.000), dos paquetes con tiquete/check-in/tour vinculados al segundo (170, total 198.000) y el mismo caso con posición vacía intermedia en el request (171, total 198.000);
 - las ventas 172 a 176: vínculos al paquete tras la revisión de la validación (172 a 174) y la venta completa con el catálogo nuevo (175, y 176 con nombres en otro caso y un tramo vacío). Desde el plan de equipaje validado, la venta de prueba lleva "Copa Airlines - Basic" (177, y 178 con una escala de AVIANCA sin plan); la 179 con dos pagos ("Mixto") y la 180 con uno ("Otro"), del arreglo del método principal;
+- las ventas 181 a 184: catálogo por id (181 con ids, 182 con los nombres de respaldo, 183 con nombres de tarjeta, 184 paquete terrestre), y dos abonos de $1.000 en la 155;
 - la tabla auxiliar `_prueba_propios_ventas`.
 
 Esa tabla hace que `prisma migrate dev` pida resetear la base local. Mientras exista, las migraciones locales se aplican con `prisma migrate deploy`.

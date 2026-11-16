@@ -185,9 +185,9 @@ export function PetServiceForm({ pet, client, suppliers, paymentMethods, onChang
       </div>
 
       <FinancialSection 
-        supplierName={pet.supplierName}
+        supplierId={pet.supplierId}
         supplierCost={pet.supplierCost}
-        supplierPaymentMethod={pet.supplierPaymentMethod}
+        agencyCardId={pet.agencyCardId}
         isPaymentMethodRequired={true}
         showErrors={showErrors}
         paymentMethods={paymentMethods}

@@ -113,9 +113,9 @@ export function CheckInForm({ checkIn, client, documentTypes, suppliers, baggage
       </div>
 
       <FinancialSection 
-        supplierName={checkIn.supplierName}
+        supplierId={checkIn.supplierId}
         supplierCost={checkIn.supplierCost}
-        supplierPaymentMethod={checkIn.supplierPaymentMethod}
+        agencyCardId={checkIn.agencyCardId}
         isPaymentMethodRequired={true}
         paymentMethods={paymentMethods}
         ta={checkIn.ta}

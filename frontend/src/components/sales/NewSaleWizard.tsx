@@ -74,8 +74,8 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       const ticket = form.tickets[activeIdx];
       if (!ticket) return true;
       
-      const hasAirline = !!ticket.airline?.trim();
-      const hasSupplier = !!ticket.supplier?.trim();
+      const hasAirline = !!ticket.airlineId;
+      const hasSupplier = !!ticket.supplierId;
       const hasResNumber = !!ticket.reservationNumber?.trim();
       const paxList = ticket.passengers || ((ticket as any).passengerInfo ? [(ticket as any).passengerInfo] : []);
       const titular = paxList.find((p: any) => p.esTitular) || paxList[0];
@@ -124,7 +124,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       if (!hotel) return true;
       const hasHotelName = !!hotel.hotelName?.trim();
       const hasDestination = !!hotel.destination?.trim();
-      const hasSupplier = !!hotel.supplier?.trim();
+      const hasSupplier = !!hotel.supplierId;
       const hasReservationNumber = !!hotel.reservationNumber?.trim();
       const hasStartDate = !!hotel.startDate?.trim();
       const hasEndDate = !!hotel.endDate?.trim();
@@ -156,7 +156,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       if (!ins) return true;
       const hasInsuranceType = !!ins.insuranceType?.trim();
       const hasPhone = !!ins.phone?.trim();
-      const hasSupplier = !!ins.supplier?.trim();
+      const hasSupplier = !!ins.supplierId;
       const hasCost = ins.supplierCost > 0;
       const hasTa = ins.ta > 0;
       
@@ -506,7 +506,7 @@ export default function NewSaleWizard({ onClose, onSuccess }: Props) {
       paymentMethod: calculatedPaymentMethod,
       payments: form.payments?.map(p => ({
         amount: Number(p.amount),
-        method: p.methodId,
+        paymentMethodId: p.methodId,
         reference: p.reference
       })),
       responsableId: form.responsableId ? Number(form.responsableId) : undefined,
@@ -764,12 +764,12 @@ function isItemEmpty(item: any, category: SaleProductId): boolean {
   if (!item) return true;
   
   if (Number(item.supplierCost) > 0 || Number(item.ta) > 0 || Number(item.taCre) > 0) return false;
-  if (item.supplierName && item.supplierName.trim() !== "") return false;
+  if (item.supplierId) return false;
 
   switch (category) {
     case "tiqueteria":
       return (
-        !item.airline &&
+        !item.airlineId && !item.airline &&
         !item.reservationNumber &&
         !item.flightNumber &&
         (!item.passengers || item.passengers.length === 0 || !item.passengers[0]?.nroTiquete) &&
@@ -793,7 +793,7 @@ function isItemEmpty(item: any, category: SaleProductId): boolean {
         !item.reservationNumber &&
         !item.flightNumber &&
         !item.ticketNumber &&
-        !item.airline
+        !item.airlineId && !item.airline
       );
     case "checkin":
       return (
@@ -872,7 +872,7 @@ function isItemEmpty(item: any, category: SaleProductId): boolean {
       );
     case "equipaje":
       return (
-        !item.airline &&
+        !item.airlineId && !item.airline &&
         !item.passengerName &&
         !item.reservationNumber &&
         !item.fareType &&

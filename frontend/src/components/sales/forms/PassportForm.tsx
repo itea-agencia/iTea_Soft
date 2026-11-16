@@ -87,9 +87,9 @@ export function PassportForm({ passport, client, suppliers, paymentMethods, onCh
       </div>
 
       <FinancialSection 
-        supplierName={passport.supplierName}
+        supplierId={passport.supplierId}
         supplierCost={passport.supplierCost}
-        supplierPaymentMethod={passport.supplierPaymentMethod}
+        agencyCardId={passport.agencyCardId}
         isPaymentMethodRequired={false}
         paymentMethods={paymentMethods}
         ta={passport.ta}

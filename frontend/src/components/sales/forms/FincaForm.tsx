@@ -140,9 +140,9 @@ export function FincaForm({ finca, client, suppliers, paymentMethods, onChange, 
       </div>
 
       <FinancialSection 
-        supplierName={finca.supplierName}
+        supplierId={finca.supplierId}
         supplierCost={finca.supplierCost}
-        supplierPaymentMethod={finca.supplierPaymentMethod}
+        agencyCardId={finca.agencyCardId}
         isPaymentMethodRequired={true}
         showErrors={showErrors}
         paymentMethods={paymentMethods}

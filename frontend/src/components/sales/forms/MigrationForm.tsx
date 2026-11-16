@@ -108,9 +108,9 @@ export function MigrationForm({ migration, client, documentTypes, suppliers, pay
       </div>
 
       <FinancialSection 
-        supplierName={migration.supplierName}
+        supplierId={migration.supplierId}
         supplierCost={migration.supplierCost}
-        supplierPaymentMethod={migration.supplierPaymentMethod}
+        agencyCardId={migration.agencyCardId}
         isPaymentMethodRequired={false}
         paymentMethods={paymentMethods}
         ta={migration.ta}

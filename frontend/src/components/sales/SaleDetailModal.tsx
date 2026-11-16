@@ -260,7 +260,7 @@ export default function SaleDetailModal({
       const dataArr = (sale as any)[key];
       if (Array.isArray(dataArr)) {
         dataArr.forEach((item: any) => {
-          const name = item.supplier || item.supplierName;
+          const name = item.supplier;
           if (name && typeof name === "string" && name.trim()) {
             suppliers.add(name.trim());
           }

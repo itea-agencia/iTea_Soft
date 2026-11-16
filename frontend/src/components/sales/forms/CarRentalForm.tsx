@@ -127,9 +127,9 @@ export function CarRentalForm({ car, client, suppliers, paymentMethods, onChange
       </div>
 
       <FinancialSection 
-        supplierName={car.supplierName}
+        supplierId={car.supplierId}
         supplierCost={car.supplierCost}
-        supplierPaymentMethod={car.supplierPaymentMethod}
+        agencyCardId={car.agencyCardId}
         isPaymentMethodRequired={true}
         paymentMethods={paymentMethods}
         ta={car.ta}

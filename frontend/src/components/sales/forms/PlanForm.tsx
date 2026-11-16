@@ -6,7 +6,7 @@ import { Button } from "../../ui/Button";
 import { PlanData, PlanGuestInfo, SupplierPayment, ConceptoPago } from "../../../types";
 import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
 import { DateTimePicker } from "./TicketForm";
-import { VoucherField } from "./VoucherField";
+import { VoucherField, pickedId } from "./VoucherField";
 
 /**
  * Los conceptos de pago de un paquete, con el nombre que ve el usuario.
@@ -31,6 +31,12 @@ interface PlanFormProps {
   triggerError?: (msg: string) => void;
   mainClient?: any;
 }
+
+/** Id de un catalogo por nombre, para la configuracion de paquetes que guarda nombres. */
+const idByName = (list: { id: number; name: string }[], name?: string | null) => {
+  const key = (name || '').trim().toLowerCase();
+  return key ? list.find((x) => (x.name || '').trim().toLowerCase() === key)?.id : undefined;
+};
 
 export function PlanForm({ plan, onChange, data, triggerError, mainClient }: PlanFormProps) {
   const minDateTime = (() => {
@@ -60,6 +66,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
    */
   const pagos = plan.supplierPayments || [];
   const conPagos = pagos.length > 0;
+  const supplierName = data.config.suppliers.find((sp: any) => sp.id === plan.supplierId)?.name || plan.supplier;
 
   const propio = {
     supplierCost: Number(plan.supplierCost) || 0,
@@ -121,9 +128,13 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
         packageName: pkg.name,
         planName: pkg.name,
         hotelName: pkg.accommodation?.hotel || "",
-        supplier: pkg.accommodation?.supplier || "",
+        // La configuracion del paquete guarda proveedor y aerolinea por nombre; aca se pasan a
+        // id (catalogo-por-id-2026-11). La empresa de un paquete terrestre sigue como texto.
+        supplierId: idByName(data.config.suppliers, pkg.accommodation?.supplier),
         transportType: pkg.flight?.transportType || "Aéreo",
-        airline: pkg.flight?.airline || "",
+        ...(isTerrestre
+          ? { airline: pkg.flight?.airline || "", airlineId: undefined }
+          : { airlineId: idByName(data.config.airlines, pkg.flight?.airline) }),
         flightNumber: processedFlightNumber,
         observations: `Incluye: ${pkg.includedServices || 'N/A'}\nNo Incluye: ${pkg.notIncluded || 'N/A'}`,
         adultsCount: 2,
@@ -230,15 +241,15 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               <FormField label={plan.transportType === 'Terrestre' ? "Empresa de Transporte" : "Aerolínea"}>
                 {plan.transportType === 'Terrestre' ? (
                   <Input
-                    value={plan.airline}
-                    onChange={(e) => onChange({ airline: e.target.value })}
+                    value={plan.airline || ""}
+                    onChange={(e) => onChange({ airline: e.target.value, airlineId: undefined })}
                     placeholder="Ej: Flota Magdalena"
                   />
                 ) : (
                   <Combobox
-                    value={plan.airline}
-                    onChange={(val) => onChange({ airline: val })}
-                    options={data.config.airlines.map((a: any) => ({ value: a.name, label: a.name }))}
+                    value={plan.airlineId ? String(plan.airlineId) : ""}
+                    onChange={(val, picked) => onChange({ airlineId: pickedId(val, picked), airline: undefined })}
+                    options={data.config.airlines.map((a: any) => ({ value: String(a.id), label: a.name }))}
                     placeholder="Seleccionar aerolínea..."
                   />
                 )}
@@ -624,7 +635,7 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
               Este paquete tiene un costo cargado de la forma anterior:{" "}
               <strong>${propio.supplierCost.toLocaleString("es-CO")}</strong> de costo y{" "}
               <strong>${(propio.ta + propio.taCre).toLocaleString("es-CO")}</strong> de TA
-              {plan.supplier ? `, a ${plan.supplier}` : ""}. Se sigue contando en el total.
+              {supplierName ? `, a ${supplierName}` : ""}. Se sigue contando en el total.
               Si agregás pagos por concepto, el total pasa a ser su suma y este valor deja
               de usarse.
             </p>
@@ -675,9 +686,9 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <FormField label="Proveedor">
                       <Combobox
-                        value={pago.supplier || ""}
-                        onChange={(val) => updatePago(idx, { supplier: val })}
-                        options={data.config.suppliers.map((sp: any) => ({ value: sp.name, label: sp.name }))}
+                        value={pago.supplierId ? String(pago.supplierId) : ""}
+                        onChange={(val, picked) => updatePago(idx, { supplierId: pickedId(val, picked) })}
+                        options={data.config.suppliers.map((sp: any) => ({ value: String(sp.id), label: sp.name }))}
                         placeholder="Seleccionar..."
                       />
                     </FormField>
@@ -701,10 +712,10 @@ export function PlanForm({ plan, onChange, data, triggerError, mainClient }: Pla
                     </FormField>
                     <FormField label="Método de Pago">
                       <Combobox
-                        value={pago.paymentMethod || ""}
-                        onChange={(val) => updatePago(idx, { paymentMethod: val })}
+                        value={pago.agencyCardId ? String(pago.agencyCardId) : ""}
+                        onChange={(val, picked) => updatePago(idx, { agencyCardId: pickedId(val, picked) })}
                         options={data.config.cards.map((m: any) => ({
-                          value: m.name,
+                          value: String(m.id),
                           label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
                         }))}
                         placeholder="Seleccionar..."

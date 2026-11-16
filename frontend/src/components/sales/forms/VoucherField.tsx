@@ -233,24 +233,31 @@ export function ClientInfoSection({ client }: ClientInfoSectionProps) {
   );
 }
 interface FinancialSectionProps {
-  supplierName?: string;
+  supplierId?: number;
   supplierCost?: number;
   ta?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
   isPaymentMethodRequired?: boolean;
   // El wizard ya intento avanzar y la validacion fallo: marcar el metodo de pago si falta.
   showErrors?: boolean;
   paymentMethods?: any[];
   suppliers?: { id: number; name: string }[];
-  onChange: (updates: { supplierName?: string; supplierCost?: number; ta?: number; taCre?: number; supplierPaymentMethod?: string }) => void;
+  onChange: (updates: { supplierId?: number; supplierCost?: number; ta?: number; taCre?: number; agencyCardId?: number }) => void;
 }
 
-export function FinancialSection({ supplierName, supplierCost, ta, taCre, supplierPaymentMethod, isPaymentMethodRequired, showErrors, paymentMethods = [], suppliers = [], onChange }: FinancialSectionProps) {
-  const errorMetodoPago = showErrors && isPaymentMethodRequired && !supplierPaymentMethod
+/**
+ * Proveedor y tarjeta viajan por id (catalogo-por-id-2026-11): el nombre podia cambiar en
+ * Configuracion o escribirse distinto, y el servidor lo rechazaba o perdia la tarjeta. Solo
+ * vale lo elegido de la lista; lo escrito sin elegir deja el campo vacio.
+ */
+export const pickedId = (val: string, picked?: boolean) => (picked && val ? Number(val) : undefined);
+
+export function FinancialSection({ supplierId, supplierCost, ta, taCre, agencyCardId, isPaymentMethodRequired, showErrors, paymentMethods = [], suppliers = [], onChange }: FinancialSectionProps) {
+  const errorMetodoPago = showErrors && isPaymentMethodRequired && !agencyCardId
     ? "Selecciona el método de pago al proveedor"
     : undefined;
-  const supplierOptions = suppliers.map(s => ({ value: s.name, label: s.name }));
+  const supplierOptions = suppliers.map(s => ({ value: String(s.id), label: s.name }));
 
   const handleNumericChange = (field: 'supplierCost' | 'ta' | 'taCre', value: string) => {
     // Convertimos a número, prevenimos negativos y manejamos valores vacíos
@@ -277,8 +284,8 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
           <div className="relative">
             <LuBuilding className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
             <Combobox 
-              value={supplierName || ""} 
-              onChange={(val) => onChange({ supplierName: val })} 
+              value={supplierId ? String(supplierId) : ""}
+              onChange={(val, picked) => onChange({ supplierId: pickedId(val, picked) })}
               options={supplierOptions}
               placeholder="Seleccionar proveedor..."
               inputClassName="pl-8"
@@ -323,15 +330,15 @@ export function FinancialSection({ supplierName, supplierCost, ta, taCre, suppli
           <div className="relative group">
             <LuCreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
             <Combobox
-              value={supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
+              value={agencyCardId ? String(agencyCardId) : ""}
+              onChange={(val, picked) => onChange({ agencyCardId: pickedId(val, picked) })}
               options={paymentMethods.map(m => ({
-                value: m.name,
+                value: String(m.id),
                 label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name
               }))}
               placeholder="Seleccionar método..."
               error={errorMetodoPago}
-              inputClassName={`pl-8 ${errorMetodoPago ? '' : isPaymentMethodRequired && !supplierPaymentMethod ?'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 dark:bg-slate-900/50'}`}
+              inputClassName={`pl-8 ${errorMetodoPago ? '' : isPaymentMethodRequired && !agencyCardId ?'border-amber-200 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10' : 'border-emerald-200 dark:border-emerald-500/30 dark:bg-slate-900/50'}`}
               preventNumbers={false}
             />
           </div>

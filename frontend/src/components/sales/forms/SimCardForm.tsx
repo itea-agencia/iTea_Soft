@@ -117,9 +117,9 @@ export function SimCardForm({ sim, client, documentTypes, suppliers, paymentMeth
       </div>
 
       <FinancialSection 
-        supplierName={sim.supplierName}
+        supplierId={sim.supplierId}
         supplierCost={sim.supplierCost}
-        supplierPaymentMethod={sim.supplierPaymentMethod}
+        agencyCardId={sim.agencyCardId}
         isPaymentMethodRequired={true}
         paymentMethods={paymentMethods}
         ta={sim.ta}

@@ -318,9 +318,9 @@ export function LandTravelForm({ travel, client, clients = [], documentTypes, su
       </div>
 
       <FinancialSection 
-        supplierName={travel.supplierName}
+        supplierId={travel.supplierId}
         supplierCost={travel.supplierCost}
-        supplierPaymentMethod={travel.supplierPaymentMethod}
+        agencyCardId={travel.agencyCardId}
         isPaymentMethodRequired={true}
         paymentMethods={paymentMethods}
         ta={travel.ta}

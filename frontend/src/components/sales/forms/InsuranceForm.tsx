@@ -5,6 +5,7 @@ import { FormField, Input, Select, CurrencyInput, Combobox } from "../../ui/Form
 import { Button } from "../../ui/Button";
 import { InsuranceData, GuestInfo } from "../../../types";
 import { setTitular, hayTitular } from "./passengerHelpers";
+import { pickedId } from "./VoucherField";
 
 interface InsuranceFormProps {
   insurance: InsuranceData;
@@ -77,9 +78,9 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
           </FormField>
           <FormField label="Proveedor">
             <Combobox
-              value={insurance.supplier}
-              onChange={(val) => onChange({ supplier: val })}
-              options={data.config.suppliers.map((s: any) => ({ value: s.name, label: s.name }))}
+              value={insurance.supplierId ? String(insurance.supplierId) : ""}
+              onChange={(val, picked) => onChange({ supplierId: pickedId(val, picked) })}
+              options={data.config.suppliers.map((s: any) => ({ value: String(s.id), label: s.name }))}
               placeholder="Seleccionar proveedor..."
             />
           </FormField>
@@ -203,10 +204,10 @@ export function InsuranceForm({ insurance, onChange, data, client }: InsuranceFo
           </FormField>
           <FormField label="Método de Pago">
             <Combobox
-              value={insurance.supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
+              value={insurance.agencyCardId ? String(insurance.agencyCardId) : ""}
+              onChange={(val, picked) => onChange({ agencyCardId: pickedId(val, picked) })}
               options={data.config.cards.map((m: any) => ({
-                value: m.name,
+                value: String(m.id),
                 label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
               }))}
               placeholder="Seleccionar método..."

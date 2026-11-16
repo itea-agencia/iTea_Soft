@@ -57,8 +57,8 @@ export function validateWizardStep(
           const ticket = form.tickets[i];
           const isStrictlyValid = (() => {
             if (!ticket) return false;
-            if (!ticket.airline?.trim()) return false;
-            if (!ticket.supplier?.trim()) return false;
+            if (!ticket.airlineId) return false;
+            if (!ticket.supplierId) return false;
             if (!ticket.reservationNumber || ticket.reservationNumber.length !== 6 || !/^[A-Z0-9]+$/.test(ticket.reservationNumber)) return false;
             
             // Validate Passengers (Main Ticket Number)
@@ -111,7 +111,7 @@ export function validateWizardStep(
             // Campos financieros
             if (ticket.supplierCost < 0) return false;
             if (ticket.ta < 0) return false;
-            if (!ticket.supplierPaymentMethod) return false;
+            if (!ticket.agencyCardId) return false;
             return true;
           })();
 
@@ -479,7 +479,7 @@ export function validateWizardStep(
             if (finca.checkInDate && new Date(finca.checkInDate) < now) errors.push("Check-in no puede ser pasado");
             if (finca.checkOutDate && new Date(finca.checkOutDate) < now) errors.push("Check-out no puede ser pasado");
             if (finca.checkInDate && finca.checkOutDate && new Date(finca.checkOutDate) < new Date(finca.checkInDate)) errors.push("Check-out debe ser posterior al Check-in");
-            if (!finca.supplierPaymentMethod) errors.push("Método de Pago Proveedor (requerido)");
+            if (!finca.agencyCardId) errors.push("Método de Pago Proveedor (requerido)");
           }
 
           if (errors.length > 0) {
@@ -506,7 +506,7 @@ export function validateWizardStep(
             if (tour.adultsCount === undefined || isNaN(Number(tour.adultsCount)) || Number(tour.adultsCount) < 0 || Number(tour.adultsCount) > 999) errors.push("Número de Adultos (0-999)");
             if (tour.childrenCount === undefined || isNaN(Number(tour.childrenCount)) || Number(tour.childrenCount) < 0 || Number(tour.childrenCount) > 999) errors.push("Número de Niños (0-999)");
 
-            if (!tour.supplierPaymentMethod) errors.push("Método de Pago Proveedor (requerido)");
+            if (!tour.agencyCardId) errors.push("Método de Pago Proveedor (requerido)");
           }
 
           if (errors.length > 0) {
@@ -551,7 +551,7 @@ export function validateWizardStep(
             if (conv.startDate && new Date(conv.startDate) < now) errors.push("Fecha Inicio no puede ser pasada");
             if (conv.endDate && new Date(conv.endDate) < now) errors.push("Fecha Fin no puede ser pasada");
             if (conv.startDate && conv.endDate && new Date(conv.endDate) < new Date(conv.startDate)) errors.push("Fecha Fin debe ser posterior a la de Inicio");
-            if (!conv.supplierPaymentMethod) errors.push("Método de Pago Proveedor (requerido)");
+            if (!conv.agencyCardId) errors.push("Método de Pago Proveedor (requerido)");
           }
 
           if (errors.length > 0) {
@@ -783,7 +783,7 @@ export function validateWizardStep(
                 errors.push("Teléfono no puede contener letras");
               }
             }
-            if (!pet.supplierPaymentMethod) errors.push("Método de Pago Proveedor (requerido)");
+            if (!pet.agencyCardId) errors.push("Método de Pago Proveedor (requerido)");
           }
 
           if (errors.length > 0) {

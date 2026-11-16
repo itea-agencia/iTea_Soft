@@ -7,6 +7,7 @@ import { Button } from "../../ui/Button";
 import { HotelData, HotelGuestInfo } from "../../../types";
 import { setTitular, hayTitular, sanearCodigo } from "./passengerHelpers";
 import { DateTimePicker } from "./TicketForm";
+import { pickedId } from "./VoucherField";
 import { TIPOS_HOTEL } from "../../../utils/tiposHotel";
 
 interface HotelFormProps {
@@ -77,9 +78,9 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
           </FormField>
           <FormField label="Proveedor">
             <Combobox
-              value={hotel.supplier}
-              onChange={(val) => onChange({ supplier: val })}
-              options={data.config.suppliers.map((s: any) => ({ value: s.name, label: s.name }))}
+              value={hotel.supplierId ? String(hotel.supplierId) : ""}
+              onChange={(val, picked) => onChange({ supplierId: pickedId(val, picked) })}
+              options={data.config.suppliers.map((s: any) => ({ value: String(s.id), label: s.name }))}
               placeholder="Seleccionar proveedor..."
             />
           </FormField>
@@ -291,10 +292,10 @@ export function HotelForm({ hotel, onChange, data, triggerError, mainClient }: H
           </FormField>
           <FormField label="Método de Pago">
             <Combobox
-              value={hotel.supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
+              value={hotel.agencyCardId ? String(hotel.agencyCardId) : ""}
+              onChange={(val, picked) => onChange({ agencyCardId: pickedId(val, picked) })}
               options={data.config.cards.map((m: any) => ({
-                value: m.name,
+                value: String(m.id),
                 label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
               }))}
               placeholder="Seleccionar método..."

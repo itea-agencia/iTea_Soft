@@ -183,8 +183,11 @@ export interface FlightLeg {
   time?: string;
   arrivalDate?: string;
   ticketNumber?: string;
-  airline?: string;
-  baggagePlan?: string;
+  airlineId?: number;
+  baggagePlanId?: number;
+  /** Nombres que devuelve la API; no se mandan. */
+  airline?: string | null;
+  baggagePlan?: string | null;
   tipoTramo?: "ida" | "escala_ida" | "regreso" | "escala_regreso" | null;
 }
 
@@ -225,14 +228,19 @@ export interface HotelData {
   linkedToPlanIndex?: number | null;
   hotelName: string;
   destination: string;
-  supplier: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   reservationNumber: string;
   startDate: string;
   endDate: string;
   supplierCost: number;
   ta: number;
   taCre?: number;
-  supplierPaymentMethod: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   hotelType?: string;
   observations?: string;
   guests: HotelGuestInfo[];
@@ -247,7 +255,9 @@ export interface SupplierLine {
   detalleVentaId: string;
   category: string;
   serviceName: string | null;
+  supplierId?: number | null;
   supplier: string | null;
+  agencyCard?: string | null;
   paymentMethod: string | null;
   supplierCost: number;
   ta: number;
@@ -281,7 +291,11 @@ export type ConceptoPago = 'transporte' | 'hotel' | 'seguro' | 'paquete';
  */
 export interface SupplierPayment {
   concept: ConceptoPago;
+  supplierId?: number;
+  agencyCardId?: number;
+  /** Nombres que devuelve la API; no se mandan. */
   supplier?: string;
+  agencyCard?: string | null;
   paymentMethod?: string;
   supplierCost?: number;
   ta?: number;
@@ -321,9 +335,16 @@ export interface PlanData {
   flightDepartureArrivalDate?: string;
   flightReturnDate?: string;
   flightReturnArrivalDate?: string;
-  supplierPaymentMethod: string;
-  supplier: string;
-  airline: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
+  airlineId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  airline?: string | null;
   guests: PlanGuestInfo[];
   packageType?: 'own' | 'supplier';
   transportType?: 'Aéreo' | 'Terrestre';
@@ -336,18 +357,27 @@ export interface InsuranceData {
   linkedToPlanIndex?: number | null;
   insuranceType: string;
   phone: string;
-  supplier: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost: number;
   ta: number;
   taCre?: number;
-  supplierPaymentMethod: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   members: GuestInfo[];
 }
 
 export interface TicketData {
   linkedToPlanIndex?: number | null;
-  airline: string;
-  supplier: string;
+  airlineId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  airline?: string | null;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   reservationNumber: string;
   flightNumber: string;
   departureDate: string;
@@ -355,8 +385,12 @@ export interface TicketData {
   supplierCost: number;
   ta: number;
   taCre?: number;
-  supplierPaymentMethod: string;
-  baggagePlan: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
+  baggagePlanId?: number;
+  baggagePlan?: string | null;
   ticketNumber: string;
   seatNumber: string;
   flightMode: 'one_way' | 'round_trip';
@@ -399,10 +433,15 @@ export interface CheckInData {
   needsWheelchair: boolean;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -417,10 +456,15 @@ export interface MigrationData {
   requestedDocType: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -438,27 +482,37 @@ export interface SimCardData {
   deliveryEmail?: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
 export interface BaggageData {
   linkedToPlanIndex?: number | null;
   passengerName: string;
-  airline: string;
   airlineId?: number;
+  airline?: string | null;
   reservationNumber: string;
   fareType: string;
   personalItem: string;
   carryOn: string;
   checkedBag: string;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
   notes?: string;
   voucher?: { name: string; base64: string };
@@ -479,10 +533,15 @@ export interface CarRentalData {
   guaranteeCreditCard: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -503,10 +562,15 @@ export interface FincaData {
   additionalServices: string[];
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -525,10 +589,15 @@ export interface TourData {
   observations?: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
   guests: GuestInfo[];
   vouchers?: Array<{ name: string; base64: string }>;
@@ -551,10 +620,15 @@ export interface ConventionData {
   email: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -570,10 +644,15 @@ export interface RestaurantData {
   phone: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -590,10 +669,15 @@ export interface VisaData {
   email: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -607,10 +691,15 @@ export interface PassportData {
   phone: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -632,10 +721,15 @@ export interface PetServiceData {
   observations?: string;
   voucher?: { name: string; base64: string };
   sendVoucher?: boolean;
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
   taCre?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
 }
 
@@ -660,9 +754,14 @@ export interface LandTravelData {
     asiento?: string;
     asientoRegreso?: string;
   }[];
-  supplierName?: string;
+  supplierId?: number;
+  /** Nombre que devuelve la API; no se manda. */
+  supplier?: string | null;
   supplierCost?: number;
-  supplierPaymentMethod?: string;
+  agencyCardId?: number;
+  /** Lo que devuelve la API: la tarjeta y su método. No se manda. */
+  agencyCard?: string | null;
+  supplierPaymentMethod?: string | null;
   ta?: number;
   taCre?: number;
   voucher?: { name: string; base64: string };

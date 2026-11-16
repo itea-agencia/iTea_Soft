@@ -114,9 +114,9 @@ export function RestaurantForm({ restaurant, client, suppliers, paymentMethods, 
       </div>
 
       <FinancialSection 
-        supplierName={restaurant.supplierName}
+        supplierId={restaurant.supplierId}
         supplierCost={restaurant.supplierCost}
-        supplierPaymentMethod={restaurant.supplierPaymentMethod}
+        agencyCardId={restaurant.agencyCardId}
         isPaymentMethodRequired={false}
         paymentMethods={paymentMethods}
         ta={restaurant.ta}

@@ -144,9 +144,9 @@ export function VisaForm({ visa, client, documentTypes, suppliers, paymentMethod
       </div>
 
       <FinancialSection 
-        supplierName={visa.supplierName}
+        supplierId={visa.supplierId}
         supplierCost={visa.supplierCost}
-        supplierPaymentMethod={visa.supplierPaymentMethod}
+        agencyCardId={visa.agencyCardId}
         isPaymentMethodRequired={false}
         paymentMethods={paymentMethods}
         ta={visa.ta}

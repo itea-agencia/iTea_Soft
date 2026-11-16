@@ -6,14 +6,15 @@ import { FormField, Input, Combobox, Select, CurrencyInput } from "../../ui/Form
 import { Button } from "../../ui/Button";
 import { TicketData, FlightLeg } from "../../../types";
 import { setTitular, hayTitular, idxTitular } from "./passengerHelpers";
+import { pickedId } from "./VoucherField";
 
 interface TicketFormProps {
   ticket: TicketData;
   onChange: (updates: Partial<TicketData>) => void;
-  airlines: { name: string }[];
-  suppliers: { name: string }[];
+  airlines: { id: number; name: string }[];
+  suppliers: { id: number; name: string }[];
   airports: any[];
-  paymentMethods: { name: string; lastFourDigits?: string }[];
+  paymentMethods: { id: number; name: string; lastFourDigits?: string }[];
   baggage: {
     id: number;
     airlineName: string;
@@ -361,7 +362,14 @@ export function TicketForm({
 }: TicketFormProps & { mainClient?: any }) {
   // La alerta del wizard decia que faltaban campos sin decir cual: este era el unico
   // obligatorio sin asterisco ni marca.
-  const errorMetodoPago = showErrors && !ticket.supplierPaymentMethod
+  // Los planes de la aerolinea elegida. El catalogo trae el nombre de la aerolinea del plan,
+  // no su id, asi que se compara contra el nombre del id elegido (catalogo-por-id-2026-11).
+  const isAirlinePlan = (b: { airlineName: string }, airlineId?: number) => {
+    if (!airlineId) return true;
+    const name = airlines.find((a) => a.id === airlineId)?.name;
+    return (b.airlineName || '').trim().toLowerCase() === (name || '').trim().toLowerCase();
+  };
+  const errorMetodoPago = showErrors && !ticket.agencyCardId
     ? "Selecciona el método de pago al proveedor"
     : undefined;
   // Id estable para agrupar los radios de titular. Antes era `titular-${idx}`, un grupo
@@ -457,7 +465,7 @@ export function TicketForm({
     onChange({ legs: next });
   };
   const addLeg = () =>
-    onChange({ legs: [...ticket.legs, { origin: "", destination: "", flightNumber: "", seat: "", date: "", arrivalDate: "", airline: "", baggagePlan: "" }] });
+    onChange({ legs: [...ticket.legs, { origin: "", destination: "", flightNumber: "", seat: "", date: "", arrivalDate: "" }] });
   const removeLeg = (idx: number) =>
     onChange({ legs: ticket.legs.filter((_, i) => i !== idx) });
 
@@ -468,7 +476,7 @@ export function TicketForm({
     onChange({
       [key]: [
         ...currentStops,
-        { origin: "", destination: "", flightNumber: "", seat: "", date: "", arrivalDate: "", airline: "", baggagePlan: "" },
+        { origin: "", destination: "", flightNumber: "", seat: "", date: "", arrivalDate: "" },
       ],
     });
   };
@@ -615,20 +623,20 @@ export function TicketForm({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField label="Aerolínea">
                     <Combobox
-                      value={stop.airline || ticket.airline || ""}
-                      onChange={(val) => updateStop(type, sIdx, { airline: val })}
-                      options={airlines.map((a) => ({ value: a.name, label: a.name }))}
+                      value={String(stop.airlineId ?? ticket.airlineId ?? "")}
+                      onChange={(val, picked) => updateStop(type, sIdx, { airlineId: pickedId(val, picked) })}
+                      options={airlines.map((a) => ({ value: String(a.id), label: a.name }))}
                       placeholder="Ej: Avianca"
                     />
                   </FormField>
                   <FormField label="Plan de Equipaje">
                     <Combobox
-                      value={stop.baggagePlan || ticket.baggagePlan || ""}
-                      onChange={(val) => updateStop(type, sIdx, { baggagePlan: val })}
+                      value={String(stop.baggagePlanId ?? ticket.baggagePlanId ?? "")}
+                      onChange={(val, picked) => updateStop(type, sIdx, { baggagePlanId: pickedId(val, picked) })}
                       options={baggage
-                        .filter((b) => !(stop.airline || ticket.airline) || b.airlineName.toLowerCase() === (stop.airline || ticket.airline).toLowerCase())
+                        .filter((b) => isAirlinePlan(b, stop.airlineId ?? ticket.airlineId))
                         .map((b) => ({
-                          value: `${b.airlineName} - ${b.fareType}`,
+                          value: String(b.id),
                           label: `${b.airlineName} - ${b.fareType}`,
                         }))}
                       placeholder="Seleccionar plan..."
@@ -703,17 +711,17 @@ export function TicketForm({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField label="Aerolínea">
             <Combobox
-              value={ticket.airline}
-              onChange={(val) => onChange({ airline: val })}
-              options={airlines.map((a) => ({ value: a.name, label: a.name }))}
+              value={ticket.airlineId ? String(ticket.airlineId) : ""}
+              onChange={(val, picked) => onChange({ airlineId: pickedId(val, picked) })}
+              options={airlines.map((a) => ({ value: String(a.id), label: a.name }))}
               placeholder="Ej: Avianca"
             />
           </FormField>
           <FormField label="Proveedor">
             <Combobox
-              value={ticket.supplier}
-              onChange={(val) => onChange({ supplier: val })}
-              options={suppliers.map((s) => ({ value: s.name, label: s.name }))}
+              value={ticket.supplierId ? String(ticket.supplierId) : ""}
+              onChange={(val, picked) => onChange({ supplierId: pickedId(val, picked) })}
+              options={suppliers.map((s: any) => ({ value: String(s.id), label: s.name }))}
               placeholder="Ej: Viajes Éxito"
             />
           </FormField>
@@ -863,20 +871,20 @@ export function TicketForm({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField label="Aerolínea">
                     <Combobox
-                      value={leg.airline || ticket.airline || ""}
-                      onChange={(val) => updateLeg(lIdx, { airline: val })}
-                      options={airlines.map((a) => ({ value: a.name, label: a.name }))}
+                      value={String(leg.airlineId ?? ticket.airlineId ?? "")}
+                      onChange={(val, picked) => updateLeg(lIdx, { airlineId: pickedId(val, picked) })}
+                      options={airlines.map((a) => ({ value: String(a.id), label: a.name }))}
                       placeholder="Ej: Avianca"
                     />
                   </FormField>
                   <FormField label="Plan de Equipaje">
                     <Combobox
-                      value={leg.baggagePlan || ticket.baggagePlan || ""}
-                      onChange={(val) => updateLeg(lIdx, { baggagePlan: val })}
+                      value={String(leg.baggagePlanId ?? ticket.baggagePlanId ?? "")}
+                      onChange={(val, picked) => updateLeg(lIdx, { baggagePlanId: pickedId(val, picked) })}
                       options={baggage
-                        .filter((b) => !(leg.airline || ticket.airline) || b.airlineName.toLowerCase() === (leg.airline || ticket.airline).toLowerCase())
+                        .filter((b) => isAirlinePlan(b, leg.airlineId ?? ticket.airlineId))
                         .map((b) => ({
-                          value: `${b.airlineName} - ${b.fareType}`,
+                          value: String(b.id),
                           label: `${b.airlineName} - ${b.fareType}`,
                         }))}
                       placeholder="Seleccionar plan..."
@@ -998,20 +1006,20 @@ export function TicketForm({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <FormField label="Aerolínea Regreso">
                     <Combobox
-                      value={ticket.returnLeg?.airline || ticket.airline || ""}
-                      onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, airline: val } })}
-                      options={airlines.map((a) => ({ value: a.name, label: a.name }))}
+                      value={String(ticket.returnLeg?.airlineId ?? ticket.airlineId ?? "")}
+                      onChange={(val, picked) => onChange({ returnLeg: { ...ticket.returnLeg!, airlineId: pickedId(val, picked) } })}
+                      options={airlines.map((a) => ({ value: String(a.id), label: a.name }))}
                       placeholder="Ej: Avianca"
                     />
                   </FormField>
                   <FormField label="Plan de Equipaje Regreso">
                     <Combobox
-                      value={ticket.returnLeg?.baggagePlan || ticket.baggagePlan || ""}
-                      onChange={(val) => onChange({ returnLeg: { ...ticket.returnLeg!, baggagePlan: val } })}
+                      value={String(ticket.returnLeg?.baggagePlanId ?? ticket.baggagePlanId ?? "")}
+                      onChange={(val, picked) => onChange({ returnLeg: { ...ticket.returnLeg!, baggagePlanId: pickedId(val, picked) } })}
                       options={baggage
-                        .filter((b) => !(ticket.returnLeg?.airline || ticket.airline) || b.airlineName.toLowerCase() === (ticket.returnLeg?.airline || ticket.airline).toLowerCase())
+                        .filter((b) => isAirlinePlan(b, ticket.returnLeg?.airlineId ?? ticket.airlineId))
                         .map((b) => ({
-                          value: `${b.airlineName} - ${b.fareType}`,
+                          value: String(b.id),
                           label: `${b.airlineName} - ${b.fareType}`,
                         }))}
                       placeholder="Seleccionar plan..."
@@ -1250,10 +1258,10 @@ export function TicketForm({
           <FormField label="Método de Pago Proveedor *" error={errorMetodoPago}>
             <Combobox
               error={errorMetodoPago}
-              value={ticket.supplierPaymentMethod || ""}
-              onChange={(val) => onChange({ supplierPaymentMethod: val })}
-              options={paymentMethods.map((m) => ({
-                value: m.name,
+              value={ticket.agencyCardId ? String(ticket.agencyCardId) : ""}
+              onChange={(val, picked) => onChange({ agencyCardId: pickedId(val, picked) })}
+              options={paymentMethods.map((m: any) => ({
+                value: String(m.id),
                 label: m.lastFourDigits ? `${m.name} (**${m.lastFourDigits})` : m.name,
               }))}
               placeholder="Seleccionar método..."

@@ -93,8 +93,6 @@ export interface WizardProps {
 }
 
 export const INITIAL_TICKET = (client?: any): TicketData => ({
-  airline: "",
-  supplier: "",
   reservationNumber: "",
   flightNumber: "",
   departureDate: "",
@@ -102,8 +100,6 @@ export const INITIAL_TICKET = (client?: any): TicketData => ({
   supplierCost: 0,
   ta: 0,
   taCre: 0,
-  supplierPaymentMethod: "",
-  baggagePlan: "",
   ticketNumber: "",
   seatNumber: "",
   flightMode: "one_way",
@@ -111,7 +107,7 @@ export const INITIAL_TICKET = (client?: any): TicketData => ({
   returnHasStops: false,
   outboundStops: [],
   returnStops: [],
-  legs: [{ origin: "", destination: "", flightNumber: "", seat: "", date: "", airline: "", baggagePlan: "" }],
+  legs: [{ origin: "", destination: "", flightNumber: "", seat: "", date: "" }],
   passengers: [
     {
       name: client?.name || "",
@@ -130,14 +126,12 @@ export const INITIAL_TICKET = (client?: any): TicketData => ({
 export const INITIAL_HOTEL = (client?: any): HotelData => ({
   hotelName: "",
   destination: "",
-  supplier: "",
   reservationNumber: "",
   startDate: "",
   endDate: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
-  supplierPaymentMethod: "",
   hotelType: "",
   observations: "",
   // El titular se siembra marcado: si se deja sin marcar, el formulario muestra una fila
@@ -156,11 +150,9 @@ export const INITIAL_HOTEL = (client?: any): HotelData => ({
 export const INITIAL_INSURANCE = (client?: any): InsuranceData => ({
   insuranceType: "",
   phone: client?.phone || "",
-  supplier: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
-  supplierPaymentMethod: "",
   // El titular se siembra marcado, igual que en hotel y paquetes.
   members: [
     {
@@ -178,11 +170,9 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   packageName: "",
   packageRateId: "",
   hotelName: "",
-  supplier: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
-  supplierPaymentMethod: "",
   hotelReference: "",
   flightReturnNumber: "",
   supplierPayments: [],
@@ -197,7 +187,6 @@ export const INITIAL_PLAN = (client?: any): PlanData => ({
   flightDepartureArrivalDate: "",
   flightReturnDate: "",
   flightReturnArrivalDate: "",
-  airline: "",
   // Siempre se siembra el titular (igual que INITIAL_TICKET). Si se dejara vacio, el
   // formulario mostraria una fila que no existe en el estado y no se guardaria.
   guests: [
@@ -230,7 +219,6 @@ export const INITIAL_CHECKIN = (client?: any): CheckInData => ({
   needsWheelchair: false,
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -246,7 +234,6 @@ export const INITIAL_MIGRATION = (client?: any): MigrationData => ({
   requestedDocType: "Visa Turismo",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -266,21 +253,18 @@ export const INITIAL_SIMCARD = (client?: any): SimCardData => ({
   deliveryEmail: client?.email || "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
 });
 
 export const INITIAL_BAGGAGE = (client?: any): BaggageData => ({
   passengerName: client?.name || "",
-  airline: "",
   airlineId: undefined,
   reservationNumber: "",
   fareType: "",
   personalItem: "No",
   carryOn: "No",
   checkedBag: "No",
-  supplierName: "",
   supplierCost: 0,
   taCre: 0,
   ta: 0,
@@ -300,7 +284,6 @@ export const INITIAL_CAR_RENTAL = (client?: any): CarRentalData => ({
   guaranteeCreditCard: "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -328,7 +311,6 @@ export const INITIAL_LAND_TRAVEL = (client?: any): LandTravelData => ({
   }],
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -350,7 +332,6 @@ export const INITIAL_FINCA = (client?: any): FincaData => ({
   additionalServices: [],
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -370,7 +351,6 @@ export const INITIAL_TOUR = (client?: any): TourData => ({
   observations: "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -395,7 +375,6 @@ export const INITIAL_CONVENTION = (client?: any): ConventionData => ({
   email: client?.email || "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -412,7 +391,6 @@ export const INITIAL_RESTAURANT = (client?: any): RestaurantData => ({
   phone: client?.phone || "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -431,7 +409,6 @@ export const INITIAL_VISA = (client?: any): VisaData => ({
   email: client?.email || "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -447,7 +424,6 @@ export const INITIAL_PASSPORT = (client?: any): PassportData => ({
   phone: client?.phone || "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,
@@ -468,7 +444,6 @@ export const INITIAL_PET_SERVICE = (client?: any): PetServiceData => ({
   observations: "",
   voucher: undefined,
   sendVoucher: false,
-  supplierName: "",
   supplierCost: 0,
   ta: 0,
   taCre: 0,

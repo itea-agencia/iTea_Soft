@@ -272,11 +272,11 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                 {mainPassenger?.name && ` - ${mainPassenger.name}`}
               </h4>
               {renderGrid([
-                { label: "Aerolínea", value: ticket.airlineName || ticket.airline },
+                { label: "Aerolínea", value: ticket.airline },
                 { label: "Equipaje", value: ticket.baggagePlan || "-" },
                 { label: "Reserva Global", value: ticket.reservationNumber || "-" },
                 { label: "Vuelo Ida", value: ticket.flightNumber || ticket.legs?.[0]?.flightNumber || "-" },
-                { label: "Proveedor", value: ticket.supplier || ticket.supplierName },
+                { label: "Proveedor", value: ticket.supplier },
                 { label: "Costo Proveedor", value: ticket.supplierCost ? formatCurrency(ticket.supplierCost) : "-" },
               ])}
 
@@ -297,7 +297,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                       <div className="font-semibold text-gray-800 dark:text-slate-200">{getAirport(leg.origin, airportMap)} <span className="text-gray-400 dark:text-slate-500 mx-1">→</span> {getAirport(leg.destination, airportMap)}</div>
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Aerolínea</span>
-                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.airline || ticket.airlineName || ticket.airline || "-"}</span>
+                        <span className="font-medium text-gray-800 dark:text-slate-200">{leg.airline || ticket.airline || "-"}</span>
                       </div>
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Equipaje</span>
@@ -351,7 +351,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                       <div className="font-semibold text-blue-800 dark:text-blue-300">{getAirport(leg.origin, airportMap)} <span className="text-gray-400 dark:text-slate-500 mx-1">→</span> {getAirport(leg.destination, airportMap)}</div>
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Aerolínea</span>
-                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.airline || ticket.airlineName || ticket.airline || "-"}</span>
+                        <span className="font-medium text-blue-800 dark:text-blue-300">{leg.airline || ticket.airline || "-"}</span>
                       </div>
                       <div className="text-gray-600 dark:text-slate-400">
                         <span className="font-bold text-[10px] text-gray-400 dark:text-slate-500 block uppercase mb-0.5">Equipaje</span>
@@ -420,7 +420,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
             </h4>
             {renderGrid([
               { label: "Plan", value: ins.planName || ins.insuranceType },
-              { label: "Proveedor", value: ins.supplier || ins.supplierName },
+              { label: "Proveedor", value: ins.supplier },
               { label: "Costo Proveedor", value: ins.supplierCost ? formatCurrency(ins.supplierCost) : "-" },
               { label: "Contacto Emergencia", value: ins.contactName },
               { label: "Teléfono Emergencia", value: ins.contactNumber },
@@ -452,7 +452,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                 // un paquete cargado de la forma anterior. Con pagos, el bloque de abajo
                 // los lista con su monto y su metodo, y un nombre suelto ademas del
                 // desglose puede contradecir a la lista.
-                ...(plan.totals ? [] : [{ label: "Proveedor", value: plan.supplier || plan.supplierName || "—" }]),
+                ...(plan.totals ? [] : [{ label: "Proveedor", value: plan.supplier || "—" }]),
                 { label: "Pagado a Proveedores", value: costoDelPaquete(plan) },
                 { label: "Adultos", value: plan.adultsCount },
                 { label: "Menores", value: plan.childrenCount !== undefined && plan.childrenCount !== null ? plan.childrenCount : 0 },
@@ -482,7 +482,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                       {plan.transportType === 'Terrestre' ? 'Transporte Terrestre' : 'Transporte Aéreo'}
                     </p>
                     <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300">
-                      {plan.airlineName || plan.airline}
+                      {plan.airline}
                     </span>
                   </div>
                   {renderGrid([
@@ -514,7 +514,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
                           <span className="font-bold text-gray-700 dark:text-slate-200">{l.serviceName || l.category}</span>
                           <span className="text-gray-500 dark:text-slate-400">
                             {l.supplier ? ` · ${l.supplier}` : ' · sin proveedor'}
-                            {l.paymentMethod ? ` · ${l.paymentMethod}` : ''}
+                            {(l.agencyCard || l.paymentMethod) ? ` · ${l.agencyCard || l.paymentMethod}` : ''}
                           </span>
                         </div>
                         <span className="text-gray-800 dark:text-slate-200 shrink-0">
@@ -557,7 +557,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Asiento", value: item.seat },
               { label: "Equipaje/Maletas", value: item.baggage },
               { label: "Teléfono", value: item.phone },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
               { label: "Usa Silla Ruedas", value: item.needsWheelchair ? "Sí" : "No" },
             ])}
@@ -583,7 +583,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Nro Documento", value: item.docNumber },
               { label: "Vencimiento de Documento", value: item.passportExpiry ? formatDate(item.passportExpiry) : "-" },
               { label: "País Destino", value: item.destinationCountry },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
@@ -603,7 +603,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Tipo SIM", value: item.simType },
               { label: "Método de Entrega", value: item.deliveryMethod },
               ...(item.deliveryEmail ? [{ label: "Correo de entrega", value: item.deliveryEmail }] : []),
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
@@ -625,7 +625,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Salida", value: `${lt.departureDate ? formatDate(lt.departureDate) : "-"} ${lt.departureTime ? formatTimeAMPM(lt.departureTime) : ""}`.trim() },
               // El operador es el nombre que escribe el asesor; el proveedor es el registro
               // de Configuración, y es el que va como Tercero en la factura de Siigo.
-              { label: "Proveedor", value: lt.supplier || lt.supplierName },
+              { label: "Proveedor", value: lt.supplier },
             ])}
             {lt.isRoundTrip && (
               <div className="mt-3 pt-3 border-t border-gray-100">
@@ -653,9 +653,9 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Lugar Recogida", value: item.pickupLocation },
               { label: "Categoría Auto", value: item.vehicleCategory },
               { label: "Cond. Adicionales", value: item.additionalDrivers },
-              { label: "Tipo de Seguro", value: item.insuranceType },
+              { label: "Tipo de Seguro", value: item.insuranceType === "all_risk" ? "Todo Riesgo" : item.insuranceType === "basic" ? "Básico" : item.insuranceType },
               { label: "Garantía de Tarjeta", value: item.guaranteeCreditCard },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
@@ -676,7 +676,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Niños", value: item.childrenCount },
               { label: "Tiene Mascotas", value: item.hasPets ? "Sí" : "No" },
               { label: "Tipo Mascota", value: item.petType },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.additionalServices && item.additionalServices.length > 0 && (
@@ -704,7 +704,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Requiere Transporte", value: item.needsTransport ? "Sí" : "No" },
               { label: "Punto de Encuentro", value: item.pickupPoint },
               { label: "Teléfono", value: item.phone },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {renderPassengers(item.guests)}
@@ -740,7 +740,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Tipo de Evento", value: item.eventType },
               { label: "Equipos AV", value: Array.isArray(item.avEquipment) ? item.avEquipment.join(", ") : item.avEquipment },
               { label: "Requiere Catering", value: item.hasCatering ? "Sí" : "No" },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.cateringNotes && (
@@ -766,7 +766,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Tipo de Menú", value: item.menuType },
               { label: "Ocasión Especial", value: item.specialOccasion },
               { label: "Teléfono", value: item.phone },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.dietaryRestrictions && (
@@ -795,7 +795,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Tipo de Visa", value: item.visaType },
               { label: "Viaje Estimado", value: item.estimatedTravelDate ? formatDate(item.estimatedTravelDate) : "-" },
               { label: "Correo", value: item.email },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
@@ -815,7 +815,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Tipo Trámite", value: item.processType },
               { label: "Viaje Estimado", value: item.estimatedTravelDate ? formatDate(item.estimatedTravelDate) : "-" },
               { label: "Teléfono", value: item.phone },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
           </div>
@@ -837,7 +837,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Fecha de Viaje", value: item.travelDate ? formatDate(item.travelDate) : "-" },
               { label: "País Destino", value: item.destinationCountry },
               { label: "Teléfono", value: item.phone },
-              { label: "Proveedor", value: item.supplier || item.supplierName },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
             ])}
             {item.medicalConditions && (
@@ -863,7 +863,7 @@ export default function PaginatedProductTab({ saleId, tabKey, tabLabel, airportM
               { label: "Artículo Personal", value: item.personalItem },
               { label: "Equipaje de Mano", value: item.carryOn },
               { label: "Equipaje de Bodega", value: item.checkedBag },
-              { label: "Proveedor", value: item.supplierName || item.supplier },
+              { label: "Proveedor", value: item.supplier },
               { label: "Costo Proveedor", value: item.supplierCost ? formatCurrency(item.supplierCost) : "-" },
               { label: "T.A", value: item.ta ? formatCurrency(item.ta) : "-" },
               { label: "T.A CRE", value: item.taCre ? formatCurrency(item.taCre) : "-" },

@@ -183,9 +183,9 @@ export function ConventionForm({ convention, client, suppliers, paymentMethods, 
       </div>
 
       <FinancialSection 
-        supplierName={convention.supplierName}
+        supplierId={convention.supplierId}
         supplierCost={convention.supplierCost}
-        supplierPaymentMethod={convention.supplierPaymentMethod}
+        agencyCardId={convention.agencyCardId}
         isPaymentMethodRequired={true}
         showErrors={showErrors}
         paymentMethods={paymentMethods}

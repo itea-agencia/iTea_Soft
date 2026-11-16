@@ -292,7 +292,7 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
 
       <div className="v-flight-details-box" style={{ flexDirection: 'column', gap: '12px', alignItems: 'stretch' }}>
         {legsToRender.map((leg, li) => {
-          const legAirlineName = leg.airline || (ticket as any).airlineName || ticket.airline || '—';
+          const legAirlineName = leg.airline || ticket.airline || '—';
           const legBaggagePlan = leg.baggagePlan || ticket.baggagePlan;
           const bg = baggageList?.find(b => legBaggagePlan === `${b.airlineName} - ${b.fareType}` || b.fareType === legBaggagePlan);
           return (
@@ -450,7 +450,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
             {plans.map((plan, i) => {
               const esTerrestre = plan.transportType === 'Terrestre';
               const hayTransporte = Boolean(
-                (plan as any).airlineName || plan.airline || plan.flightNumber ||
+                plan.airline || plan.flightNumber ||
                 plan.flightReturnNumber || plan.flightDepartureDate || plan.flightReturnDate,
               );
               return (
@@ -491,7 +491,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                     <div className="v-data-grid cols-2">
                       <DataCell
                         label={esTerrestre ? 'Empresa de transporte' : 'Aerolínea'}
-                        value={(plan as any).airlineName || plan.airline}
+                        value={plan.airline}
                         highlight
                       />
                       <DataCell
@@ -653,7 +653,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Recogida" value={car.pickupDate ? formatDate(car.pickupDate) : null} />
                   <DataCell label="Devolución" value={car.returnDate ? formatDate(car.returnDate) : null} />
                   <DataCell label="Lugar de Recogida" value={car.pickupLocation} />
-                  <DataCell label="Tipo de Seguro" value={car.insuranceType ? <span className="v-badge">{(car.insuranceType as string) === 'all_risk' || (car.insuranceType as string) === 'todo_riesgo' ? 'Todo Riesgo' : 'Básico'}</span> : null} />
+                  <DataCell label="Tipo de Seguro" value={car.insuranceType ? <span className="v-badge">{car.insuranceType === 'all_risk' ? 'Todo Riesgo' : 'Básico'}</span> : null} />
                   <DataCell label="Conductores Adicionales" value={car.additionalDrivers?.toString()} />
                   {car.guaranteeCreditCard && <DataCell label="Tarjeta Garantía" value={car.guaranteeCreditCard} />}
                 </div>
