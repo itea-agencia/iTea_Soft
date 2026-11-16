@@ -87,7 +87,7 @@ Quedan a propósito, para volver a probar:
 - las ventas 165 a 167 (titular en tours y seguros), con los pasajeros de documento `9910000101` y `9910000102`;
 - la venta 168: las 17 categorías con todos los campos, creada por la API (pasajeros con documentos `99300001xx` a `99300012xx`);
 - las ventas 169–171: repetición de la 168 con vínculos guardados (169, total 187.000), dos paquetes con tiquete/check-in/tour vinculados al segundo (170, total 198.000) y el mismo caso con posición vacía intermedia en el request (171, total 198.000);
-- las ventas 172 a 176: vínculos al paquete tras la revisión de la validación (172 a 174) y la venta completa con el catálogo nuevo (175, y 176 con nombres en otro caso y un tramo vacío). Desde el plan de equipaje validado, la venta de prueba lleva "Copa Airlines - Basic" (177, y 178 con una escala de AVIANCA sin plan);
+- las ventas 172 a 176: vínculos al paquete tras la revisión de la validación (172 a 174) y la venta completa con el catálogo nuevo (175, y 176 con nombres en otro caso y un tramo vacío). Desde el plan de equipaje validado, la venta de prueba lleva "Copa Airlines - Basic" (177, y 178 con una escala de AVIANCA sin plan); la 179 con dos pagos ("Mixto") y la 180 con uno ("Otro"), del arreglo del método principal;
 - la tabla auxiliar `_prueba_propios_ventas`.
 
 Esa tabla hace que `prisma migrate dev` pida resetear la base local. Mientras exista, las migraciones locales se aplican con `prisma migrate deploy`.

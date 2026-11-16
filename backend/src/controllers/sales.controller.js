@@ -1801,8 +1801,11 @@ exports.create = async (req, res, next) => {
 
     // Los catalogos son chicos: se cargan una vez y cada nombre se resuelve en memoria.
     const catalog = await loadCatalog(prisma);
-    const metodoPagoId = refId(catalog.paymentMethods, data.paymentMethod, 'La venta', 'el método de pago');
     const paymentMethodIds = pagos.map((p, i) => refId(catalog.paymentMethods, p.method, `Pago #${i + 1}`, 'el método de pago'));
+    // El metodo principal se deriva de los pagos. El asistente manda un nombre ("Mixto" con
+    // varios pagos, "Otro" si no reconoce el metodo) que no esta en el catalogo: validarlo
+    // rechazaba toda venta con dos o mas pagos. Con varios o ninguno, queda vacio como antes.
+    const metodoPagoId = paymentMethodIds.length === 1 ? paymentMethodIds[0] : null;
 
     const result = await prisma.$transaction(async (tx) => {
 
