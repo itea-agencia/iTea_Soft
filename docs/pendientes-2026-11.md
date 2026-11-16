@@ -8,6 +8,7 @@ Lo que queda por hacer después de la rama `feat/hallazgo-16-carga-y-mantenimien
    - la paginación de Ventas y el panel de créditos (`correcciones-auditoria-paginacion-2026-11.md`, puntos de revisión 3 a 8);
    - la tarjeta del cliente en créditos, el tipo de mascota, los campos quitados de finca, migración y SIM, el correo de entrega de la eSIM y el voucher del tour vinculado;
    - pasajeros y personas (`pasajeros-con-documento-2026-11.md`): el error por pasajero en el asistente, el catálogo de tipos en check-in, migración, visa y SIM, el dueño de la mascota en solo lectura y el nombre de comisionistas.
+   - titular en tours y seguros (`titular-por-producto-2026-11.md`): el radio, que el titular no se borre, y que detalle y voucher lo muestren primero (sección 8 de `pruebas-pantalla-hallazgo-16.md`);
    - migración y visa (commits `a357200` y `4db83f9`): formulario, pestaña y PDF de la venta 201 deben decir "Trámite Migratorio", "Tipo de Documento", "Nro/N° Documento" y "Vencimiento de Documento", y el PDF de visa debe traer el vencimiento. El vencimiento es el del documento elegido, no siempre el del pasaporte (`2026-09-17-vocabulario.md`).
 2. **Probar a mano la venta de las 17 categorías** (hallazgo 16). Ya se cargó por API en local: la 201 es la completa, con proveedores y todos los campos; la 198 fue un primer intento con datos incompletos. Falta la revisión en pantalla, con la lista de `pruebas-pantalla-hallazgo-16.md`; lo verificado por API está en `resultado-venta-gigante-local-2026-11-11.md`. Por API tampoco se probaron el tour vinculado a un plan, las escalas, un rol con alcance propios ni el PDF final: esos quedan solo para la pantalla.
 3. **Desplegar con el orden correcto.** El merge corre dos migraciones en producción: `20261111190000` borra 5 columnas vacías del tour y el seguro (comprobado otra vez el 2026-11-16: 1 tour sin `tour_nombre` y 0 seguros; conviene repetir el conteo justo antes del merge, porque el borrado no se deshace), y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
@@ -24,7 +25,6 @@ Detalle en `docs/specs/2026-09-17-dinero-y-totales.md`, "Lo que queda abierto".
 
 Detalle en `docs/specs/2026-09-17-datos-por-pasajero.md`.
 
-- **Titular por defecto:** `esTitular: p.esTitular ?? true` (`sales.controller.js`) marca titular a todos cuando el producto no manda el dato. Sigue guardando datos mal hoy: es lo primero de esta lista.
 - **Escalas:** guardan un asiento por tramo, compartido. Cerrarlo pide una tabla pasajero × tramo.
 - **Migración con pasaporte:** si se cambia el documento del cliente por su pasaporte, se crea otra persona.
 
@@ -75,6 +75,8 @@ Quedan a propósito, para volver a probar:
 - un cliente con NIT `900123456` y otro con pasaporte `PA991234`;
 - el usuario administrador `prueba.gigante@local` (id 10), con su contraseña entregada en el chat;
 - las ventas 198 a 201: 198 con las 17 categorías, 199 a crédito con $80.000 de saldo para probar abonos, 200 anulada (rechaza pagos) y 201 completa;
+- el usuario administrador `pruebas@itea.test` (id 17), con su contraseña en `backend/prisma/seed.js`, para probar por la API;
+- las ventas 165 a 167 (titular en tours y seguros), con los pasajeros de documento `9910000101` y `9910000102`;
 - la tabla auxiliar `_prueba_propios_ventas`.
 
 Esa tabla hace que `prisma migrate dev` pida resetear la base local. Mientras exista, las migraciones locales se aplican con `prisma migrate deploy`.

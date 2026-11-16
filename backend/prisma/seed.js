@@ -320,6 +320,13 @@ async function main() {
       email: 'carlos@itea.com', telefono: '3004567890', birthDate: new Date('1988-11-25'),
       role: 'asesor', password: 'Vendor123', status: 'inactive'
     },
+    // Usuario para probar por la API local (curl), creado el 2026-11-16. El seed solo corre en
+    // local; en produccion no existe. Cumple passwordPolicy.js.
+    {
+      nombres: 'Pruebas', apellidos: 'Local', tipoDocumentoId: tipoCC.id, documento: '9910000099',
+      email: 'pruebas@itea.test', telefono: '3009999999', birthDate: new Date('1990-01-01'),
+      role: 'admin', password: 'Pt2d0a43e83fc5!9a'
+    },
   ];
 
   const usuariosMap = {};
