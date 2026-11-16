@@ -12,7 +12,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 const { escaparHtml } = require('../utils/stringUtils');
 const { markHolder } = require('../utils/holder');
 const { resolvePlanLinks } = require('../utils/planLinks');
-const { findId, loadCatalog } = require('../utils/catalog');
+const { findId, loadCatalog, planMatchesAirline } = require('../utils/catalog');
 const { auditar } = require('../utils/auditoria');
 const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
@@ -219,7 +219,12 @@ function construirTramoVuelo(leg, item, tipoTramo, orden, ctx) {
   const originAirportId = refId(catalog.airports, leg.origin, where, 'el aeropuerto');
   const destAirportId = refId(catalog.airports, leg.destination, where, 'el aeropuerto');
   const legAirlineId = refId(catalog.airlines, leg.airline || item.airline, where, 'la aerolínea');
-  const legBaggagePlanId = refId(catalog.baggagePlans, leg.baggagePlan || item.baggagePlan, where, 'el plan de equipaje');
+  // El plan elegido para el tramo tiene que ser de su aerolinea. El del tiquete se hereda
+  // solo si tambien lo es: en una conexion de otra aerolinea el asesor no lo eligio.
+  const ownPlanId = refId(catalog.baggagePlans, leg.baggagePlan, where, 'el plan de equipaje');
+  if (ownPlanId !== null) checkPlanAirline(catalog, ownPlanId, legAirlineId, leg.baggagePlan, leg.airline || item.airline, where);
+  const inheritedPlanId = ownPlanId === null ? refId(catalog.baggagePlans, item.baggagePlan, where, 'el plan de equipaje') : null;
+  const legBaggagePlanId = ownPlanId ?? (planMatchesAirline(catalog, inheritedPlanId, legAirlineId) ? inheritedPlanId : null);
   return {
     aeropuertoOrigenId: originAirportId,
     aeropuertoDestinoId: destAirportId,
@@ -1193,6 +1198,7 @@ const PRODUCT_HANDLERS = {
     transform: (d, detalleId, tx, { catalog, where }) => {
       const aerolineaId = refId(catalog.airlines, d.airline, where, 'la aerolínea');
       const planEquipajeId = refId(catalog.baggagePlans, d.baggagePlan, where, 'el plan de equipaje');
+      checkPlanAirline(catalog, planEquipajeId, aerolineaId, d.baggagePlan, d.airline, where);
       return {
         detalleVentaId: detalleId,
         aerolineaId,
@@ -1706,6 +1712,12 @@ async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaI
  * null, como antes; uno escrito que no existe es un 400 que nombra el servicio y el valor,
  * en vez de guardarse null sin aviso. Diseño catalogo-sin-perdida-silenciosa-2026-11.
  */
+/** 400 si el plan de equipaje elegido no es de la aerolinea (hallazgo 3 de la venta por API). */
+function checkPlanAirline(catalog, planId, airlineId, planValue, airlineValue, where) {
+  if (planMatchesAirline(catalog, planId, airlineId)) return;
+  throw Object.assign(new Error(`${where}: el plan de equipaje «${String(planValue).trim()}» no es de la aerolínea «${String(airlineValue).trim()}»`), { statusCode: 400, code: 'VALIDATION_ERROR' });
+}
+
 function refId(index, value, where, what) {
   const id = findId(index, value);
   if (id === undefined) {

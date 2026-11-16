@@ -44,7 +44,7 @@ async function loadCatalog(db) {
     db.aerolineas.findMany({ select: { id: true, nombre: true } }),
     db.metodosPago.findMany({ select: { id: true, nombre: true } }),
     db.tarjetasAgencia.findMany({ select: { nombre: true, metodoPagoId: true } }),
-    db.politicasEquipaje.findMany({ select: { id: true, tipoTarifa: true, aerolinea: { select: { nombre: true } } } }),
+    db.politicasEquipaje.findMany({ select: { id: true, tipoTarifa: true, aerolineaId: true, aerolinea: { select: { nombre: true } } } }),
     db.aeropuertos.findMany({ select: { id: true, codigoIata: true } }),
   ]);
   return {
@@ -59,7 +59,17 @@ async function loadCatalog(db) {
       id: p.id, keys: [`${String(p.aerolinea?.nombre || '').trim()} - ${p.tipoTarifa}`, p.tipoTarifa],
     }))),
     airports: buildIndex(airports.map(a => ({ id: a.id, keys: [a.codigoIata] }))),
+    planAirline: new Map(plans.map(p => [p.id, p.aerolineaId])),
   };
 }
 
-module.exports = { buildIndex, findId, loadCatalog };
+/**
+ * true si el plan de equipaje es de la aerolinea, o si falta alguno de los dos y no hay con
+ * que comparar. Diseño plan-equipaje-de-su-aerolinea-2026-11.
+ */
+function planMatchesAirline(catalog, planId, airlineId) {
+  if (planId === null || planId === undefined || airlineId === null || airlineId === undefined) return true;
+  return catalog.planAirline.get(planId) === airlineId;
+}
+
+module.exports = { buildIndex, findId, loadCatalog, planMatchesAirline };

@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 // Regla de backend/src/utils/catalog.js: un valor de catálogo que no existe no se pierde.
 // Diseño catalogo-sin-perdida-silenciosa-2026-11.
 const require = createRequire(import.meta.url);
-const { buildIndex, findId } = require('../../backend/src/utils/catalog.js');
+const { buildIndex, findId, planMatchesAirline } = require('../../backend/src/utils/catalog.js');
 
 const suppliers = buildIndex([
   { id: 1, keys: ['VIAJES COLOMBIA ONLINE'] },
@@ -48,4 +48,12 @@ test('una fila sin id no se indexa (tarjeta de agencia sin método de pago)', ()
   const methods = buildIndex([{ id: 1, keys: ['Efectivo'] }, { id: null, keys: ['Tarjeta Huerfana'] }]);
   assert.equal(findId(methods, 'Tarjeta Huerfana'), undefined);
   assert.equal(findId(methods, 'efectivo'), 1);
+});
+
+test('el plan de equipaje tiene que ser de la aerolínea, si hay con qué comparar', () => {
+  const catalog = { planAirline: new Map([[37, 1], [50, 3]]) };
+  assert.equal(planMatchesAirline(catalog, 37, 1), true);
+  assert.equal(planMatchesAirline(catalog, 37, 3), false);
+  assert.equal(planMatchesAirline(catalog, null, 3), true);
+  assert.equal(planMatchesAirline(catalog, 50, null), true);
 });
