@@ -29,7 +29,7 @@ El usuario confirmó el enfoque A. Para el voucher confirmó reutilizar los bloq
 
 ## Diseño
 
-**Función pura** `planLinkIndex(value, planCount)` en `backend/src/utils/planLinks.js`: devuelve `null` si no hay vínculo (`undefined`, `null` o `''`), el índice si es un entero entre `0` y `planCount - 1` (acepta el número o su texto, `0` o `'0'`), y lanza un error con `statusCode: 400` y `code: 'VALIDATION_ERROR'` en cualquier otro caso. Prueba en `frontend/tests/planLinks.test.mjs`, como `markHolder`.
+**Función pura** `resolvePlanLinks(data, products)` en `backend/src/utils/planLinks.js`, llamada antes de abrir la transacción, junto a `passengerError`: recorre cada categoría y devuelve `[{ field, itemIndex, planIndex }]` por servicio vinculado, o lanza un 400 `VALIDATION_ERROR` que nombra el servicio con el nombre de `NOMBRE_CATEGORIA` ("Tour #1", "Paquete #2"). Sin vínculo es `undefined`, `null` o `''`; el índice solo se acepta como entero o como texto de dígitos (`/^\d+$/`), porque `Number()` también convierte `'1e0'`, `'0x1'` o `' 1'`; tiene que apuntar a una posición de `planData` con un paquete no vacío; un paquete con vínculo se rechaza. Prueba en `frontend/tests/planLinks.test.mjs`, como `markHolder`.
 
 Comprobar el tipo antes de convertir: booleanos, arreglos, objetos y texto compuesto solo por espacios son inválidos; no pueden convertirse accidentalmente en el paquete 0.
 
@@ -37,7 +37,7 @@ Comprobar el tipo antes de convertir: booleanos, arreglos, objetos y texto compu
 
 1. Cada `detalleObj` lleva `id: randomUUID()`.
 2. Los paquetes se cuentan por su posición en `data.planData`, incluidas las filas vacías que el loop salta, para que el índice que manda el asistente coincida. Un paquete saltado no tiene id; vincular a él es un 400.
-3. Durante el recorrido se guardan los vínculos pendientes por id del hijo e índice del paquete. Solo después de construir todos los detalles se resuelven contra el mapa completo de paquetes: los tiquetes se recorren antes que los paquetes y también deben poder vincularse. Cada servicio pasa `item.linkedToPlanIndex` por `planLinkIndex`; un índice válido sin paquete creado también se rechaza. Un paquete con un vínculo no vacío se rechaza con 400.
+3. Durante el recorrido se guardan los vínculos pendientes por id del hijo e índice del paquete. Solo después de construir todos los detalles se resuelven contra el mapa completo de paquetes: los tiquetes se recorren antes que los paquetes y también deben poder vincularse. El índice de cada servicio sale de lo que ya devolvió `resolvePlanLinks`, así que dentro de la transacción no queda nada que validar.
 4. Tras resolver todos los vínculos y ejecutar `tx.ventas.create`, un `tx.detalleVenta.updateMany({ where: { id: { in: hijos } }, data: { parentDetalleId } })` por paquete, dentro de la misma transacción.
 5. El mensaje de error dice la categoría y el número del servicio, como `passengerError`: "Tour #1: el paquete vinculado no existe".
 
@@ -47,13 +47,15 @@ Detalle técnico para cumplir la conservación de datos en PDF: `Sales.tsx` repa
 
 **Compatibilidad y publicación.** El código local del asistente manda `linkedToPlanIndex` y `wizardData.ts` corrige los índices cuando se quita un paquete. La afirmación sobre el bundle publicado en GoDaddy proviene del diagnóstico previo; no se verificó en esta revisión. El alcance acordado requiere publicar frontend y backend. Propuesta técnica del agente: publicar primero el frontend compatible con ventas sin vínculos y después el backend, para evitar que el voucher anterior muestre los vínculos nuevos con el resumen incompleto. Comprobar esa compatibilidad en local antes de preparar el despliegue. No requiere migración: la columna y la relación ya existen.
 
-**Nombres.** Lo nuevo va en inglés: `planLinkIndex`, `planDetailIds`, `childLinks`.
+**Nombres.** Lo nuevo va en inglés: `resolvePlanLinks`, `planDetailIds`, `childLinks`.
+
+**Revisión del 2026-11-16.** La primera versión validaba dentro de la transacción, después de buscar proveedores y crear personas que luego se revertían, y se probaba cargando el controlador entero en una máquina virtual con un Prisma simulado (`createPlanLinks.test.mjs`), que se rompía con cualquier dependencia nueva. Al sacar la regla a una función pura llamada antes de la transacción, esa prueba se borró: la regla se prueba directo y la escritura real se verifica por la API. El mensaje dice "Paquete", como la interfaz, y no "Planes" (invariante 5).
 
 **Spec primero.** Se actualizó `2026-09-17-dinero-y-totales.md` antes del código: la fila "Total de un paquete" indica que el vínculo se guarda al crear desde `linkedToPlanIndex`, solo admite servicios a paquetes de la misma venta y un índice inválido es un 400.
 
 ## Verificación
 
-- Prueba unitaria de `planLinkIndex`: sin vínculo, índice válido como número y como texto, fuera de rango, negativo, decimal, texto no numérico, booleanos, espacios, arreglos y objetos. Falla antes del módulo.
+- Prueba unitaria de `resolvePlanLinks`: sin vínculo, servicio antes que el paquete, posición vacía, fuera de rango, formatos que `Number()` aceptaría (`'1e0'`, `'0x1'`, espacios), paquete vinculado a paquete y el nombre del servicio en el mensaje. Falla antes de la función.
 - Con permiso: reconstruir el backend y repetir la venta 168 por la API. El check-in y el tour quedan con `parent_detalle_id` del paquete, `monto_total` sigue en 187.000, y `GET /sales/:id` trae `parentDetalleId` y los `totals` del paquete sumando sus hijos. Un `linkedToPlanIndex: 5` con un solo paquete da 400 y no crea nada.
 - `node --check`, `npm test`.
 - Con permiso: probar varios paquetes, un tiquete vinculado al segundo y una posición vacía intermedia sin desplazar índices. Rechazar vínculos a la posición vacía, sin paquetes y entre paquetes. Ante un rechazo, verificar que tampoco queden personas nuevas, detalles ni pagos de esa solicitud.

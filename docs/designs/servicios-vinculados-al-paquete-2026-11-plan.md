@@ -4,6 +4,8 @@
 
 **Estado:** implementación y verificaciones automáticas/API/SQL realizadas el 2026-11-16. Ventas 169–171 listas para la revisión visual del usuario; publicación y cierre pendientes.
 
+> **Nota (2026-11-16):** la validación con `planLinkIndex` dentro de la transacción y `createPlanLinks.test.mjs` se reemplazaron por `resolvePlanLinks`, antes de la transacción. Ver "Revisión del 2026-11-16" en el diseño.
+
 **Goal:** Guardar los vínculos de servicios a paquetes y mostrar cada servicio completo una sola vez dentro de su paquete en el voucher, sin cambiar los totales de la venta.
 
 **Architecture:** El servidor asigna UUID a los detalles, resuelve los vínculos con el mapa completo de paquetes y los aplica después del create en la misma transacción. El voucher reutiliza los bloques de categoría actuales para servicios independientes y vinculados, conservando sus datos y los cortes del PDF.

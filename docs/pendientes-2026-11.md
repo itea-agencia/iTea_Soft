@@ -48,6 +48,8 @@ Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
 - **Nombres de ida y vuelta (invariante 5):** `supplierName` entra y sale `supplier`; el seguro del auto entra `all_risk`/`basic` y sale `todo_riesgo`/`basico`.
 - **Datos que no se leen:** el método de pago al proveedor de cada producto no vuelve en la API; las fechas, origen y destino generales de `detalle_venta` se llenan dispares y nadie los lee.
 - **Visa y pasaporte:** el solicitante no queda como pasajero. Falta decidir si es a propósito.
+- **Desglose del paquete distinto según el endpoint:** `GET /sales/:id` llama a `agregarPorPadre` sin los `pagosProveedor`, así que el paquete sale como una sola línea (3 en la venta 172); `GET /sales/:id/details`, el que usa la pestaña, trae las 5. El total es el mismo (33.000). Hoy ninguna pantalla lee el desglose de `getById`.
+- **Etiqueta del total del paquete:** la tarjeta suma sus servicios vinculados y esos servicios vuelven a aparecer en su pestaña. Decidir con quien usa la pantalla si hace falta aclararlo ("incluye servicios vinculados").
 
 ## Auditoría del frontend
 

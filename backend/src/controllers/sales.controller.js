@@ -11,7 +11,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 // nombre con `<` se leia como etiqueta.
 const { escaparHtml } = require('../utils/stringUtils');
 const { markHolder } = require('../utils/holder');
-const { planLinkIndex } = require('../utils/planLinks');
+const { resolvePlanLinks } = require('../utils/planLinks');
 const { auditar } = require('../utils/auditoria');
 const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
@@ -1822,6 +1822,11 @@ exports.create = async (req, res, next) => {
     if (simEmailError) {
       return error(res, simEmailError, 400, 'VALIDATION_ERROR');
     }
+    // Antes de la transaccion: un vinculo invalido se rechaza sin tocar la base.
+    const planLinks = resolvePlanLinks(data, Object.entries(PRODUCT_HANDLERS).map(([field, h]) => ({
+      field, category: h.category, name: NOMBRE_CATEGORIA[h.category] || h.nombreServicio,
+    })));
+    const linkedPlanOf = new Map(planLinks.map(l => [`${l.field}:${l.itemIndex}`, l.planIndex]));
     const pagos = Array.isArray(data.payments) ? data.payments : [];
     if (pagos.some(p => !(Number(p.amount) > 0))) {
       return error(res, 'Cada pago debe ser mayor a cero', 400, 'VALIDATION_ERROR');
@@ -1927,27 +1932,11 @@ exports.create = async (req, res, next) => {
       const detalleVentasData = [];
       const planDetailIds = [];
       const childLinks = [];
-      const planCount = Array.isArray(data.planData) ? data.planData.length : 0;
 
       for (const [field, handler] of Object.entries(PRODUCT_HANDLERS)) {
         const items = Array.isArray(data[field]) ? data[field] : [];
         for (const [itemIndex, item] of items.entries()) {
           if (!item || Object.keys(item).length === 0) continue;
-
-          const label = `${handler.nombreServicio} #${itemIndex + 1}`;
-          let linkedPlanIndex;
-          try {
-            linkedPlanIndex = planLinkIndex(item.linkedToPlanIndex, planCount);
-            if (handler.category === 'planes' && linkedPlanIndex !== null) {
-              const err = new Error('Los paquetes no pueden vincularse entre sí');
-              err.statusCode = 400;
-              err.code = 'VALIDATION_ERROR';
-              throw err;
-            }
-          } catch (err) {
-            err.message = `${label}: ${err.message}`;
-            throw err;
-          }
 
           const fin = financierosDe(item);
           const [resolvedSupplierId, resolvedSupplierPaymentMethodId] = await Promise.all([
@@ -2041,20 +2030,16 @@ exports.create = async (req, res, next) => {
 
           detalleVentasData.push(detalleObj);
           if (handler.category === 'planes') planDetailIds[itemIndex] = detalleObj.id;
-          if (linkedPlanIndex !== null) childLinks.push({ childId: detalleObj.id, planIndex: linkedPlanIndex, label });
+          const planIndex = linkedPlanOf.get(`${field}:${itemIndex}`);
+          if (planIndex !== undefined) childLinks.push({ childId: detalleObj.id, planIndex });
         }
       }
 
       // Los tiquetes se preparan antes que los paquetes; resolver cuando el mapa esté completo.
+      // resolvePlanLinks ya garantizo que cada posicion es un paquete no vacio, y esos se crean.
       const childrenByPlan = new Map();
-      for (const { childId, planIndex, label } of childLinks) {
+      for (const { childId, planIndex } of childLinks) {
         const parentDetalleId = planDetailIds[planIndex];
-        if (!parentDetalleId) {
-          const err = new Error(`${label}: el paquete vinculado no existe`);
-          err.statusCode = 400;
-          err.code = 'VALIDATION_ERROR';
-          throw err;
-        }
         if (!childrenByPlan.has(parentDetalleId)) childrenByPlan.set(parentDetalleId, []);
         childrenByPlan.get(parentDetalleId).push(childId);
       }
