@@ -113,7 +113,9 @@ Y un paquete con pagos tiene que cuadrar al peso con ellos: esa comprobación es
 - **Las ventas 84 y 86 tienen la comisión liquidada estando anuladas** ($161.367 y
   $125.350, liquidación del 2026-09-09). La pantalla de comisiones sumaba lo pendiente sin
   excluir las anuladas. El código ya no lo permite, pero esas dos no se tocaron: si la
-  comisión se recupera lo decide el negocio, no un script.
+  comisión se recupera lo decide el negocio, no un script. Desde el 2026-11-16 quedan como deuda técnica, igual que la venta 64 y el
+  `monto_pagado_credito` de las ventas viejas: son anteriores a los arreglos y no se tocan
+  salvo que el negocio lo pida.
 
 - **El `useEffect` de totales del wizard sigue escribiendo estado derivado.** Ahora que el
   servidor calcula el que persiste, ese cálculo es solo vista previa; reescribirlo arrastra

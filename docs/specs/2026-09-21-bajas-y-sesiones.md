@@ -131,7 +131,4 @@ Y por la API, con un usuario de prueba:
   tabla desapareciera; lo único que se confirmó después es que `permisos_rol` sigue teniendo
   filas para `asesor` y `freelancer` y que se ven intencionales, no que nadie haya perdido una
   restricción sin que se note.
-- **`liberar_correos_de_eliminados` sigue sin correr en producción.** El modelo nuevo ya se usó
-  ahí de verdad —un usuario real se eliminó, su correo se le dio a otra persona como usuario
-  nuevo, sin heredar nada— pero eso fue con el código nuevo. Los que se habían "eliminado" con
-  el modelo viejo, antes de este cambio, siguen reteniendo su correo hasta correr el script.
+- ~~**`liberar_correos_de_eliminados` sigue sin correr en producción.**~~ Al 2026-11-16 no tiene nada que hacer: 0 candidatos en producción (inactivos con la persona eliminada y sin `deleted_at`), y el único usuario eliminado ya tiene el correo liberado. Queda 1 inactivo con la persona viva, que el script lista para revisar a mano y no toca.
