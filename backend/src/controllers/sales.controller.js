@@ -12,6 +12,7 @@ const { getSamturLogoBase64 } = require('../utils/logoHelper');
 const { escaparHtml } = require('../utils/stringUtils');
 const { markHolder } = require('../utils/holder');
 const { resolvePlanLinks } = require('../utils/planLinks');
+const { findId, loadCatalog } = require('../utils/catalog');
 const { auditar } = require('../utils/auditoria');
 const { docNumberError, fullNameError } = require('../utils/persons');
 const { tipoHotelDe } = require('../utils/tipoHotel');
@@ -212,15 +213,13 @@ function financierosDe(item) {
  * El tipo (`ida`, `escala_ida`, `regreso`, `escala_regreso`) lo decide el servidor segun la
  * seccion del formulario de la que viene el tramo, no un dato que mande el navegador.
  */
-async function construirTramoVuelo(tx, leg, item, tipoTramo, orden, memCache) {
+function construirTramoVuelo(leg, item, tipoTramo, orden, ctx) {
   if (!leg || !leg.origin || !leg.destination) return null;
-  const [originAirportId, destAirportId, legAirlineId, legBaggagePlanId] = await Promise.all([
-    resolveAirportId(tx, leg.origin, memCache),
-    resolveAirportId(tx, leg.destination, memCache),
-    (leg.airline || item.airline) ? resolveAirlineId(tx, leg.airline || item.airline) : null,
-    (leg.baggagePlan || item.baggagePlan) ? resolveBaggagePlanId(tx, leg.baggagePlan || item.baggagePlan) : null
-  ]);
-  if (!originAirportId || !destAirportId) return null;
+  const { catalog, where } = ctx;
+  const originAirportId = refId(catalog.airports, leg.origin, where, 'el aeropuerto');
+  const destAirportId = refId(catalog.airports, leg.destination, where, 'el aeropuerto');
+  const legAirlineId = refId(catalog.airlines, leg.airline || item.airline, where, 'la aerolínea');
+  const legBaggagePlanId = refId(catalog.baggagePlans, leg.baggagePlan || item.baggagePlan, where, 'el plan de equipaje');
   return {
     aeropuertoOrigenId: originAirportId,
     aeropuertoDestinoId: destAirportId,
@@ -246,7 +245,7 @@ const conceptoValido = (c) => (CONCEPTOS_PAGO.includes(c) ? c : null);
  * Una fila sin importe y sin proveedor no es un pago y no se guarda: asi una fila que el
  * usuario agrego y dejo vacia no ensucia la factura ni el desglose.
  */
-async function armarPagosProveedor(tx, item, resolverProveedor, resolverMetodo, cache) {
+function armarPagosProveedor(item, ctx) {
   const pagos = Array.isArray(item.supplierPayments) ? item.supplierPayments : [];
   const out = [];
   for (let i = 0; i < pagos.length; i++) {
@@ -261,11 +260,11 @@ async function armarPagosProveedor(tx, item, resolverProveedor, resolverMetodo, 
 
     out.push({
       concepto,
-      proveedorId: await resolverProveedor(tx, pago.supplier, cache),
+      proveedorId: refId(ctx.catalog.suppliers, pago.supplier, ctx.where, 'el proveedor'),
       costoProveedor,
       ta,
       taCre,
-      metodoPagoProveedorId: await resolverMetodo(tx, pago.paymentMethod, cache),
+      metodoPagoProveedorId: refId(ctx.catalog.paymentMethods, pago.paymentMethod, ctx.where, 'el método de pago al proveedor'),
       orden: i + 1,
     });
   }
@@ -1191,11 +1190,9 @@ const PRODUCT_HANDLERS = {
   ticketData: {
     category: 'tiqueteria', table: 'prodTiqueteria',
     nombreServicio: 'Tiquetería',
-    transform: async (d, detalleId, tx) => {
-      const [aerolineaId, planEquipajeId] = await Promise.all([
-        resolveAirlineId(tx, d.airline),
-        resolveBaggagePlanId(tx, d.baggagePlan)
-      ]);
+    transform: (d, detalleId, tx, { catalog, where }) => {
+      const aerolineaId = refId(catalog.airlines, d.airline, where, 'la aerolínea');
+      const planEquipajeId = refId(catalog.baggagePlans, d.baggagePlan, where, 'el plan de equipaje');
       return {
         detalleVentaId: detalleId,
         aerolineaId,
@@ -1234,8 +1231,8 @@ const PRODUCT_HANDLERS = {
   planData: {
     category: 'planes', table: 'prodPlanes',
     nombreServicio: 'Planes',
-    transform: async (d, detalleId, tx) => {
-      const aerolineaId = await resolveAirlineId(tx, d.airline);
+    transform: (d, detalleId, tx, { catalog, where }) => {
+      const aerolineaId = refId(catalog.airlines, d.airline, where, 'la aerolínea');
       return {
         detalleVentaId: detalleId,
         paqueteId: d.packageId ? (parseInt(d.packageId) || null) : null,
@@ -1453,8 +1450,8 @@ const PRODUCT_HANDLERS = {
   baggageData: {
     category: 'equipaje', table: 'prodEquipajes',
     nombreServicio: 'Equipaje',
-    transform: async (d, detalleId, tx) => {
-      const aerolineaId = await resolveAirlineId(tx, d.airline || d.airlineId);
+    transform: (d, detalleId, tx, { catalog, where }) => {
+      const aerolineaId = refId(catalog.airlines, d.airline || d.airlineId, where, 'la aerolínea');
       return {
         detalleVentaId: detalleId,
         aerolineaId,
@@ -1704,34 +1701,17 @@ async function findOrCreatePersona(tx, name, docType, docNumber, defaultPersonaI
   return newPersona.id;
 }
 
-async function resolvePaymentMethodId(prisma, paymentMethod, cache) {
-  if (!paymentMethod) return null;
-  const id = parseInt(paymentMethod);
-  if (!isNaN(id)) return id;
-  if (cache && cache.paymentMethods && cache.paymentMethods.has(paymentMethod)) return cache.paymentMethods.get(paymentMethod);
-  
-  // Try metodosPago first (by name)
-  const method = await prisma.metodosPago.findFirst({ where: { nombre: paymentMethod } });
-  if (method) {
-    if (cache && cache.paymentMethods) cache.paymentMethods.set(paymentMethod, method.id);
-    return method.id;
+/**
+ * Id de un catalogo (utils/catalog.js) para lo que mando el formulario. Un valor vacio es
+ * null, como antes; uno escrito que no existe es un 400 que nombra el servicio y el valor,
+ * en vez de guardarse null sin aviso. Diseño catalogo-sin-perdida-silenciosa-2026-11.
+ */
+function refId(index, value, where, what) {
+  const id = findId(index, value);
+  if (id === undefined) {
+    throw Object.assign(new Error(`${where}: ${what} «${String(value).trim()}» no existe`), { statusCode: 400, code: 'VALIDATION_ERROR' });
   }
-  // Try tarjetasAgencia (by name) — return associated metodoPago id
-  const card = await prisma.tarjetasAgencia.findFirst({
-    where: { nombre: paymentMethod },
-    include: { metodoPago: true }
-  });
-  const resId = card?.metodoPago?.id || null;
-  if (cache && cache.paymentMethods) cache.paymentMethods.set(paymentMethod, resId);
-  return resId;
-}
-
-async function resolveAirlineId(prisma, airline) {
-  if (!airline) return null;
-  const id = parseInt(airline);
-  if (!isNaN(id)) return id;
-  const match = await prisma.aerolineas.findFirst({ where: { nombre: airline } });
-  return match?.id || null;
+  return id;
 }
 
 // El proveedor llega con dos nombres distintos segun el formulario: los cuatro que traen
@@ -1740,61 +1720,6 @@ async function resolveAirlineId(prisma, airline) {
 // esos trece guardaban el detalle sin proveedor.
 function nombreProveedorDe(item) {
   return item.supplier || item.supplierName || item.supplierId || null;
-}
-
-async function resolveSupplierId(prisma, supplier, cache) {
-  if (!supplier) return null;
-  const id = parseInt(supplier);
-  if (!isNaN(id)) return id;
-  if (cache && cache.suppliers && cache.suppliers.has(supplier)) return cache.suppliers.get(supplier);
-
-  const match = await prisma.proveedores.findFirst({ where: { nombre: supplier } });
-  const resId = match?.id || null;
-  if (cache && cache.suppliers) cache.suppliers.set(supplier, resId);
-  return resId;
-}
-
-async function resolveAirportId(prisma, iata, cache) {
-  if (!iata) return null;
-  if (cache && cache.airports && cache.airports.has(iata)) return cache.airports.get(iata);
-  
-  const parsedId = parseInt(iata);
-  if (!isNaN(parsedId)) {
-    const match = await prisma.aeropuertos.findUnique({ where: { id: parsedId } });
-    if (match) {
-      if (cache && cache.airports) cache.airports.set(iata, match.id);
-      return match.id;
-    }
-  }
-
-  const match = await prisma.aeropuertos.findFirst({ where: { codigoIata: iata } });
-  const resId = match?.id || null;
-  if (cache && cache.airports) cache.airports.set(iata, resId);
-  return resId;
-}
-
-async function resolveBaggagePlanId(prisma, baggagePlan) {
-  if (!baggagePlan) return null;
-  const id = parseInt(baggagePlan);
-  if (!isNaN(id)) return id;
-  
-  const parts = baggagePlan.split(' - ');
-  if (parts.length >= 2) {
-    const airlineName = parts[0];
-    const fareType = parts.slice(1).join(' - ');
-    const match = await prisma.politicasEquipaje.findFirst({
-      where: {
-        AND: [
-          { aerolinea: { nombre: airlineName } },
-          { tipoTarifa: fareType }
-        ]
-      }
-    });
-    if (match) return match.id;
-  }
-  
-  const match = await prisma.politicasEquipaje.findFirst({ where: { tipoTarifa: baggagePlan } });
-  return match?.id || null;
 }
 
 exports.create = async (req, res, next) => {
@@ -1862,15 +1787,12 @@ exports.create = async (req, res, next) => {
       asesorId = asesor.id;
     }
 
-    const metodoPagoId = await resolvePaymentMethodId(prisma, data.paymentMethod);
+    // Los catalogos son chicos: se cargan una vez y cada nombre se resuelve en memoria.
+    const catalog = await loadCatalog(prisma);
+    const metodoPagoId = refId(catalog.paymentMethods, data.paymentMethod, 'La venta', 'el método de pago');
+    const paymentMethodIds = pagos.map((p, i) => refId(catalog.paymentMethods, p.method, `Pago #${i + 1}`, 'el método de pago'));
 
     const result = await prisma.$transaction(async (tx) => {
-      const memCache = {
-        suppliers: new Map(),
-        paymentMethods: new Map(),
-        airports: new Map(),
-        airlines: new Map()
-      };
 
       const cliente = await tx.clientes.findUnique({
         where: { id: data.clientId },
@@ -1939,12 +1861,11 @@ exports.create = async (req, res, next) => {
           if (!item || Object.keys(item).length === 0) continue;
 
           const fin = financierosDe(item);
-          const [resolvedSupplierId, resolvedSupplierPaymentMethodId] = await Promise.all([
-            resolveSupplierId(tx, nombreProveedorDe(item), memCache),
-            resolvePaymentMethodId(tx, item.supplierPaymentMethod, memCache)
-          ]);
+          const ctx = { catalog, where: `${NOMBRE_CATEGORIA[handler.category] || handler.nombreServicio} #${itemIndex + 1}` };
+          const resolvedSupplierId = refId(catalog.suppliers, nombreProveedorDe(item), ctx.where, 'el proveedor');
+          const resolvedSupplierPaymentMethodId = refId(catalog.paymentMethods, item.supplierPaymentMethod, ctx.where, 'el método de pago al proveedor');
 
-          const productData = await handler.transform(item, undefined, tx);
+          const productData = await handler.transform(item, undefined, tx, ctx);
           delete productData.detalleVentaId; // Omit foreign key for nested create
 
           const passengerRows = [];
@@ -1997,9 +1918,7 @@ exports.create = async (req, res, next) => {
 
           // Las filas de pago a proveedor del servicio. En un paquete son el transporte,
           // el hotel y el seguro, cada uno con su proveedor y su metodo de pago.
-          const pagosProveedorData = await armarPagosProveedor(
-            tx, item, resolveSupplierId, resolvePaymentMethodId, memCache,
-          );
+          const pagosProveedorData = armarPagosProveedor(item, ctx);
           if (pagosProveedorData.length > 0) {
             detalleObj.pagosProveedor = { create: pagosProveedorData };
           }
@@ -2016,7 +1935,7 @@ exports.create = async (req, res, next) => {
             ];
             for (const seccion of seccionesTramo) {
               for (const leg of seccion.legs) {
-                const tramo = await construirTramoVuelo(tx, leg, item, seccion.tipoTramo, tramosVueloData.length + 1, memCache);
+                const tramo = construirTramoVuelo(leg, item, seccion.tipoTramo, tramosVueloData.length + 1, ctx);
                 if (tramo) tramosVueloData.push(tramo);
               }
             }
@@ -2044,8 +1963,6 @@ exports.create = async (req, res, next) => {
         childrenByPlan.get(parentDetalleId).push(childId);
       }
 
-      const metodoPagoId = await resolvePaymentMethodId(tx, data.paymentMethod, memCache);
-
       const ventaCreateData = {
         clienteId: data.clientId,
         usuarioId: asesorId,
@@ -2068,9 +1985,9 @@ exports.create = async (req, res, next) => {
 
       if (pagos.length > 0) {
         ventaCreateData.pagosVenta = {
-          create: pagos.map(p => ({
+          create: pagos.map((p, i) => ({
             monto: Number(p.amount),
-            metodoPagoId: parseInt(p.method) || null,
+            metodoPagoId: paymentMethodIds[i],
             referencia: p.reference || null
           }))
         };
@@ -2357,7 +2274,7 @@ exports.registerPayment = async (req, res, next) => {
       return error(res, 'El monto del pago debe ser mayor a cero', 400, 'VALIDATION_ERROR');
     }
 
-    const metodoPagoId = await resolvePaymentMethodId(prisma, method);
+    const metodoPagoId = refId((await loadCatalog(prisma)).paymentMethods, method, 'El pago', 'el método de pago');
     let newPaidAmount, newStatus, newPayment;
 
     await prisma.$transaction(async (tx) => {

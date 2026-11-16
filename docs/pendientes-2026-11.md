@@ -37,7 +37,7 @@ Ventas y registros anteriores a los arreglos, que se dejan como están por decis
 Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
 
 - **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Validado en pantalla por el usuario el 2026-11-16; falta publicar backend y frontend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
-- **Catálogo sin error:** un proveedor, aerolínea, método de pago o plan de equipaje que no existe se guarda vacío, y un aeropuerto desconocido descarta el tramo, todo sin avisar.
+- **Tramo a medio llenar:** un tramo con origen y sin destino (o al revés) se sigue omitiendo sin aviso, como antes del arreglo del catálogo. El formulario pide los dos.
 - **Plan de equipaje:** no se valida que sea de la aerolínea del tiquete.
 - **Nombres de ida y vuelta (invariante 5):** `supplierName` entra y sale `supplier`; el seguro del auto entra `all_risk`/`basic` y sale `todo_riesgo`/`basico`.
 - **Datos que no se leen:** el método de pago al proveedor de cada producto no vuelve en la API; las fechas, origen y destino generales de `detalle_venta` se llenan dispares y nadie los lee.
@@ -63,6 +63,7 @@ Detalle en `docs/specs/2026-09-21-autenticacion-y-autorizacion.md` y `2026-09-21
 
 ## Cerrado en esta revisión
 
+- **Catálogo sin error (hallazgo 2 de la venta por API):** un proveedor, método de pago, aerolínea, plan de equipaje o aeropuerto escrito que no existe ahora es un 400 que nombra el servicio y el valor, en ventas y abonos; los nombres se encuentran aunque cambien mayúsculas o espacios. Diseño `docs/designs/catalogo-sin-perdida-silenciosa-2026-11.md`. Los 7 productos de junio a agosto sin proveedor quedan como están.
 - **Etiqueta del total del paquete:** en la prueba de pantalla del 2026-11-16 se entendió que el total del paquete incluye sus servicios vinculados. No se cambia.
 - **`liberar_correos_de_eliminados`:** no tiene nada que hacer en producción. El 2026-11-16 había 0 candidatos (inactivos con la persona eliminada y sin `deleted_at`); el único usuario eliminado ya tiene el correo liberado. Queda 1 inactivo con la persona viva, que es un "Desactivar" normal o un caso a revisar a mano, no trabajo del script.
 
@@ -81,11 +82,12 @@ Quedan a propósito, para volver a probar:
 - un cliente, un responsable, un usuario y un comisionista de prueba, con documentos `9910000010` a `9910000040`;
 - un cliente con NIT `900123456` y otro con pasaporte `PA991234`;
 - el usuario administrador `prueba.gigante@local` (id 10), con su contraseña entregada en el chat;
-- las ventas 198 a 201: 198 con las 17 categorías, 199 a crédito con $80.000 de saldo para probar abonos, 200 anulada (rechaza pagos) y 201 completa;
+- ~~las ventas 198 a 201~~: al 2026-11-16 no existen en la base local (el id más alto es 176). Para abonos sirve la 155, a crédito;
 - el usuario administrador `pruebas@itea.test` (id 17), con su contraseña en `SEED_TEST_PASSWORD` de `backend/.env` (no va al repo), para probar por la API;
 - las ventas 165 a 167 (titular en tours y seguros), con los pasajeros de documento `9910000101` y `9910000102`;
 - la venta 168: las 17 categorías con todos los campos, creada por la API (pasajeros con documentos `99300001xx` a `99300012xx`);
 - las ventas 169–171: repetición de la 168 con vínculos guardados (169, total 187.000), dos paquetes con tiquete/check-in/tour vinculados al segundo (170, total 198.000) y el mismo caso con posición vacía intermedia en el request (171, total 198.000);
+- las ventas 172 a 176: vínculos al paquete tras la revisión de la validación (172 a 174) y la venta completa con el catálogo nuevo (175, y 176 con nombres en otro caso y un tramo vacío);
 - la tabla auxiliar `_prueba_propios_ventas`.
 
 Esa tabla hace que `prisma migrate dev` pida resetear la base local. Mientras exista, las migraciones locales se aplican con `prisma migrate deploy`.
