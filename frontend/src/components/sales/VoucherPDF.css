@@ -276,31 +276,101 @@
   margin-top: 3px;
 }
 
-.itea-voucher .v-flight-details-box {
+/* Un bloque por tramo: encabezado con su tipo, ruta y aerolinea en columnas, y equipaje. */
+.itea-voucher .v-legs {
   background: linear-gradient(90deg, #eef6f7 0%, #f0f7f8 100%) !important;
-  padding: 14px 20px;
   border-top: 1px solid #cce8eb;
+  padding: 4px 20px;
+}
+
+.itea-voucher .v-leg {
+  padding: 14px 0;
+}
+
+.itea-voucher .v-leg + .v-leg {
+  border-top: 1px solid #cce8eb;
+}
+
+.itea-voucher .v-leg-head {
   display: flex;
-  gap: 32px;
+  justify-content: space-between;
   align-items: center;
 }
 
-.itea-voucher .v-fd-col {
+.itea-voucher .v-leg-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #102846 !important;
+}
+
+.itea-voucher .v-leg-pill {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #dbeafe !important;
+  color: #1e40af !important;
+}
+
+.itea-voucher .v-leg-pill-plan {
+  text-transform: none;
+  letter-spacing: 0;
+  background: #e2e8f0 !important;
+  color: #102846 !important;
+}
+
+.itea-voucher .v-leg-grid {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  margin-top: 10px;
 }
 
-.itea-voucher .v-fd-label {
-  font-size: 12px;
-  color: #334155 !important;
-  font-weight: 500;
+.itea-voucher .v-leg-grid > div {
+  flex: 1;
+  padding-right: 16px;
 }
 
-.itea-voucher .v-fd-val {
+.itea-voucher .v-leg-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #64748b !important;
+  margin-bottom: 3px;
+}
+
+.itea-voucher .v-leg-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #102846 !important;
+}
+
+.itea-voucher .v-leg-sub {
+  font-size: 11px;
+  color: #64748b !important;
+  margin-top: 2px;
+}
+
+.itea-voucher .v-leg-bag {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.itea-voucher .v-leg-bag-title {
   font-size: 13px;
   font-weight: 700;
   color: #102846 !important;
+}
+
+.itea-voucher .v-leg-bag-lines {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #334155 !important;
 }
 
 .itea-voucher .v-badge-orange {

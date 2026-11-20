@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Sale, TicketData } from '../../types';
+import { FlightLeg, Sale, TicketData } from '../../types';
 import { formatDate, formatDateTime, formatCurrency, formatSaleId } from '../../utils/formatters';
 import { type AirportInfo } from '../../utils/airportInfo';
 import './VoucherPDF.css';
@@ -207,6 +207,13 @@ function describirViajeros(adultos?: number, ninos?: number) {
   return partes.join(', ');
 }
 
+const LEG_TYPE_LABELS: Record<NonNullable<FlightLeg['tipoTramo']>, string> = {
+  ida: 'Ida',
+  escala_ida: 'Escala ida',
+  regreso: 'Regreso',
+  escala_regreso: 'Escala regreso',
+};
+
 function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }: { ticket: TicketData; idx: number; airportMap?: Record<string, AirportInfo>; baggageList?: any[]; embedded?: boolean }) {
   const mainLegs = ticket.legs && ticket.legs.length > 0 ? ticket.legs : [];
   const returnLeg = ticket.returnLeg ? [ticket.returnLeg] : [];
@@ -290,49 +297,67 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
         </tbody>
       </table>
 
-      <div className="v-flight-details-box" style={{ flexDirection: 'column', gap: '12px', alignItems: 'stretch' }}>
+      {/* Antes cada tramo era una linea, "BOG → MDE:AVIANCA", y la ruta y la aerolinea se
+          leian como un solo texto. Ahora cada tramo es un bloque con la ruta y la aerolinea
+          en columnas con su etiqueta, y el equipaje debajo (diseño del usuario, 2026-11-19). */}
+      <div className="v-legs">
         {legsToRender.map((leg, li) => {
           const legAirlineName = leg.airline || ticket.airline || '—';
           const legBaggagePlan = leg.baggagePlan || ticket.baggagePlan;
           const bg = baggageList?.find(b => legBaggagePlan === `${b.airlineName} - ${b.fareType}` || b.fareType === legBaggagePlan);
+          const legType = 'tipoTramo' in leg && leg.tipoTramo ? LEG_TYPE_LABELS[leg.tipoTramo] : null;
+          const hasRoute = leg.origin && leg.destination && leg.origin !== '—';
+          const cities = hasRoute
+            ? [airportMap?.[leg.origin]?.city, airportMap?.[leg.destination]?.city].filter(Boolean).join(' – ')
+            : '';
+          const ticketNumber = leg.ticketNumber || ticket.ticketNumber || ticket.passengers?.[0]?.nroTiquete;
           return (
-            <div key={`leg-details-${idx}-${li}`} style={{ display: 'flex', width: '100%', gap: '15px', flexWrap: 'wrap', paddingBottom: li < legsToRender.length - 1 ? '10px' : '0', borderBottom: li < legsToRender.length - 1 ? '1px dashed #e5e7eb' : 'none' }}>
-              <div style={{ minWidth: '150px' }}>
-                <span className="v-fd-label">{leg.origin && leg.destination ? `${leg.origin} → ${leg.destination}` : 'Información'}:</span>
-                <span className="v-badge">{legAirlineName}</span>
+            <div key={`leg-details-${idx}-${li}`} className="v-leg">
+              <div className="v-leg-head">
+                <span className="v-leg-title">Tramo {li + 1}</span>
+                {legType && <span className="v-leg-pill">{legType}</span>}
               </div>
-              <div style={{ flex: 1, minWidth: '200px' }}>
-                <span className="v-fd-label">Equipaje:</span>
-                <span className="v-fd-val">
-                  <strong style={{ display: 'block', color: '#111827' }}>{legBaggagePlan || 'No especificado'}</strong>
-                  {bg && (
-                    <span style={{ fontSize: '0.85em', color: '#6b7280', display: 'block', marginTop: '2px' }}>
-                      Personal: {bg.personalItem || 'N/A'} &bull; Cabina: {bg.carryOn || 'N/A'} &bull; Bodega: {bg.checkedBag || 'N/A'}
-                    </span>
-                  )}
-                </span>
+              <div className="v-leg-grid">
+                <div>
+                  <div className="v-leg-label">Ruta</div>
+                  <div className="v-leg-value">{hasRoute ? `${leg.origin} → ${leg.destination}` : '—'}</div>
+                  {cities && <div className="v-leg-sub">{cities}</div>}
+                </div>
+                <div>
+                  <div className="v-leg-label">Aerolínea</div>
+                  <div className="v-leg-value">{legAirlineName}</div>
+                </div>
+                {/* `ticket.seatNumber` era el asiento del PRIMER pasajero presentado como
+                    el del tiquete entero, asi que en un tiquete de varios se imprimia el
+                    asiento ajeno. Los asientos van en la tabla de pasajeros, uno por
+                    persona y por tramo. Aca solo queda el del tramo cuando existe, que es
+                    el caso de las escalas. */}
+                {leg.seat && (
+                  <div>
+                    <div className="v-leg-label">Asiento</div>
+                    <div className="v-leg-value">{leg.seat}</div>
+                  </div>
+                )}
+                {ticketNumber && (
+                  <div>
+                    <div className="v-leg-label">N° Tiquete</div>
+                    <div className="v-leg-value">{ticketNumber}</div>
+                  </div>
+                )}
               </div>
-              {/* `ticket.seatNumber` era el asiento del PRIMER pasajero presentado como
-                  el del tiquete entero, asi que en un tiquete de varios se imprimia el
-                  asiento ajeno. Los asientos van en la tabla de pasajeros, uno por
-                  persona y por tramo. Aca solo queda el del tramo cuando existe, que es
-                  el caso de las escalas. */}
-              {leg.seat && (
-                <div style={{ minWidth: '80px' }}>
-                  <span className="v-fd-label">Asiento:</span>
-                  <span className="v-fd-val">{leg.seat}</span>
+              <div className="v-leg-bag">
+                <div className="v-leg-head">
+                  <span className="v-leg-bag-title">Equipaje</span>
+                  <span className="v-leg-pill v-leg-pill-plan">{legBaggagePlan || 'No especificado'}</span>
                 </div>
-              )}
-              {(leg.ticketNumber || ticket.ticketNumber || (ticket.passengers && ticket.passengers[0]?.nroTiquete)) && (
-                <div style={{ minWidth: '100px' }}>
-                  <span className="v-fd-label">N° Tiquete:</span>
-                  <span className="v-fd-val">
-                    <strong style={{ color: '#111827' }}>
-                      {leg.ticketNumber || ticket.ticketNumber || (ticket.passengers && ticket.passengers[0]?.nroTiquete)}
-                    </strong>
-                  </span>
-                </div>
-              )}
+                {bg && (
+                  <div className="v-leg-bag-lines">
+                    <div>Personal: {bg.personalItem || 'N/A'}</div>
+                    <div>Cabina: {bg.carryOn || 'N/A'}</div>
+                    <div>Bodega: {bg.checkedBag || 'N/A'}</div>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
