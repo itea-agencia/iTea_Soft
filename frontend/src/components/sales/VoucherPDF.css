@@ -297,18 +297,43 @@
   color: #102846 !important;
 }
 
+/* En el PDF todo el texto salia unos pixeles mas abajo; en las pildoras se notaba porque
+   quedaba fuera de su fondo. Causa (reproducida con html2canvas 1.4.1 el 2026-11-19): el
+   preflight de Tailwind pone `img { display: block }`, y html2canvas mide la linea base de
+   cada fuente con un GIF de 1x1 que mete en el documento. Con display block la medicion da
+   mal. Este selector devuelve a inline solo esa imagen de medicion, no las de la app. No
+   sirve hacerlo en `onclone`: la medicion se hace en el documento original. */
+img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"] {
+  display: inline;
+}
+
 .itea-voucher .v-leg-pill {
+  display: inline-block;
+  height: 20px;
+  line-height: 20px;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  padding: 3px 10px;
+  white-space: nowrap;
+  padding: 0 10px;
   border-radius: 999px;
   background: #dbeafe !important;
   color: #1e40af !important;
 }
 
+/* El plan no tiene largo fijo (en produccion hay uno de 147 caracteres): parte en varias
+   lineas, aun sin espacios, y no pasa del 60% del ancho, en vez de salirse de la tarjeta.
+   Conserva line-height de 20px y sin padding vertical: en una linea es la misma pildora
+   que "Ida"; si es largo, cada renglon mide 20px. */
 .itea-voucher .v-leg-pill-plan {
+  height: auto;
+  min-height: 20px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 60%;
+  text-align: center;
+  border-radius: 10px;
   text-transform: none;
   letter-spacing: 0;
   background: #e2e8f0 !important;
