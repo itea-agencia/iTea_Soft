@@ -1,14 +1,17 @@
-# Pendientes al 2026-11-16
+# Pendientes al 2026-11-19
 
 Lo que queda por hacer después de la rama `feat/hallazgo-16-carga-y-mantenimiento`, que se pasó a `feat-bayrol`. Cada punto apunta al documento que lo detalla; este archivo es el índice, no la fuente. Revisado el 2026-11-16 contra producción, en solo lectura.
 
-## Antes de mergear `feat-bayrol` a `main`
+## Despliegue de `feat-bayrol`
+
+**Estado al 2026-11-19:** backend desplegado y script de tarjetas aplicado; **falta publicar el frontend en GoDaddy**.
 
 1. ~~**Probar en pantalla** lo de la rama~~ y ~~**la venta de las 17 categorías**~~: **validado en pantalla por el usuario el 2026-11-16**, con las secciones 1 a 9 de `pruebas-pantalla-hallazgo-16.md` (paginación y créditos, pasajeros y personas, migración y visa, titular en tours y seguros, servicios vinculados al paquete en voucher y PDF).
 2. ~~**Probar en pantalla los datos de catálogo por id**~~ (sección 10 de `pruebas-pantalla-hallazgo-16.md`): **validado por el usuario**, con ventas 185–187. También aprobó la sección 11 (documentos del resumen, nombres e iconos de pestañas) y la 12 (nombres de categoría iguales en todas las pantallas, «Titular» solo para el cliente). Revisión visual completada.
-3. **Desplegar con el orden correcto.** El merge corre tres migraciones en producción: `20261116120000` agrega `tarjeta_agencia_id` (aditiva), y `20261111190000` borra 5 columnas vacías del tour y el seguro (comprobado por última vez el 2026-11-16, justo antes del merge: 1 tour sin `tour_nombre` y 0 seguros, y las dos migraciones todavía sin aplicar en producción), y `20261111200000` agrega `prod_simcards.email_entrega`. El frontend se publica junto con el backend o enseguida después: con el frontend viejo, una fila de pasajero vacía o un tipo `TI` dan error recién al guardar.
-4. **Después del despliegue:** con tu confirmación, correr `backend/db-manual/asignar_tarjeta_pagos_proveedor.sh` (asigna la tarjeta a 45 + 130 + 2 pagos viejos; criterios verificados en producción el 2026-11-16), y corregir el método de cada tarjeta en Configuración → Tarjetas (hoy Samtur figura como "Transferencia" y PRECOMPRAS como "Tarjeta de Débito").
-5. **Comprobar después del despliegue**, en solo lectura, que los conteos de `pasajeros-con-documento-2026-11.md` siguen en cero. La única excepción es la persona del equipaje.
+3. ~~**Desplegar el backend**~~: `main` = `feat-bayrol` (`a74b82d`). Render aplicó las tres migraciones el 2026-11-16 (`20261111190000` y `20261111200000` a las 18:02 UTC, `20261116120000` a las 21:23 UTC), comprobado en producción el 2026-11-19: `tour_nombre` ya no existe, `tarjeta_agencia_id` y `email_entrega` sí. Las 7 ventas cargadas desde entonces (206 a 212) guardaron su tarjeta.
+4. **Publicar el frontend en GoDaddy: pendiente.** Hasta entonces corre el frontend viejo contra el backend nuevo: una fila de pasajero vacía o un tipo `TI` dan error recién al guardar, y el proveedor, la tarjeta y la aerolínea llegan por nombre (los resuelve el respaldo por nombre, ver abajo).
+5. ~~**Script de tarjetas**~~: `asignar_tarjeta_pagos_proveedor` aplicado en producción el 2026-11-19 (45 + 130 + 2, con el `psql` del contenedor `itea_postgres`). Después: 183 productos y 2 pagos de paquete con tarjeta. Los métodos de las tarjetas (Samtur = Transferencia, PRECOMPRAS = Tarjeta de Débito) son correctos según el usuario; "BANCO NU " y "NU BANCO" son tarjetas distintas.
+6. ~~**Conteos de pasajeros**~~: al 2026-11-19, 0 personas creadas desde el deploy sin documento o tipo válido. La única sin documento ni tipo sigue siendo la del equipaje.
 
 ## Dinero (invariante 2)
 
@@ -38,9 +41,9 @@ Ventas y registros anteriores a los arreglos, que se dejan como están por decis
 
 Detalle en `docs/resultado-venta-completa-api-2026-11-16.md` (venta 168 local).
 
-- **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Validado en pantalla por el usuario el 2026-11-16; falta publicar backend y frontend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
+- **Servicios vinculados al paquete:** implementado y verificado por API/SQL en las ventas locales 169–171, sin cambiar sus totales. Validado en pantalla por el usuario el 2026-11-16; backend desplegado el 2026-11-16, falta publicar el frontend. Diseño: `docs/designs/servicios-vinculados-al-paquete-2026-11.md`.
 - **Tramo a medio llenar:** un tramo con origen y sin destino (o al revés) se sigue omitiendo sin aviso, como antes del arreglo del catálogo. El formulario pide los dos.
-- **Respaldo por nombre en el servidor:** acepta `supplier`, `supplierName`, `supplierPaymentMethod`, `airline`, `baggagePlan` y `method` además de los ids, por las pestañas abiertas y los borradores guardados durante el despliegue. Quitarlo unas semanas después del merge (`firstValue` y `nombreProveedorDe` en `sales.controller.js`).
+- **Respaldo por nombre en el servidor:** acepta `supplier`, `supplierName`, `supplierPaymentMethod`, `airline`, `baggagePlan` y `method` además de los ids, por las pestañas abiertas y los borradores guardados durante el despliegue. Quitarlo unas semanas después de **publicar el frontend**, no del merge: mientras corra el frontend viejo, es lo único que asigna proveedor, tarjeta y aerolínea (`firstValue` y `nombreProveedorDe` en `sales.controller.js`).
 - **Empresa de transporte del paquete terrestre:** es texto libre y no se guarda (no hay columna); el servidor ya no la busca entre las aerolíneas. Hoy no hay paquetes terrestres en producción.
 - **La tarjeta no se ve en la pestaña de cada producto:** se muestra en el desglose del paquete; en el resto de las pestañas tampoco se mostraba el método. Agregarla si quien concilia la necesita ahí.
 - **Datos que no se leen:** el método de pago al proveedor de cada producto no vuelve en la API; las fechas, origen y destino generales de `detalle_venta` se llenan dispares y nadie los lee.
