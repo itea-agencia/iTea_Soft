@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { FlightLeg, Sale, TicketData } from '../../types';
-import { formatDate, formatDateTime, formatCurrency, formatSaleId } from '../../utils/formatters';
+import { formatDate, formatDateTime, formatCurrency, formatSaleId, formatInstant } from '../../utils/formatters';
 import { type AirportInfo } from '../../utils/airportInfo';
 import './VoucherPDF.css';
 import { etiquetaTipoHotel } from '../../utils/tiposHotel';
@@ -165,12 +165,13 @@ function TripLegs({ legs, codigoLabel = 'Vuelo' }: {
   // trae, la columna no se dibuja.
   const conCodigo = conDatos.some((l) => l.codigo);
 
-  // Un valor sin hora sale de formatDateTime como "12:00 a. m.", que es una hora de
-  // salida que nadie escribio. En un voucher impreso eso desinforma, asi que si no hay
-  // hora se imprime solo la fecha.
+  // Las fechas de los vuelos del paquete salen del selector con hora y -05:00, asi que son
+  // instantes. Antes un "T00:00" se tomaba como "sin hora", pero un vuelo a las 19:00 de
+  // Colombia es T00:00Z del dia siguiente y salia con otra fecha y sin hora. Solo una
+  // fecha sin "T" se imprime sin hora.
   const fechaHora = (valor?: string) => {
     if (!valor) return '—';
-    return valor.includes('T') && !valor.includes('T00:00') ? formatDateTime(valor) : formatDate(valor);
+    return valor.includes('T') ? formatInstant(valor) : formatDate(valor);
   };
 
   return (
@@ -305,7 +306,12 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
           partir entre hojas. */}
       {legsToRender.map((leg, li) => {
           const legAirlineName = leg.airline || ticket.airline || '—';
-          const legBaggagePlan = leg.baggagePlan || ticket.baggagePlan;
+          // Sin plan propio, el tramo usa el del tiquete solo si es de su misma aerolinea:
+          // la API devuelve como plan del tiquete el del primer tramo, y un tramo de otra
+          // aerolinea mostraba ese equipaje ajeno. El servidor ya hereda asi al guardar.
+          const ticketPlanFits = !leg.airline || !ticket.baggagePlan ||
+            ticket.baggagePlan.trim().toUpperCase().startsWith(`${leg.airline.trim().toUpperCase()} - `);
+          const legBaggagePlan = leg.baggagePlan || (ticketPlanFits ? ticket.baggagePlan : null);
           const bg = baggageList?.find(b => legBaggagePlan === `${b.airlineName} - ${b.fareType}` || b.fareType === legBaggagePlan);
           const legType = 'tipoTramo' in leg && leg.tipoTramo ? LEG_TYPE_LABELS[leg.tipoTramo] : null;
           const hasRoute = leg.origin && leg.destination && leg.origin !== '—';
@@ -767,7 +773,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                 {i > 0 && <div className="v-item-divider" />}
                 <div className="v-data-grid">
                   <DataCell label="Reserva a Nombre de" value={rest.reservationName} highlight />
-                  <DataCell label="Fecha y Hora" value={rest.dateTime ? formatDate(rest.dateTime) : null} />
+                  <DataCell label="Fecha y Hora" value={rest.dateTime ? formatInstant(rest.dateTime) : null} />
                   <DataCell label="N° Personas" value={rest.peopleCount?.toString()} />
                   <DataCell label="Mesa Preferida" value={rest.tablePreference} />
                   <DataCell label="Tipo de Menú" value={rest.menuType} />

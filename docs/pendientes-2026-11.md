@@ -80,6 +80,7 @@ Detalle en `docs/specs/2026-09-21-autenticacion-y-autorizacion.md` y `2026-09-21
 - **Voucher:** el título "Otros Servicios Reservados" lleva un ícono de avión.
 - **Pruebas de Ventas:** `useSalesQuery` y el controlador no tienen pruebas automáticas.
 - **Siigo sin recargar:** la factura de Siigo no recarga la tabla de Ventas.
+- **Tablas del voucher que no se parten por filas:** el paginador de `Sales.tsx` (`repartirTarjeta`) corta entre bloques, no dentro de una tabla, así que una tabla más alta que la hoja (~1070 px) se desborda. Hoy no pasa: el producto con más pasajeros en producción tiene 17 (2026-11-19, ~600 px). Partirla por filas, repitiendo el encabezado, se hace cuando aparezca un grupo de unos 28 o más.
 
 ## Datos de prueba en la base local
 

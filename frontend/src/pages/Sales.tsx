@@ -154,11 +154,10 @@ export default function Sales() {
 
   /** Carga la venta completa, renderiza el VoucherPDF y devuelve canvas + doc jsPDF listos */
   const buildVoucherPdf = async (sale: Sale) => {
-    // 1. Traer venta completa
-    let fullSale: Sale = sale;
-    try {
-      fullSale = await api.getSale(sale.id);
-    } catch { /* fallback */ }
+    // 1. Traer venta completa. Si falla no hay voucher: antes se seguía con la fila del
+    // listado, que no trae los servicios, y se descargaba o enviaba un voucher vacío. El
+    // error llega al llamador, que lo muestra y deja el modal abierto para reintentar.
+    const fullSale: Sale = await api.getSale(sale.id);
 
     // 2. Inyectar en el componente oculto y esperar render
     setVoucherFullSale(fullSale);

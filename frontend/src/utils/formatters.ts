@@ -49,6 +49,19 @@ export function formatDateTime(dateStr: string): string {
   });
 }
 
+/**
+ * Un instante (fecha y hora elegidas en el selector, guardadas con -05:00) en hora de
+ * Colombia. No usa el atajo "T00:00:00 es fecha sin hora" de formatDateTime: las 19:00 de
+ * Colombia son las 00:00 UTC del dia siguiente, y con ese atajo salian como otro dia sin hora.
+ */
+export function formatInstant(dateStr: string): string {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleString('es-CO', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Bogota'
+  });
+}
+
 export function formatDateInput(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
