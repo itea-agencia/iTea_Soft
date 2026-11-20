@@ -38,10 +38,9 @@ for (const [field, item, markers] of cases) {
       [field]: [{ ...item, parentDetalleId: 'p1', supplierCost: 99345678 }],
     });
     for (const marker of markers) {
-      // El bloque de vuelo actual muestra el tiquete en el tramo y en su pasajero.
-      const expectedCount = field === 'ticketData' && marker === 'TIQUETE_UNICO' ? 2 : 1;
-      assert.equal(standalone.split(marker).length - 1, expectedCount, `fixture visible: ${marker}`);
-      assert.equal(linked.split(marker).length - 1, expectedCount, `sin pérdidas ni duplicados: ${marker}`);
+      // El tiquete de un pasajero va solo en su fila: el tramo ya no lo toma prestado.
+      assert.equal(standalone.split(marker).length - 1, 1, `fixture visible: ${marker}`);
+      assert.equal(linked.split(marker).length - 1, 1, `sin pérdidas ni duplicados: ${marker}`);
       assert.ok(linked.indexOf(marker) > linked.indexOf('PAQUETE_PRIMERO'), `${marker} pertenece al primero`);
       assert.ok(linked.indexOf(marker) < linked.indexOf('PAQUETE_SEGUNDO'), `${marker} no pertenece al segundo`);
     }
@@ -78,6 +77,14 @@ test('los servicios comparten la tarjeta del paquete y conservan bloques separab
   assert.equal((html.match(/class="v-flight-block"/g) || []).length, 0, 'el vuelo no queda envuelto en una tarjeta indivisible');
   assert.equal((html.match(/class="v-obs(?: v-obs-inicio)?"/g) || []).length, 2, 'conserva el corte entre párrafos');
   assert.ok(html.includes('PERSONA_UNICA') && html.includes('BODEGA_UNICA'));
+});
+
+test('cada tramo es un hijo directo del bloque de vuelo, para que el PDF pueda cortar entre tramos', () => {
+  const legs = ['BOG', 'MDE', 'CTG'].map((origin, i) => ({ origin, destination: 'X' + i, flightNumber: 'V' + i }));
+  const html = render({ ...baseSale, ticketData: [{ passengers: [person], legs }] });
+  const block = html.match(/<div class="v-flight-block">([\s\S]*)<\/div>/)[1];
+  assert.equal((block.match(/class="v-leg"/g) || []).length, 3);
+  assert.ok(!html.includes('v-legs'), 'sin contenedor que vuelva indivisibles a los tramos');
 });
 
 test('conserva la opción de ocultar el precio y admite ventas sin detalle o nulas', () => {

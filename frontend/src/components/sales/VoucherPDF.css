@@ -277,18 +277,10 @@
 }
 
 /* Un bloque por tramo: encabezado con su tipo, ruta y aerolinea en columnas, y equipaje. */
-.itea-voucher .v-legs {
+.itea-voucher .v-leg {
   background: linear-gradient(90deg, #eef6f7 0%, #f0f7f8 100%) !important;
   border-top: 1px solid #cce8eb;
-  padding: 4px 20px;
-}
-
-.itea-voucher .v-leg {
-  padding: 14px 0;
-}
-
-.itea-voucher .v-leg + .v-leg {
-  border-top: 1px solid #cce8eb;
+  padding: 14px 20px;
 }
 
 .itea-voucher .v-leg-head {

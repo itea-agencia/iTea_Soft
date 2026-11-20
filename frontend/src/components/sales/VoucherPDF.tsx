@@ -299,9 +299,11 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
 
       {/* Antes cada tramo era una linea, "BOG → MDE:AVIANCA", y la ruta y la aerolinea se
           leian como un solo texto. Ahora cada tramo es un bloque con la ruta y la aerolinea
-          en columnas con su etiqueta, y el equipaje debajo (diseño del usuario, 2026-11-19). */}
-      <div className="v-legs">
-        {legsToRender.map((leg, li) => {
+          en columnas con su etiqueta, y el equipaje debajo (diseño del usuario, 2026-11-19).
+          Los tramos van sueltos, sin contenedor: el paginador de Sales.tsx solo corta entre
+          hijos directos de la tarjeta, y envueltos un itinerario con escalas no se podia
+          partir entre hojas. */}
+      {legsToRender.map((leg, li) => {
           const legAirlineName = leg.airline || ticket.airline || '—';
           const legBaggagePlan = leg.baggagePlan || ticket.baggagePlan;
           const bg = baggageList?.find(b => legBaggagePlan === `${b.airlineName} - ${b.fareType}` || b.fareType === legBaggagePlan);
@@ -310,7 +312,10 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
           const cities = hasRoute
             ? [airportMap?.[leg.origin]?.city, airportMap?.[leg.destination]?.city].filter(Boolean).join(' – ')
             : '';
-          const ticketNumber = leg.ticketNumber || ticket.ticketNumber || ticket.passengers?.[0]?.nroTiquete;
+          // Solo el tiquete propio del tramo. El respaldo con el del primer pasajero
+          // imprimia el de una persona como si fuera de todas; cada tiquete ya va en la
+          // tabla de pasajeros (invariante 1).
+          const ticketNumber = leg.ticketNumber;
           return (
             <div key={`leg-details-${idx}-${li}`} className="v-leg">
               <div className="v-leg-head">
@@ -361,7 +366,6 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
             </div>
           );
         })}
-      </div>
 
       <PassengerTable
         title="Pasajeros del vuelo"
