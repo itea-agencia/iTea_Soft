@@ -85,7 +85,7 @@ Detalle en `docs/specs/2026-09-21-autenticacion-y-autorizacion.md` y `2026-09-21
 ## Datos de prueba en la base local
 
 Quedan a propósito, para volver a probar:
-- los usuarios `prueba.propios@local` (id 14) y `prueba.ventas@local` (id 15), con sus contraseñas en el scratchpad de la sesión;
+- los usuarios `prueba.propios@local` (id 14) y `prueba.ventas@local` (id 15), sin contraseña guardada: el scratchpad donde estaba se limpió el 2026-11-19. Para usarlos, se les pone una nueva desde Usuarios;
 - las ventas 154 a 164;
 - un cliente, un responsable, un usuario y un comisionista de prueba, con documentos `9910000010` a `9910000040`;
 - un cliente con NIT `900123456` y otro con pasaporte `PA991234`;
