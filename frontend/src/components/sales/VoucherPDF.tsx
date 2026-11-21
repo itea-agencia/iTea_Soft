@@ -4,6 +4,7 @@ import { formatDate, formatDateTime, formatCurrency, formatSaleId, formatInstant
 import { type AirportInfo } from '../../utils/airportInfo';
 import './VoucherPDF.css';
 import { etiquetaTipoHotel } from '../../utils/tiposHotel';
+import { paymentMethodLabel } from '../../utils/paymentMethod';
 
 const formatTimeAMPM = (time24: string) => {
   if (!time24) return "";
@@ -319,7 +320,7 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
           return (
             <div key={`leg-details-${idx}-${li}`} className="v-leg">
               <div className="v-leg-head">
-                <span className="v-leg-title">Tramo {li + 1}</span>
+                <span className="v-leg-title">Trayecto {li + 1}</span>
                 {legType && <span className="v-leg-pill">{legType}</span>}
               </div>
               <div className="v-leg-grid">
@@ -393,6 +394,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
   const currentDate = new Date().toLocaleDateString('es-CO', {
     day: '2-digit', month: '2-digit', year: 'numeric',
   });
+  const paymentMethod = paymentMethodLabel(sale);
 
   const renderServices = (parentId: string | null = null): React.ReactNode => {
     const belongsToGroup = (item: unknown) => {
@@ -684,8 +686,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Lugar de Recogida" value={car.pickupLocation} />
                   <DataCell label="Tipo de Seguro" value={car.insuranceType ? <span className="v-badge">{car.insuranceType === 'all_risk' ? 'Todo Riesgo' : 'Básico'}</span> : null} />
                   <DataCell label="Conductores Adicionales" value={car.additionalDrivers?.toString()} />
-                  {/* Sin "Tarjeta Garantía": es texto libre, puede traer el número completo, y
-                      el PDF se descarga y se envía por correo. Queda en el ver detalle. */}
+                  {car.guaranteeCreditCard && <DataCell label="Tarjeta Garantía" value={car.guaranteeCreditCard} />}
                 </div>
               </React.Fragment>
             ))}
@@ -877,13 +878,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           </div>
           <div className="v-tb-item">
             <span className="v-tb-label">FORMA DE PAGO</span>
-            <span className="v-tb-value">
-              {sale.paymentMethod
-                ? sale.paymentMethod
-                : (sale.payments && sale.payments.length > 0
-                  ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method)
-                  : '—')}
-            </span>
+            <span className="v-tb-value">{paymentMethod}</span>
           </div>
           <div className="v-tb-item">
             <span className="v-tb-label">ASESOR</span>
@@ -919,13 +914,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
             <div className="v-payment-row"><label>Agencia:</label><span>Samtur Travel Agency</span></div>
             <div className="v-payment-row">
               <label>Forma de Pago:</label>
-              <span>
-                {sale.paymentMethod
-                  ? sale.paymentMethod
-                  : (sale.payments && sale.payments.length > 0
-                    ? (sale.payments.length > 1 ? 'Mixto' : sale.payments[0].method)
-                    : '—')}
-              </span>
+              <span>{paymentMethod}</span>
             </div>
             <div className="v-endorsements">⚠ LOS SERVICIOS ESTÁN SUJETOS A LAS POLÍTICAS DE CADA PROVEEDOR</div>
           </div>
@@ -972,13 +961,14 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
             <div className="v-footer-brand">Samtur<span>Travel Agency</span></div>
             <div className="v-footer-tagline">Agencia de Viajes</div>
           </div>
+          {/* El pie se arma solo aca. Sales.tsx lo reemplazaba con innerHTML, con otro correo
+              y la orden sin formatSaleId, y este nunca llegaba al PDF. Ahora el paginador
+              clona este pie en cada hoja y solo escribe el numero de pagina en .v-footer-page. */}
           <div className="v-footer-right">
-            <div className="v-footer-line">
-              <p>
-                www.samturtravel.com &nbsp;|&nbsp; info@samturtravel.com<br />
-                © {new Date().getFullYear()} Samtur Travel Agency. Todos los derechos reservados.
-              </p>
-            </div>
+            Voucher Electrónico — Orden #{formatSaleId(sale.id)}<br />
+            comercial@samturtravel.com<br />
+            Impreso el {currentDate}<br />
+            <span className="v-footer-page" />
           </div>
         </div>
 

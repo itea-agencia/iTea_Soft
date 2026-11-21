@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { flushSync } from "react-dom";
 import * as api from "../api";
 import { importWithReload } from "../utils/lazyReload";
 import {
@@ -160,10 +161,19 @@ export default function Sales() {
     const fullSale: Sale = await api.getSale(sale.id);
 
     // 2. Inyectar en el componente oculto y esperar render
-    setVoucherFullSale(fullSale);
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Antes eran 800 ms fijos: si la fuente Inter o el logo tardaban más, se medía y se
+    // capturaba con la fuente de respaldo o con el encabezado sin logo (alto 0, y la
+    // paginación queda corrida). flushSync deja el DOM listo al volver; leer offsetHeight
+    // fuerza el layout para que el navegador pida las fuentes que usa el voucher, y recién
+    // entonces document.fonts.ready las espera. Una imagen que falla no frena el PDF.
+    flushSync(() => setVoucherFullSale(fullSale));
 
     if (!voucherRef.current) throw new Error('Contenedor del PDF no disponible');
+    void voucherRef.current.offsetHeight;
+    await Promise.all([
+      document.fonts.ready,
+      ...Array.from(voucherRef.current.querySelectorAll('img')).map(img => img.decode().catch(() => undefined)),
+    ]);
 
     // Helper to calculate element height with margins
     const getElementHeightWithMargins = (el: HTMLElement) => {
@@ -317,9 +327,6 @@ export default function Sales() {
     }
 
     const totalPages = pagesData.length;
-    const currentDate = new Date().toLocaleDateString('es-CO', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-    });
 
     // 4. Crear contenedor temporal para renderizar las páginas paginadas
     const tempContainer = document.createElement('div');
@@ -349,10 +356,8 @@ export default function Sales() {
       // Agregar el footer personalizado con paginación
       if (footerElement) {
         const clonedFooter = footerElement.cloneNode(true) as HTMLElement;
-        const footerRight = clonedFooter.querySelector('.v-footer-right');
-        if (footerRight) {
-          footerRight.innerHTML = `Voucher Electrónico — Orden #${fullSale.id}<br />Comercial@samturtravel.com<br />Impreso el ${currentDate}<br />Página ${i + 1} de ${totalPages}`;
-        }
+        const footerPage = clonedFooter.querySelector('.v-footer-page');
+        if (footerPage) footerPage.textContent = `Página ${i + 1} de ${totalPages}`;
         pageDiv.appendChild(clonedFooter);
       }
 
