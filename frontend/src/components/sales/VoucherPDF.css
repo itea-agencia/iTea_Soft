@@ -707,6 +707,12 @@ img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAA
   line-height: 1.8;
 }
 
+/* "Página X de Y" es un span, y la regla general `.itea-voucher span` lo pintaba #1e293b:
+   oscuro sobre el fondo navy del pie. Toma el color del resto del pie. */
+.itea-voucher .v-footer-right .v-footer-page {
+  color: rgba(255,255,255,0.6) !important;
+}
+
 /* HELPER CLASSES */
 .itea-voucher .text-center { text-align: center !important; }
 .itea-voucher .text-left   { text-align: left !important; }
