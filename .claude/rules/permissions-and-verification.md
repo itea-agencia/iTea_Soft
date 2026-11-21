@@ -41,9 +41,9 @@ entran al repo: la regla `*.sql` del `.gitignore` está para eso, y la única ex
 La única suite es `frontend/tests/` (`npm test`, `node:test`): cubre funciones puras del
 frontend, como validar o comparar fechas. Cada lógica nueva que se pueda probar sin la app
 levantada lleva ahí su prueba; `tests/cargarTs.mjs` carga un `.ts` de `src/` sin bundler.
-Para lo demás, el patrón es: tocar, reconstruir el contenedor, probar por la API contra la
-base local, y comprobar con SQL que el dato quedó como se esperaba. Reconstruir y pegarle a
-la API necesitan permiso; `tsc`, `npm test`, `node --check` y las lecturas SQL, no. Las specs traen
+Para lo demás, el patrón es: tocar, levantar o reiniciar la API (`npm run dev`), probar por
+la API contra la base local, y comprobar con SQL que el dato quedó como se esperaba.
+Levantar la API y pegarle necesitan permiso; `tsc`, `npm test`, `node --check` y las lecturas SQL, no. Las specs traen
 consultas listas para los invariantes que importan.
 
 No hay navegador headless en este entorno: **lo visual no se puede verificar**. Cuando un

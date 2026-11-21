@@ -94,14 +94,14 @@ Funciones, variables, constantes y tipos que se creen de ahora en adelante van e
 
 ## Trampas del entorno
 
-**El código va horneado en la imagen de Docker.** `COPY . .`, y solo `uploads` está
-montado. Un `git pull` no actualiza los contenedores. Después de cualquier cambio en el
-backend: `docker compose up -d --build backend` (con el permiso de la regla 4). Esto ya
-produjo un diagnóstico falso —"los pasajeros no se guardan" cuando sí se guardaban— y
-varias horas perdidas.
+**Docker levanta solo la base.** El backend y el frontend corren en el host con
+`npm run dev`, y nada regenera el cliente de Prisma ni aplica migraciones solo: después de
+un `git pull` que toque `backend/prisma/`, `npm run db:deploy && npm run db:generate` en
+`backend/` (con el permiso de la regla 4). Sin el `generate`, Prisma rechaza campos que la
+base sí tiene: "Unknown argument `creadoAt`".
 
-**La base está en el 5440 desde el host**, no en el 5432. Un `npm run db:migrate` desde el
-host con el puerto equivocado no conecta.
+**La base está en el 5440 desde el host**, no en el 5432. `backend/.env` tiene que apuntar
+ahí; con el puerto equivocado no conecta.
 
 **Todo cambio de esquema va en una migración.** El deploy corre `prisma migrate deploy`,
 que solo aplica migraciones ya escritas: editar el schema sin generar la migración deja la
@@ -124,6 +124,6 @@ docker exec -i itea_postgres psql -U postgres -d samtur-development \
   < backend/db-manual/verificar_schema_local.sql   # ¿la base local está al día?
 ```
 
-Con permiso (regla 4): `docker compose up -d --build backend`, y desde `backend/`
-`npm run db:migrate -- --name x` y `npm run db:status`. Local: web en `:80`, API en
-`:3000/api/v1`, base en `:5440`.
+Con permiso (regla 4): `docker compose up -d`, `npm run dev` en `backend/` y `frontend/`,
+y desde `backend/` `npm run db:migrate -- --name x`, `npm run db:deploy` y
+`npm run db:status`. Local: web en `:5173`, API en `:3000/api/v1`, base en `:5440`.

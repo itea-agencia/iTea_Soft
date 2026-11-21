@@ -76,8 +76,7 @@ cat prisma/migrations/*agregar_asiento_regreso/migration.sql
 git add prisma/schema.prisma prisma/migrations/
 ```
 
-El deploy la aplica solo: `migrate deploy` corre en el build y en cada arranque del
-contenedor, y es idempotente.
+El deploy la aplica solo: Render corre `migrate deploy` en el build, y es idempotente.
 
 Para ver el SQL **sin** aplicarlo —útil cuando el cambio es delicado y se quiere editar el
 archivo a mano antes:
@@ -113,8 +112,9 @@ también tapaba los archivos de migración: la carpeta habría viajado vacía y 
 deploy` no habría aplicado nada. Hay una excepción explícita para
 `backend/prisma/migrations/**/*.sql`.
 
-**El contenedor lleva el código horneado.** Un `git pull` no trae las migraciones nuevas al
-contenedor en ejecución. Después de cada pull: `docker compose up -d --build`.
+**En local nada aplica las migraciones solo.** Docker levanta solo la base y el backend
+corre en el host. Después de un pull con migraciones nuevas: `npm run db:deploy` en
+`backend/`.
 
 ## Cómo verificarlo
 

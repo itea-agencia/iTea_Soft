@@ -14,28 +14,28 @@ de servicio, emite vouchers en PDF y factura contra Siigo.
 
 ## Levantarlo
 
+Docker levanta solo PostgreSQL; el backend y el frontend corren en el host.
+
 ```bash
 cp backend/.env.example backend/.env   # y completar; ese archivo explica cada variable
-docker compose up -d --build
+docker compose up -d                   # la base
+cd backend && npm install && npm run db:deploy && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
-- Frontend en `http://localhost`, backend en `:3000`, PostgreSQL en `:5440`.
-- El backend corre `prisma migrate deploy` al arrancar, así que la base se pone al día sola.
+- Frontend en `http://localhost:5173`, backend en `:3000`, PostgreSQL en `:5440`.
 
 ### Dos cosas que muerden
 
-**El código va horneado en la imagen.** El `Dockerfile` hace `COPY . .` y ni el backend ni
-el frontend montan el fuente (el backend solo monta `uploads`). Un `git pull` **no
-actualiza los contenedores**: hay que reconstruir.
+**Las migraciones y el cliente de Prisma no se actualizan solos en local.** Después de un
+`git pull` que toca `backend/prisma/` (con `npm run dev` detenido: en Windows el motor de
+Prisma queda bloqueado mientras corre):
 
 ```bash
-docker compose up -d --build     # después de cada pull
+cd backend && npm run db:deploy && npm run db:generate
 docker exec -i itea_postgres psql -U postgres -d samtur-development \
   < backend/db-manual/verificar_schema_local.sql   # confirma que la base quedó al día
 ```
-
-Si algún objeto aparece como `FALTA`, quedaron migraciones sin aplicar: corre
-`docker exec itea_backend npx prisma migrate deploy` y mirá `docker logs itea_backend`.
 
 **El puerto de la base es 5440 desde el host** (5440 → 5432 adentro). Los comandos que se
 corren fuera de Docker, como `npm run db:migrate`, usan el `DATABASE_URL` de

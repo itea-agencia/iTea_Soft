@@ -1,3 +1,4 @@
+# Solo la base. El backend y el frontend corren en el host con `npm run dev`.
 services:
   postgres:
     image: postgres:15-alpine
@@ -16,53 +17,6 @@ services:
       interval: 3s
       timeout: 3s
       retries: 10
-    networks:
-      - itea_network
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: itea_backend
-    restart: always
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./backend/.env
-    environment:
-      PORT: "3000"
-      NODE_ENV: "development"
-      FRONTEND_URL: "http://localhost"
-      DATABASE_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
-      DIRECT_URL: "postgresql://postgres:1033488906b@postgres:5432/samtur-development?schema=public"
-    volumes:
-      - ./backend/uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - itea_network
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: "http://localhost:3000/api/v1"
-    container_name: itea_frontend
-    restart: always
-    ports:
-      - "80:80"
-    env_file:
-      - ./frontend/.env
-    depends_on:
-      - backend
-    networks:
-      - itea_network
 
 volumes:
   postgres_data:
-
-networks:
-  itea_network:
-    driver: bridge
