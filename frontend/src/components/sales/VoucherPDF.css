@@ -146,10 +146,6 @@
   color: #fbbf24 !important;
 }
 
-.itea-voucher .v-status-credito {
-  color: #f5832a !important;
-}
-
 .itea-voucher .v-status-anulado {
   color: #f87171 !important;
 }
@@ -700,15 +696,6 @@ img[src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAA
   border-bottom: 2px solid #f2892f;
   display: inline-block;
   padding-bottom: 3px;
-}
-
-.itea-voucher .v-legal .v-company {
-  margin-top: 12px;
-  font-weight: 700;
-  color: #102846 !important;
-  padding-top: 10px;
-  border-top: 1px solid #cbd5e1;
-  font-size: 11px;
 }
 
 /* ── FOOTER ── */

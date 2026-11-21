@@ -888,9 +888,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
             <span className="v-tb-label">ORDEN</span>
             <span className="v-tb-value v-tb-order">
               #{formatSaleId(sale.id)}
-              {sale.status === 'credito' ? (
-                <span className="v-badge-status v-status-credito">CRÉDITO</span>
-              ) : (
+              {/* El credito ya sale en "Forma de pago"; junto a la orden se repetia. */}
+              {sale.status !== 'credito' && (
                 <span className={`v-badge-status v-status-${sale.status}`}>
                   {sale.status?.toUpperCase()}
                 </span>
@@ -947,9 +946,6 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           <strong>4.</strong> Todo pasajero deberá exhibir el documento de identidad pertinente ante la aerolínea y autoridades que lo requieran.<br /><br />
           <strong>5.</strong> Los cambios, cancelaciones, reembolsos y penalidades están sujetos a las políticas y condiciones de cada proveedor. Los costos adicionales que se generen por dichas modificaciones serán asumidos por el pasajero.<br /><br />
           <strong>Ley de Protección de Menores:</strong> En cumplimiento de la Ley 679 de 2001 y la Ley 1098 de 2006, nuestra agencia rechaza y denuncia toda forma de explotación, pornografía y turismo sexual con niños, niñas y adolescentes. Estas conductas constituyen un delito y son sancionadas por la legislación colombiana.
-          <div className="v-company" style={{ marginTop: '12px' }}>
-            Samtur Travel Agency | calle 18 # 18 143 mall estación de servicios medrano
-          </div>
           <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeeba', borderRadius: '4px', fontSize: '11px' }}>
             <strong>▲ ATENCIÓN:</strong> Por favor revise detenidamente todos los datos de este voucher (nombres, fechas, horarios y servicios). Cualquier inconsistencia debe ser reportada de inmediato a su asesor.
           </div>

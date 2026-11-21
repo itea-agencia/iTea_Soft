@@ -21,8 +21,11 @@ test('formatInstant muestra el instante en hora de Colombia, aunque en UTC sea m
 
 test('el vuelo de un paquete conserva fecha y hora de Colombia', () => {
   const html = render({ ...base, planData: [{ planName: 'P', flightDepartureDate: '2026-11-21T00:00:00.000Z' }] });
-  assert.ok(html.includes('20/11/2026'), 'fecha de Colombia');
-  assert.ok(!html.includes('21/11/2026'), 'no el dia UTC');
+  // Solo la tabla de tramos: el encabezado y el pie imprimen la fecha de hoy, y el
+  // 21/11/2026 la prueba fallaba por la fecha de impresion, no por el vuelo.
+  const tramos = html.slice(html.indexOf('v-flight-table'), html.indexOf('</table>'));
+  assert.ok(tramos.includes('20/11/2026'), 'fecha de Colombia');
+  assert.ok(!tramos.includes('21/11/2026'), 'no el dia UTC');
 });
 
 test('la reserva de restaurante muestra la hora', () => {
