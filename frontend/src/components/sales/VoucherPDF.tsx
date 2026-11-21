@@ -209,6 +209,13 @@ function describirViajeros(adultos?: number, ninos?: number) {
   return partes.join(', ');
 }
 
+const SALE_STATUS_LABELS: Record<Sale['status'], string> = {
+  credito: 'Crédito',
+  abonado: 'Abonado',
+  pagado: 'Pagado',
+  anulado: 'Anulado',
+};
+
 const LEG_TYPE_LABELS: Record<NonNullable<FlightLeg['tipoTramo']>, string> = {
   ida: 'Ida',
   escala_ida: 'Escala ida',
@@ -886,15 +893,7 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
           </div>
           <div className="v-tb-item">
             <span className="v-tb-label">ORDEN</span>
-            <span className="v-tb-value v-tb-order">
-              #{formatSaleId(sale.id)}
-              {/* El credito ya sale en "Forma de pago"; junto a la orden se repetia. */}
-              {sale.status !== 'credito' && (
-                <span className={`v-badge-status v-status-${sale.status}`}>
-                  {sale.status?.toUpperCase()}
-                </span>
-              )}
-            </span>
+            <span className="v-tb-value">#{formatSaleId(sale.id)}</span>
           </div>
         </div>
 
@@ -915,6 +914,10 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
               <label>Forma de Pago:</label>
               <span>{paymentMethod}</span>
             </div>
+            {/* El estado iba pegado al numero de orden ("#0202 CREDITO") y se leia como parte
+                del numero. Es un dato del pago, asi que va aca, y un credito con abonos
+                sigue diciendo que es credito aunque la forma de pago muestre el metodo. */}
+            <div className="v-payment-row"><label>Estado:</label><span>{SALE_STATUS_LABELS[sale.status] || sale.status}</span></div>
             <div className="v-endorsements">⚠ LOS SERVICIOS ESTÁN SUJETOS A LAS POLÍTICAS DE CADA PROVEEDOR</div>
           </div>
           {showPrice && (
