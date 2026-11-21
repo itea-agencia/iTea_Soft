@@ -233,21 +233,13 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
       origin: '—',
       destination: '—',
       flightNumber: ticket.flightNumber || '—',
-      seat: ticket.seatNumber || '—',
+      // Sin respaldo: '—' es truthy y dibujaba la celda "Asiento —" en tiquetes de varios
+      // pasajeros, donde el servidor deja seatNumber en null.
+      seat: ticket.seatNumber,
       date: ticket.departureDate,
       time: undefined,
       arrivalDate: ticket.arrivalDate,
     }];
-
-  const formatTimeAMPM = (time24: string) => {
-    if (!time24) return '—';
-    const [hour, minute] = time24.split(':');
-    let h = parseInt(hour, 10);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12;
-    h = h ? h : 12;
-    return `${h.toString().padStart(2, '0')}:${minute} ${ampm}`;
-  };
 
   const content = (
     <>
@@ -285,11 +277,13 @@ function FlightBlock({ ticket, idx, airportMap, baggageList, embedded = false }:
                 <td><div className="v-f-main">{leg.flightNumber || '—'}</div></td>
                 <td>
                   <div className="v-f-main">{leg.date ? formatDate(leg.date) : '—'}</div>
-                  <div className="v-f-sub">Hora: {formatTimeAMPM((leg as any).time)}</div>
+                  {(leg as any).time && <div className="v-f-sub">Hora: {formatTimeAMPM((leg as any).time)}</div>}
                 </td>
                 <td>
-                  <div className="v-f-main">{(leg as any).arrivalDate ? formatDate((leg as any).arrivalDate) : (leg.date ? formatDate(leg.date) : '—')}</div>
-                  <div className="v-f-sub">Hora: {formatTimeAMPM((leg as any).arrivalTime)}</div>
+                  {/* Sin fecha de llegada no se rellena con la de salida: un vuelo nocturno
+                      llega otro dia y el voucher afirmaba una fecha que nadie cargo. */}
+                  <div className="v-f-main">{(leg as any).arrivalDate ? formatDate((leg as any).arrivalDate) : '—'}</div>
+                  {(leg as any).arrivalTime && <div className="v-f-sub">Hora: {formatTimeAMPM((leg as any).arrivalTime)}</div>}
                 </td>
                 <td><div className="v-f-main">{ticket.reservationNumber || '—'}</div></td>
               </tr>
@@ -690,7 +684,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                   <DataCell label="Lugar de Recogida" value={car.pickupLocation} />
                   <DataCell label="Tipo de Seguro" value={car.insuranceType ? <span className="v-badge">{car.insuranceType === 'all_risk' ? 'Todo Riesgo' : 'Básico'}</span> : null} />
                   <DataCell label="Conductores Adicionales" value={car.additionalDrivers?.toString()} />
-                  {car.guaranteeCreditCard && <DataCell label="Tarjeta Garantía" value={car.guaranteeCreditCard} />}
+                  {/* Sin "Tarjeta Garantía": es texto libre, puede traer el número completo, y
+                      el PDF se descarga y se envía por correo. Queda en el ver detalle. */}
                 </div>
               </React.Fragment>
             ))}
@@ -735,10 +730,8 @@ export const VoucherPDF = forwardRef<HTMLDivElement, VoucherPDFProps>(({ sale, a
                     value={(tour.guests || []).map((g: any) => `${g.name} (${g.docType || 'DOC'}: ${g.docNumber})`).join(', ') || tour.passengerName}
                     fullWidth={true}
                   />
-                  {tour.observations && (
-                    <DataCell label="Toures" value={tour.observations} fullWidth={true} />
-                  )}
                 </div>
+                {tour.observations && <Observaciones texto={tour.observations} />}
               </React.Fragment>
             ))}
           </ProductCard>
